@@ -44,6 +44,18 @@ class Test(unittest.IsolatedAsyncioTestCase):
         contract_address = await hello_blockchain.publish_contract(hello_blockchain_dir)
         await hello_blockchain.main(contract_address)
 
+    async def test_inscriptions(self):
+        from . import inscriptions
+
+        inscriptions_dir = os.path.join(
+            "..", "..", "..", "aptos-move", "move-examples", "token_objects", "inscriptions"
+        )
+        AptosCLIWrapper.test_package(
+            inscriptions_dir, {"inscriptions": AccountAddress.from_str("0xa")}
+        )
+        module_addr = await inscriptions.publish_inscriptions(inscriptions_dir)
+        await inscriptions.main(module_addr)
+
     async def test_large_package_publisher(self):
         from . import large_package_publisher
 

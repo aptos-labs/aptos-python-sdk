@@ -319,6 +319,8 @@ class ReadObject:
 
         return response
 
+    def add_resource(cls, struct_tag: str, resource: Any):
+        cls.resource_map[struct_tag] = resource
 
 class AptosTokenClient:
     """A wrapper around reading and mutating Digital Assets also known as Token Objects"""
