@@ -21,6 +21,7 @@ from .transactions import (
     TransactionArgument,
     TransactionPayload,
 )
+from .type_tag import TypeTag
 
 U64_MAX = 18446744073709551615
 
@@ -370,12 +371,9 @@ class RestClient:
         key: Any,
         ledger_version: Optional[int] = None,
     ) -> Any:
-        if not ledger_version:
-            request = f"{self.base_url}/tables/{handle}/item"
-        else:
-            request = (
-                f"{self.base_url}/tables/{handle}/item?ledger_version={ledger_version}"
-            )
+        request = f"{self.base_url}/tables/{handle}/item"
+        if ledger_version:
+            request = f"{request}?ledger_version={ledger_version}"
         response = await self.client.post(
             request,
             json={
@@ -491,6 +489,13 @@ class RestClient:
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
         return response.json()["hash"]
+
+    async def submit_and_wait_for_bcs_transaction(
+        self, signed_transaction: SignedTransaction
+    ) -> Dict[str, Any]:
+        txn_hash = await self.submit_bcs_transaction(signed_transaction)
+        await self.wait_for_transaction(txn_hash)
+        return await self.transaction_by_hash(txn_hash)
 
     async def submit_transaction(self, sender: Account, payload: Dict[str, Any]) -> str:
         """
@@ -849,6 +854,26 @@ class RestClient:
             params=params,
         )
 
+    async def view_using_bcs_input(
+        self,
+        module: str,
+        function: str,
+        ty_args: List[TypeTag],
+        args: List[TransactionArgument],
+        ledger_version: Optional[int] = None,
+    ) -> Dict[str, str]:
+        request = f"{self.base_url}/view"
+        if ledger_version:
+            request = f"{request}?ledger_version={ledger_version}"
+
+        view_data = EntryFunction.natural(module, function, ty_args, args)
+        ser = Serializer()
+        view_data.serialize(ser)
+        headers = {"Content-Type": "application/x.aptos.view_function+bcs"}
+        response = await self.client.post(request, headers=headers, content=ser.output())
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        return response.json()
 
 class FaucetClient:
     """Faucet creates and funds accounts. This is a thin wrapper around that."""

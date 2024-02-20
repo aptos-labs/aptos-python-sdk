@@ -5,6 +5,7 @@ This demonstrates how to use the simple inscriptions package.
 """
 import asyncio
 import os
+import os.path
 import sys
 from typing import Optional
 from urllib.request import urlretrieve
@@ -22,6 +23,8 @@ from .common import FAUCET_URL, NODE_URL
 
 async def publish_inscriptions(inscriptions_dir: str) -> AccountAddress:
     rest_client = RestClient(NODE_URL)
+    rest_client.client.headers["Authorization"] = f"Bearer aptoslabs_bD4LYhTuec7_8jEzbcwjZr2MFHJHWryAvo17sUfPagEm4"
+
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
     alice = Account.generate()
@@ -33,9 +36,23 @@ async def publish_inscriptions(inscriptions_dir: str) -> AccountAddress:
 
 
 async def main(inscriptions_account: AccountAddress = inscriptions.MODULE_ADDRESS):
+
+    inscriptions_dir = os.path.join(
+        "..",
+        "..",
+        "..",
+        "aptos-move",
+        "move-examples",
+        "token_objects",
+        "inscriptions-as-state",
+    )
+    inscriptions_account = await publish_inscriptions(inscriptions_dir)
+
     inscriptions.set_module_address(inscriptions_account)
 
     rest_client = RestClient(NODE_URL)
+    rest_client.client.headers["Authorization"] = f"Bearer aptoslabs_bD4LYhTuec7_8jEzbcwjZr2MFHJHWryAvo17sUfPagEm4"
+
     aptos_token_client = AptosTokenClient(rest_client)
     inscriptions_client = InscriptionsClient(aptos_token_client)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
@@ -59,6 +76,7 @@ async def main(inscriptions_account: AccountAddress = inscriptions.MODULE_ADDRES
         "",
     )
     await rest_client.wait_for_transaction(txn_hash)
+    print(alice.address())
 
     path, headers = urlretrieve("https://aptos.dev/img/nyan.jpeg")
     with open(path, "rb") as file:
