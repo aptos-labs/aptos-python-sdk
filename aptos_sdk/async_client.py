@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 import httpx
+import python_graphql_client
 
 from .account import Account
 from .account_address import AccountAddress
@@ -29,13 +30,29 @@ U64_MAX = 18446744073709551615
 class ClientConfig:
     """Common configuration for clients, particularly for submitting transactions"""
 
-    def __init__(self, api_key: str = None):
-        self.expiration_ttl: int = 600
-        self.gas_unit_price: int = 100
-        self.max_gas_amount: int = 100_000
-        self.transaction_wait_in_seconds: int = 20
-        self.http2: bool = False
-        self.api_key: str = api_key
+    expiration_ttl: int = 600
+    gas_unit_price: int = 100
+    max_gas_amount: int = 100_000
+    transaction_wait_in_seconds: int = 20
+    http2: bool = False
+    api_key: Optional[str] = None
+
+
+class IndexerClient:
+    """A wrapper around the Aptos Indexer Service on Hasura"""
+
+    client: python_graphql_client.GraphqlClient
+
+    def __init__(self, indexer_url: str, bearer_token: Optional[str] = None):
+        headers = {}
+        if bearer_token:
+            headers["Authorization"] = f"Bearer {bearer_token}"
+        self.client = python_graphql_client.GraphqlClient(
+            endpoint=indexer_url, headers=headers
+        )
+
+    async def query(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.client.execute_async(query, variables)
 
 
 class RestClient:
@@ -63,7 +80,7 @@ class RestClient:
         )
         self.client_config = client_config
         self._chain_id = None
-        if client_config.api_key is not None:
+        if client_config.api_key:
             self.client.headers["Authorization"] = f"Bearer {client_config.api_key}"
 
     async def close(self):
@@ -376,7 +393,7 @@ class RestClient:
         ledger_version: Optional[int] = None,
     ) -> Any:
         response = await self._post(
-            endpoint=f"{self.base_url}/tables/{handle}/item",
+            endpoint=f"tables/{handle}/item",
             data={
                 "key_type": key_type,
                 "value_type": value_type,
@@ -860,7 +877,7 @@ class RestClient:
         ty_args: List[TypeTag],
         args: List[TransactionArgument],
         ledger_version: Optional[int] = None,
-    ) -> Dict[str, str]:
+    ) -> Any:
         """
         Execute a view Move function with the given parameters and return its execution result.
         Note, this differs from `view` as in this expects bcs compatible inputs and submits the

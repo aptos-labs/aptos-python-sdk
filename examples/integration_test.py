@@ -24,8 +24,9 @@ class Test(unittest.IsolatedAsyncioTestCase):
         if not operational:
             raise Exception("".join(self._node.errors()))
 
-        os.environ["APTOS_NODE_URL"] = "http://127.0.0.1:8080/v1"
         os.environ["APTOS_FAUCET_URL"] = "http://127.0.0.1:8081"
+        os.environ["APTOS_INDEXER_CLIENT"] = "none"
+        os.environ["APTOS_NODE_URL"] = "http://127.0.0.1:8080/v1"
 
     async def test_fee_payer_transfer_coin(self):
         from . import fee_payer_transfer_coin

@@ -8,10 +8,10 @@ import unittest
 from typing import List, Tuple
 
 from .account_address import AccountAddress
-from .bcs import Deserializer, Serializer
+from .bcs import Deserializable, Deserializer, Serializable, Serializer
 
 
-class TypeTag:
+class TypeTag(Deserializable, Serializable):
     """TypeTag represents a primitive in Move."""
 
     BOOL: int = 0
@@ -76,7 +76,7 @@ class TypeTag:
         serializer.struct(self.value)
 
 
-class BoolTag:
+class BoolTag(Deserializable, Serializable):
     value: bool
 
     def __init__(self, value: bool):
@@ -101,7 +101,7 @@ class BoolTag:
         serializer.bool(self.value)
 
 
-class U8Tag:
+class U8Tag(Deserializable, Serializable):
     value: int
 
     def __init__(self, value: int):
@@ -126,7 +126,7 @@ class U8Tag:
         serializer.u8(self.value)
 
 
-class U16Tag:
+class U16Tag(Deserializable, Serializable):
     value: int
 
     def __init__(self, value: int):
@@ -151,7 +151,7 @@ class U16Tag:
         serializer.u16(self.value)
 
 
-class U32Tag:
+class U32Tag(Deserializable, Serializable):
     value: int
 
     def __init__(self, value: int):
@@ -176,7 +176,7 @@ class U32Tag:
         serializer.u32(self.value)
 
 
-class U64Tag:
+class U64Tag(Deserializable, Serializable):
     value: int
 
     def __init__(self, value: int):
@@ -201,7 +201,7 @@ class U64Tag:
         serializer.u64(self.value)
 
 
-class U128Tag:
+class U128Tag(Deserializable, Serializable):
     value: int
 
     def __init__(self, value: int):
@@ -226,7 +226,7 @@ class U128Tag:
         serializer.u128(self.value)
 
 
-class U256Tag:
+class U256Tag(Deserializable, Serializable):
     value: int
 
     def __init__(self, value: int):
@@ -251,7 +251,7 @@ class U256Tag:
         serializer.u256(self.value)
 
 
-class AccountAddressTag:
+class AccountAddressTag(Deserializable, Serializable):
     value: AccountAddress
 
     def __init__(self, value: AccountAddress):
@@ -276,7 +276,7 @@ class AccountAddressTag:
         serializer.struct(self.value)
 
 
-class StructTag:
+class StructTag(Deserializable, Serializable):
     address: AccountAddress
     module: str
     name: str
@@ -309,13 +309,13 @@ class StructTag:
 
     @staticmethod
     def from_str(type_tag: str) -> StructTag:
-        return StructTag._from_str_internal(type_tag, 0)[0][0]
+        return StructTag._from_str_internal(type_tag, 0)[0][0].value
 
     @staticmethod
-    def _from_str_internal(type_tag: str, index: int) -> Tuple[List[StructTag], int]:
+    def _from_str_internal(type_tag: str, index: int) -> Tuple[List[TypeTag], int]:
         name = ""
         tags = []
-        inner_tags: List[StructTag] = []
+        inner_tags: List[TypeTag] = []
 
         while index < len(type_tag):
             letter = type_tag[index]
@@ -328,11 +328,13 @@ class StructTag:
                 (inner_tags, index) = StructTag._from_str_internal(type_tag, index)
             elif letter == ",":
                 split = name.split("::")
-                tag = StructTag(
-                    AccountAddress.from_str_relaxed(split[0]),
-                    split[1],
-                    split[2],
-                    inner_tags,
+                tag = TypeTag(
+                    StructTag(
+                        AccountAddress.from_str_relaxed(split[0]),
+                        split[1],
+                        split[2],
+                        inner_tags,
+                    )
                 )
                 tags.append(tag)
                 name = ""
@@ -343,8 +345,13 @@ class StructTag:
                 name += letter
 
         split = name.split("::")
-        tag = StructTag(
-            AccountAddress.from_str_relaxed(split[0]), split[1], split[2], inner_tags
+        tag = TypeTag(
+            StructTag(
+                AccountAddress.from_str_relaxed(split[0]),
+                split[1],
+                split[2],
+                inner_tags,
+            )
         )
         tags.append(tag)
         return (tags, index)
@@ -374,8 +381,11 @@ class Test(unittest.TestCase):
         l20 = "0x2::l20::L20"
         l11 = "0x1::l11::L11"
         composite = f"{l0}<{l10}<{l20}>, {l11}>"
-
-        self.assertEqual(composite, f"{StructTag.from_str(composite)}")
+        derived = StructTag.from_str(composite)
+        self.assertEqual(composite, f"{derived}")
+        in_bytes = derived.to_bytes()
+        from_bytes = StructTag.from_bytes(in_bytes)
+        self.assertEqual(derived, from_bytes)
 
 
 if __name__ == "__main__":

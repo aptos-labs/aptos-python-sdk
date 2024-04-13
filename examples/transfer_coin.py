@@ -4,15 +4,19 @@
 import asyncio
 
 from aptos_sdk.account import Account
-from aptos_sdk.async_client import FaucetClient, RestClient
+from aptos_sdk.async_client import FaucetClient, IndexerClient, RestClient
 
-from .common import FAUCET_URL, NODE_URL
+from .common import FAUCET_URL, INDEXER_URL, NODE_URL
 
 
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1
+    if INDEXER_URL and INDEXER_URL != "none":
+        indexer_client = IndexerClient(INDEXER_URL)
+    else:
+        indexer_client = None
 
     # :!:>section_2
     alice = Account.generate()
@@ -58,6 +62,30 @@ async def main():
     [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
     print(f"Alice: {alice_balance}")
     print(f"Bob: {bob_balance}")
+
+    if indexer_client:
+        query = """
+            query TransactionsQuery($account: String) {
+              account_transactions(
+                limit: 20
+                where: {account_address: {_eq: $account}}
+              ) {
+                transaction_version
+                coin_activities {
+                  amount
+                  activity_type
+                  coin_type
+                  entry_function_id_str
+                  owner_address
+                  transaction_timestamp
+                }
+              }
+            }
+        """
+
+        variables = {"account": f"{bob.address()}"}
+        data = await indexer_client.query(query, variables)
+        assert len(data["data"]["account_transactions"]) > 0
 
     await rest_client.close()
 

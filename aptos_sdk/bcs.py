@@ -31,8 +31,7 @@ class Deserializable(Protocol):
         return der.struct(cls)
 
     @staticmethod
-    def deserialize(deserializer: Deserializer) -> Deserializable:
-        ...
+    def deserialize(deserializer: Deserializer) -> Deserializable: ...
 
 
 class Serializable(Protocol):
@@ -43,8 +42,7 @@ class Serializable(Protocol):
         ser.struct(self)
         return ser.output()
 
-    def serialize(self, serializer: Serializer):
-        ...
+    def serialize(self, serializer: Serializer): ...
 
 
 class Deserializer:
