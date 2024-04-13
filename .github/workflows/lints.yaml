@@ -1,0 +1,30 @@
+name: "Local validation"
+on:
+  pull_request:
+    types: [labeled, opened, synchronize, reopened, auto_merge_enabled]
+  push:
+    branches:
+      - main
+
+jobs:
+  lints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run python setup
+        uses: ./.github/actions/python-setup
+        with:
+          pyproject_directory: .
+
+      - name: Check for formatting
+        run: make fmt && ./.github/scripts/fail_if_modified_files.sh
+        shell: bash
+
+      - name: Check lints
+        run: make lint
+        shell: bash
+
+      - name: Run integration tests
+        run: make test
+        shell: bash
