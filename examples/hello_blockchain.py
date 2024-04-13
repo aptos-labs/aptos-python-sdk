@@ -110,9 +110,11 @@ async def main(contract_address: AccountAddress):
     bob_fund = faucet_client.fund_account(bob.address(), 10_000_000)
     await asyncio.gather(*[alice_fund, bob_fund])
 
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
+    alice_balance_q = rest_client.account_balance(alice.address())
+    bob_balance_q = rest_client.account_balance(bob.address())
+    [alice_balance, bob_balance] = await asyncio.gather(
+        *[alice_balance_q, bob_balance_q]
+    )
 
     print("\n=== Initial Balances ===")
     print(f"Alice: {alice_balance}")
