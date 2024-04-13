@@ -22,15 +22,21 @@ from aptos_sdk.transactions import (
 )
 from aptos_sdk.type_tag import StructTag, TypeTag
 
-from .common import FAUCET_URL, NODE_URL
+from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
+
+should_wait = True
 
 
 def wait():
     """Wait for user to press Enter before starting next section."""
-    input("\nPress Enter to continue...")
+    if should_wait:
+        input("\nPress Enter to continue...")
 
 
-async def main():
+async def main(should_wait_input=True):
+    global should_wait
+    should_wait = should_wait_input
+
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
@@ -63,7 +69,7 @@ async def main():
         [alice.public_key(), bob.public_key(), chad.public_key()], threshold
     )
 
-    multisig_address = AccountAddress.from_multi_ed25519(multisig_public_key)
+    multisig_address = AccountAddress.from_key(multisig_public_key)
 
     print("\n=== 2-of-3 Multisig account ===")
     print(f"Account public key: {multisig_public_key}")
@@ -136,12 +142,10 @@ async def main():
     wait()
 
     # :!:>section_5
-    sig_map = [  # Map from signatory public key to signature.
-        (alice.public_key(), alice_signature),
-        (bob.public_key(), bob_signature),
-    ]
+    # Map from signatory public key index to signature.
+    sig_map = [(0, alice_signature), (1, bob_signature)]
 
-    multisig_signature = MultiSignature(multisig_public_key, sig_map)
+    multisig_signature = MultiSignature(sig_map)
 
     authenticator = Authenticator(
         MultiEd25519Authenticator(multisig_public_key, multisig_signature)
@@ -201,50 +205,41 @@ async def main():
         sequence_number=0,
         originator=deedee.address(),
         current_auth_key=deedee.address(),
-        new_public_key=multisig_public_key.to_bytes(),
+        new_public_key=multisig_public_key,
     )
 
     serializer = Serializer()
     rotation_proof_challenge.serialize(serializer)
     rotation_proof_challenge_bcs = serializer.output()
 
-    cap_rotate_key = deedee.sign(rotation_proof_challenge_bcs).data()
+    cap_rotate_key = deedee.sign(rotation_proof_challenge_bcs)
 
     cap_update_table = MultiSignature(
-        multisig_public_key,
         [
-            (bob.public_key(), bob.sign(rotation_proof_challenge_bcs)),
-            (chad.public_key(), chad.sign(rotation_proof_challenge_bcs)),
+            (1, bob.sign(rotation_proof_challenge_bcs)),
+            (2, chad.sign(rotation_proof_challenge_bcs)),
         ],
-    ).to_bytes()
+    )
 
-    cap_rotate_key_hex = f"0x{cap_rotate_key.hex()}"
-    cap_update_table_hex = f"0x{cap_update_table.hex()}"
-
-    print(f"cap_rotate_key:   {cap_rotate_key_hex}")
-    print(f"cap_update_table: {cap_update_table_hex}")  # <:!:section_8
+    print(f"cap_rotate_key:   0x{cap_rotate_key.data().hex()}")
+    print(f"cap_update_table: 0x{cap_update_table.to_bytes().hex()}")  # <:!:section_8
 
     wait()
 
     # :!:>section_9
     print("\n=== Submitting authentication key rotation transaction ===")
 
-    from_scheme = Authenticator.ED25519
-    from_public_key_bytes = deedee.public_key().key.encode()
-    to_scheme = Authenticator.MULTI_ED25519
-    to_public_key_bytes = multisig_public_key.to_bytes()
-
     entry_function = EntryFunction.natural(
         module="0x1::account",
         function="rotate_authentication_key",
         ty_args=[],
         args=[
-            TransactionArgument(from_scheme, Serializer.u8),
-            TransactionArgument(from_public_key_bytes, Serializer.to_bytes),
-            TransactionArgument(to_scheme, Serializer.u8),
-            TransactionArgument(to_public_key_bytes, Serializer.to_bytes),
-            TransactionArgument(cap_rotate_key, Serializer.to_bytes),
-            TransactionArgument(cap_update_table, Serializer.to_bytes),
+            TransactionArgument(Authenticator.ED25519, Serializer.u8),
+            TransactionArgument(deedee.public_key(), Serializer.struct),
+            TransactionArgument(Authenticator.MULTI_ED25519, Serializer.u8),
+            TransactionArgument(multisig_public_key, Serializer.struct),
+            TransactionArgument(cap_rotate_key, Serializer.struct),
+            TransactionArgument(cap_update_table, Serializer.struct),
         ],
     )
 
@@ -268,7 +263,7 @@ async def main():
     # :!:>section_10
     print("\n=== Genesis publication ===")
 
-    packages_dir = "../../../aptos-move/move-examples/upgrade_and_govern/"
+    packages_dir = f"{APTOS_CORE_PATH}/aptos-move/move-examples/upgrade_and_govern/"
 
     command = (
         f"aptos move compile "
@@ -315,12 +310,10 @@ async def main():
     alice_signature = alice.sign(raw_transaction.keyed())
     chad_signature = chad.sign(raw_transaction.keyed())
 
-    sig_map = [  # Map from signatory public key to signature.
-        (alice.public_key(), alice_signature),
-        (chad.public_key(), chad_signature),
-    ]
+    # Map from signatory public key to signature.
+    sig_map = [(0, alice_signature), (2, chad_signature)]
 
-    multisig_signature = MultiSignature(multisig_public_key, sig_map)
+    multisig_signature = MultiSignature(sig_map)
 
     authenticator = Authenticator(
         MultiEd25519Authenticator(multisig_public_key, multisig_signature)
@@ -397,13 +390,9 @@ async def main():
     bob_signature = bob.sign(raw_transaction.keyed())
     chad_signature = chad.sign(raw_transaction.keyed())
 
-    sig_map = [  # Map from signatory public key to signature.
-        (alice.public_key(), alice_signature),
-        (bob.public_key(), bob_signature),
-        (chad.public_key(), chad_signature),
-    ]
-
-    multisig_signature = MultiSignature(multisig_public_key, sig_map)
+    # Map from signatory public key to signature.
+    sig_map = [(0, alice_signature), (1, bob_signature), (2, chad_signature)]
+    multisig_signature = MultiSignature(sig_map)
 
     authenticator = Authenticator(
         MultiEd25519Authenticator(multisig_public_key, multisig_signature)
@@ -455,12 +444,9 @@ async def main():
     alice_signature = alice.sign(raw_transaction.keyed())
     bob_signature = bob.sign(raw_transaction.keyed())
 
-    sig_map = [  # Map from signatory public key to signature.
-        (alice.public_key(), alice_signature),
-        (bob.public_key(), bob_signature),
-    ]
-
-    multisig_signature = MultiSignature(multisig_public_key, sig_map)
+    # Map from signatory public key index to signature.
+    sig_map = [(0, alice_signature), (1, bob_signature)]
+    multisig_signature = MultiSignature(sig_map)
 
     authenticator = Authenticator(
         MultiEd25519Authenticator(multisig_public_key, multisig_signature)
