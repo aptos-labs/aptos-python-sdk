@@ -26,6 +26,8 @@ make test
 
 * Download the [Aptos CLI](https://aptos.dev/tools/aptos-cli/install-cli/).
 * Set the environment variable `APTOS_CLI_PATH` to the full path of the CLI.
+* Retrieve the [Aptos Core Github Repo](https://github.com/aptos-labs/aptos-core) (git clone https://github.com/aptos-labs/aptos-core)
+* Set the environment variable `APTOS_CORE_REPO` to the full path of the Repository.
 * `make examples_cli`
 
 We of course allow you to do this a bit more manually by:

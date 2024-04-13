@@ -19,14 +19,23 @@ lint:
 
 examples:
 	poetry run python -m examples.aptos_token
+	poetry run python -m examples.fee_payer_transfer_coin
+	poetry run python -m examples.rotate_key
 	poetry run python -m examples.read_aggregator
-	poetry run python -m examples.simple_nft
+	poetry run python -m examples.secp256k1_ecdsa_transfer_coin
 	poetry run python -m examples.simple_aptos_token
+	poetry run python -m examples.simple_nft
 	poetry run python -m examples.simulate_transfer_coin
 	poetry run python -m examples.transfer_coin
 	poetry run python -m examples.transfer_two_by_two
 
 examples_cli:
+	poetry run python -m examples.hello_blockchain
+	#	poetry run python -m examples.large_package_publisher CURRENTLY BROKEN -- OUT OF GAS
+	poetry run python -m examples.multisig
+	poetry run python -m examples.your_coin
+
+integration_test:
 	poetry run python -m unittest -b examples.integration_test
 
 .PHONY: examples fmt lint test

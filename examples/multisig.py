@@ -22,15 +22,21 @@ from aptos_sdk.transactions import (
 )
 from aptos_sdk.type_tag import StructTag, TypeTag
 
-from .common import FAUCET_URL, NODE_URL
+from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
+
+should_wait = True
 
 
 def wait():
     """Wait for user to press Enter before starting next section."""
-    input("\nPress Enter to continue...")
+    if should_wait:
+        input("\nPress Enter to continue...")
 
 
-async def main():
+async def main(should_wait_input=True):
+    global should_wait
+    should_wait = should_wait_input
+
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
@@ -63,7 +69,7 @@ async def main():
         [alice.public_key(), bob.public_key(), chad.public_key()], threshold
     )
 
-    multisig_address = AccountAddress.from_multi_ed25519(multisig_public_key)
+    multisig_address = AccountAddress.from_key(multisig_public_key)
 
     print("\n=== 2-of-3 Multisig account ===")
     print(f"Account public key: {multisig_public_key}")
@@ -268,7 +274,7 @@ async def main():
     # :!:>section_10
     print("\n=== Genesis publication ===")
 
-    packages_dir = "../../../aptos-move/move-examples/upgrade_and_govern/"
+    packages_dir = f"{APTOS_CORE_PATH}/aptos-move/move-examples/upgrade_and_govern/"
 
     command = (
         f"aptos move compile "

@@ -1,4 +1,4 @@
-name: "Examples"
+name: "Localnet Examples"
 on:
   pull_request:
     types: [labeled, opened, synchronize, reopened, auto_merge_enabled]
@@ -10,19 +10,35 @@ jobs:
   run-python-examples:
     runs-on: ubuntu-latest
     env:
-      APTOS_NODE_URL: https://fullnode.devnet.aptoslabs.com/v1
-      APTOS_FAUCET_URL: https://faucet.devnet.aptoslabs.com
-      FAUCET_AUTH_TOKEN: ${{ secrets.DEVNET_FAUCET_AUTH_TOKEN }}
+      APTOS_CORE_PATH: ./aptos-core
+      APTOS_FAUCET_URL: http://127.0.0.1:8081
+      APTOS_INDEXER_URL: http://127.0.0.1:8090/v1/graphql
+      APTOS_NODE_URL: http://127.0.0.1:8080/v1
+      APTOS_TEST_USE_EXISTING_NETWORK: true
+
     steps:
       - uses: actions/checkout@v3
+
+      - name: Checkout aptos-core
+        uses: actions/checkout@v3
+        with:
+          repository: aptos-labs/aptos-core
+          path: './aptos-core'
+
+      - name: Run a localnet
+        uses: aptos-labs/actions/run-local-testnet@main
+        with:
+          node_version: v20.12.2
+          pnpm_version: 8.15.6
 
       - uses: ./.github/actions/python-setup
         with:
           pyproject_directory: .
 
-      - uses: nick-fields/retry@v2
-        name: py-example-test
-        with:
-          max_attempts: 5
-          timeout_minutes: 20
-          command: make test && make examples
+      - name: Install Aptos-CLI
+        run: pnpm install -g @aptos-labs/aptos-cli
+        shell: bash
+
+      - name: Run examples on localnet
+        run: make integration_test
+        shell: bash
