@@ -568,24 +568,31 @@ class RestClient:
             raise ApiError(response.text, response.status_code)
         return response.json()["type"] == "pending_transaction"
 
+    async def _wait_for_txn(self, txn_hash: str) -> None:
+        while True:
+            response = await self._get(endpoint=f"transactions/wait_by_hash/{txn_hash}")
+            if response.status_code >= 400:
+                raise ApiError(response.text, response.status_code)
+            is_pending = response.json()["type"] == "pending_transaction"
+            if not is_pending:
+                assert (
+                    "success" in response.json() and response.json()["success"]
+                ), f"{response.text} - {txn_hash}"
+                return
+
     async def wait_for_transaction(self, txn_hash: str) -> None:
         """
         Waits up to the duration specified in client_config for a transaction to move past pending
         state.
         """
-
-        count = 0
-        while await self.transaction_pending(txn_hash):
-            assert (
-                count < self.client_config.transaction_wait_in_seconds
-            ), f"transaction {txn_hash} timed out"
-            await asyncio.sleep(1)
-            count += 1
-
-        response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
-        assert (
-            "success" in response.json() and response.json()["success"]
-        ), f"{response.text} - {txn_hash}"
+        await asyncio.wait_for(
+            self._wait_for_txn(txn_hash),
+            timeout=(
+                self.client_config.transaction_wait_in_seconds
+                if self.client_config.transaction_wait_in_seconds
+                else None
+            ),
+        )
 
     async def account_transaction_sequence_number_status(
         self, address: AccountAddress, sequence_number: int
