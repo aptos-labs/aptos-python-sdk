@@ -1,7 +1,6 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
 import logging
 import time
 from typing import Any, Dict, List, Optional
@@ -573,16 +572,14 @@ class RestClient:
         Waits up to the duration specified in client_config for a transaction to move past pending
         state.
         """
-
-        count = 0
-        while await self.transaction_pending(txn_hash):
-            assert (
-                count < self.client_config.transaction_wait_in_seconds
-            ), f"transaction {txn_hash} timed out"
-            await asyncio.sleep(1)
-            count += 1
-
-        response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
+        while True:
+            response = await self._get(endpoint=f"transactions/wait_by_hash/{txn_hash}")
+            if response.status_code == 404:
+                continue
+            if response.status_code >= 400:
+                raise ApiError(response.text, response.status_code)
+            if response.json()["type"] != "pending_transaction":
+                break
         assert (
             "success" in response.json() and response.json()["success"]
         ), f"{response.text} - {txn_hash}"
