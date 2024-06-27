@@ -962,15 +962,19 @@ class FaucetClient:
     async def close(self):
         await self.rest_client.close()
 
-    async def fund_account(self, address: AccountAddress, amount: int):
+    async def fund_account(
+        self, address: AccountAddress, amount: int, wait_for_transaction=True
+    ):
         """This creates an account if it does not exist and mints the specified amount of
         coins into that account."""
         request = f"{self.base_url}/mint?amount={amount}&address={address}"
         response = await self.rest_client.client.post(request, headers=self.headers)
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        for txn_hash in response.json():
+        txn_hash = response.json()[0]
+        if wait_for_transaction:
             await self.rest_client.wait_for_transaction(txn_hash)
+        return txn_hash
 
     async def healthy(self) -> bool:
         response = await self.rest_client.client.get(self.base_url)
