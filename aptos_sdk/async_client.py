@@ -610,6 +610,12 @@ class RestClient:
             raise ApiError(response.text, response.status_code)
         return response.json()
 
+    async def transaction_by_version(self, version: int) -> Dict[str, Any]:
+        response = await self._get(endpoint=f"transactions/by_version/{version}")
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        return response.json()
+
     async def transactions_by_account(
         self,
         account_address: AccountAddress,
