@@ -38,7 +38,7 @@ class RawTransactionInternal(Protocol):
 
     def prehash(self) -> bytes: ...
 
-    def serialize(self, ser: Serializer): ...
+    def serialize(self, serializer: Serializer) -> None: ...
 
     def sign(self, key: asymmetric_crypto.PrivateKey) -> AccountAuthenticator:
         signature = key.sign(self.keyed())
@@ -154,7 +154,7 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
             deserializer.u8(),
         )
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         self.sender.serialize(serializer)
         serializer.u64(self.sequence_number)
         self.payload.serialize(serializer)
@@ -173,7 +173,7 @@ class MultiAgentRawTransaction(RawTransactionWithData):
         self.raw_transaction = raw_transaction
         self.secondary_signers = secondary_signers
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         # This is a type indicator for an enum
         serializer.u8(0)
         serializer.struct(self.raw_transaction)
@@ -194,7 +194,7 @@ class FeePayerRawTransaction(RawTransactionWithData):
         self.secondary_signers = secondary_signers
         self.fee_payer = fee_payer
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         serializer.u8(1)
         serializer.struct(self.raw_transaction)
         serializer.sequence(self.secondary_signers, Serializer.struct)
@@ -246,7 +246,7 @@ class TransactionPayload:
 
         return TransactionPayload(payload)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(self.variant)
         self.value.serialize(serializer)
 
@@ -259,7 +259,7 @@ class ModuleBundle:
     def deserialize(deserializer: Deserializer) -> ModuleBundle:
         raise NotImplementedError
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         raise NotImplementedError
 
 
@@ -280,7 +280,7 @@ class Script:
         args = deserializer.sequence(ScriptArgument.deserialize)
         return Script(code, ty_args, args)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self.code)
         serializer.sequence(self.ty_args, Serializer.struct)
         serializer.sequence(self.args, Serializer.struct)
@@ -344,7 +344,7 @@ class ScriptArgument:
             raise Exception("Invalid variant")
         return ScriptArgument(variant, value)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         serializer.u8(self.variant)
         if self.variant == ScriptArgument.U8:
             serializer.u8(self.value)
@@ -426,7 +426,7 @@ class EntryFunction:
         args = deserializer.sequence(Deserializer.to_bytes)
         return EntryFunction(module, function, ty_args, args)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         self.module.serialize(serializer)
         serializer.str(self.function)
         serializer.sequence(self.ty_args, Serializer.struct)
@@ -460,19 +460,19 @@ class ModuleId:
         name = deserializer.str()
         return ModuleId(addr, name)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         self.address.serialize(serializer)
         serializer.str(self.name)
 
 
 class TransactionArgument:
     value: Any
-    encoder: Callable[[Serializer, Any], bytes]
+    encoder: Callable[[Serializer, Any], None]
 
     def __init__(
         self,
         value: Any,
-        encoder: Callable[[Serializer, Any], bytes],
+        encoder: Callable[[Serializer, Any], None],
     ):
         self.value = value
         self.encoder = encoder
@@ -545,7 +545,7 @@ class SignedTransaction:
         authenticator = Authenticator.deserialize(deserializer)
         return SignedTransaction(transaction, authenticator)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         self.transaction.serialize(serializer)
         self.authenticator.serialize(serializer)
 
