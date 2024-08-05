@@ -170,8 +170,8 @@ class Serializer:
     def map(
         self,
         values: typing.Dict[typing.Any, typing.Any],
-        key_encoder: typing.Callable[[Serializer, typing.Any], bytes],
-        value_encoder: typing.Callable[[Serializer, typing.Any], bytes],
+        key_encoder: typing.Callable[[Serializer, typing.Any], None],
+        value_encoder: typing.Callable[[Serializer, typing.Any], None],
     ):
         encoded_values = []
         for key, value in values.items():
@@ -187,14 +187,14 @@ class Serializer:
 
     @staticmethod
     def sequence_serializer(
-        value_encoder: typing.Callable[[Serializer, typing.Any], bytes],
+        value_encoder: typing.Callable[[Serializer, typing.Any], None],
     ):
         return lambda self, values: self.sequence(values, value_encoder)
 
     def sequence(
         self,
         values: typing.List[typing.Any],
-        value_encoder: typing.Callable[[Serializer, typing.Any], bytes],
+        value_encoder: typing.Callable[[Serializer, typing.Any], None],
     ):
         self.uleb128(len(values))
         for value in values:
