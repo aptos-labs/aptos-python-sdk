@@ -4,6 +4,7 @@
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -27,6 +28,7 @@ from .type_tag import StructTag, TypeTag
 U64_MAX = 18446744073709551615
 
 
+@dataclass
 class ClientConfig:
     """Common configuration for clients, particularly for submitting transactions"""
 
