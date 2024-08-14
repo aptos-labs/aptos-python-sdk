@@ -129,7 +129,7 @@ class Deserializer:
                 break
             shift += 7
 
-        if value > MAX_U128:
+        if value > MAX_U32:
             raise Exception("Unexpectedly large uleb128 value")
 
         return value
