@@ -104,6 +104,8 @@ class AccountAuthenticator:
             self.variant = AccountAuthenticator.MULTI_ED25519
         elif isinstance(authenticator, SingleKeyAuthenticator):
             self.variant = AccountAuthenticator.SINGLE_KEY
+        elif isinstance(authenticator, MultiKeyAuthenticator):
+            self.variant = AccountAuthenticator.MULTI_KEY
         else:
             raise Exception("Invalid type")
         self.authenticator = authenticator
@@ -356,6 +358,32 @@ class SingleKeyAuthenticator:
         public_key = deserializer.struct(asymmetric_crypto_wrapper.PublicKey)
         signature = deserializer.struct(asymmetric_crypto_wrapper.Signature)
         return SingleKeyAuthenticator(public_key, signature)
+
+    def serialize(self, serializer: Serializer):
+        serializer.struct(self.public_key)
+        serializer.struct(self.signature)
+
+
+class MultiKeyAuthenticator:
+    public_key: asymmetric_crypto_wrapper.MultiPublicKey
+    signature: asymmetric_crypto_wrapper.MultiSignature
+
+    def __init__(
+        self,
+        public_key: asymmetric_crypto_wrapper.MultiPublicKey,
+        signature: asymmetric_crypto_wrapper.MultiSignature,
+    ):
+        self.public_key = public_key
+        self.signature = signature
+
+    def verify(self, data: bytes) -> bool:
+        return self.public_key.verify(data, self.signature)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> MultiKeyAuthenticator:
+        public_key = deserializer.struct(asymmetric_crypto_wrapper.MultiPublicKey)
+        signature = deserializer.struct(asymmetric_crypto_wrapper.MultiSignature)
+        return MultiKeyAuthenticator(public_key, signature)
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.public_key)
