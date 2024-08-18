@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 import python_graphql_client
+from typing_extensions import deprecated
 
 from .account import Account
 from .account_address import AccountAddress
@@ -518,8 +519,10 @@ class RestClient:
         await self.wait_for_transaction(txn_hash)
         return await self.transaction_by_hash(txn_hash)
 
+    @deprecated("please use bcs_submit_transaction for better performance and security")
     async def submit_transaction(self, sender: Account, payload: Dict[str, Any]) -> str:
         """
+        Deprecated, please use bcs_submit_transaction for better performance and security
         1) Generates a transaction request
         2) submits that to produce a raw transaction
         3) signs the raw transaction
@@ -716,17 +719,22 @@ class RestClient:
 
     async def create_bcs_transaction(
         self,
-        sender: Account,
+        sender: Account | AccountAddress,
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> RawTransaction:
+        if isinstance(sender, Account):
+            sender_address = sender.address()
+        else:
+            sender_address = sender
+
         sequence_number = (
             sequence_number
             if sequence_number is not None
-            else await self.account_sequence_number(sender.address())
+            else await self.account_sequence_number(sender_address)
         )
         return RawTransaction(
-            sender.address(),
+            sender_address,
             sequence_number,
             payload,
             self.client_config.max_gas_amount,
@@ -751,10 +759,13 @@ class RestClient:
     # Transaction wrappers
     #
 
+    @deprecated("please use bcs_transfer for better performance and security")
     async def transfer(
         self, sender: Account, recipient: AccountAddress, amount: int
     ) -> str:
-        """Transfer a given coin amount from a given Account to the recipient's account address.
+        """
+        Deprecated: please use bcs_transfer for greater performance and security
+        Transfer a given coin amount from a given Account to the recipient's account address.
         Returns the sequence number of the transaction used to transfer."""
 
         payload = {

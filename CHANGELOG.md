@@ -2,6 +2,10 @@
 
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
+## Unreleased
+- Add Multikey support for Python, with an example
+- Deprecate non-BCS transaction submission
+
 ## 0.8.6
 - add client for graphql indexer service with light demo in coin transfer
 - add mypy to ignore missing types for graphql and ecdsa

@@ -208,6 +208,8 @@ class AccountAddress:
             hasher.update(AuthKeyScheme.MultiEd25519)
         elif isinstance(key, asymmetric_crypto_wrapper.PublicKey):
             hasher.update(AuthKeyScheme.SingleKey)
+        elif isinstance(key, asymmetric_crypto_wrapper.MultiPublicKey):
+            hasher.update(AuthKeyScheme.MultiKey)
         else:
             raise Exception("Unsupported asymmetric_crypto.PublicKey key type.")
 
