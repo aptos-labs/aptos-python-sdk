@@ -3,6 +3,7 @@
 
 test:
 	poetry run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
+	poetry run behave
 
 test-coverage:
 	poetry run python -m coverage run -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
