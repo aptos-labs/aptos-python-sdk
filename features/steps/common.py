@@ -1,4 +1,6 @@
-from behave import *
+import typing
+
+from behave import given, then, use_step_matcher
 
 from aptos_sdk.account_address import AccountAddress
 
@@ -6,8 +8,8 @@ from aptos_sdk.account_address import AccountAddress
 use_step_matcher("re")
 
 
-@given("(?P<input_type>[a-zA-Z0-9]+) (?P<input_value>\S+)")
-def given_input(context, input_type, input_value):
+@given(r"(?P<input_type>[a-zA-Z0-9]+) (?P<input_value>\S+)")
+def given_input(context: typing.Any, input_type: str, input_value: str):
     if input_type == "bool":
         context.input = parse_bool(input_value)
     elif (
@@ -29,21 +31,22 @@ def given_input(context, input_type, input_value):
         raise Exception("Unrecognized input type")
 
 
-@given("sequence of (?P<input_type>[a-zA-Z0-9]+) \[(?P<input_value>.*)]")
-def given_sequence_input(context, input_type, input_value):
+@given(r"sequence of (?P<input_type>[a-zA-Z0-9]+) \[(?P<input_value>.*)]")
+def given_sequence_input(context: typing.Any, input_type: str, input_value: str):
     context.input = parse_sequence(input_type, input_value)
 
 
-@then("the result should be (?P<expected_type>[a-zA-Z0-9]+) (?P<expected_value>\S+)")
-def then_result(context, expected_type, expected_value):
+@then(r"the result should be (?P<expected_type>[a-zA-Z0-9]+) (?P<expected_value>\S+)")
+def then_result(context: typing.Any, expected_type: str, expected_value: str):
+    expected_val: bool | str | AccountAddress | bytes | int = expected_value
     if expected_type == "bool":
-        expected_value = parse_bool(expected_value)
+        expected_val = parse_bool(expected_value)
     elif expected_type == "address":
-        expected_value = AccountAddress.from_str_relaxed(expected_value)
+        expected_val = AccountAddress.from_str_relaxed(expected_value)
     elif expected_type == "bytes":
-        expected_value = parse_hex(expected_value)
+        expected_val = parse_hex(expected_value)
     elif expected_type == "string":
-        expected_value = parse_string(expected_value)
+        expected_val = parse_string(expected_value)
     elif (
         expected_type == "u8"
         or expected_type == "u16"
@@ -53,24 +56,24 @@ def then_result(context, expected_type, expected_value):
         or expected_type == "u256"
         or expected_type == "uleb128"
     ):
-        expected_value = int(expected_value)
-    assert context.output == expected_value, (
+        expected_val = int(expected_value)
+    assert context.output == expected_val, (
         "Expected " + str(expected_value) + " but got " + str(context.output)
     )
 
 
 @then(
-    "the result should be sequence of (?P<expected_type>[a-zA-Z0-9]+) \[(?P<expected_value>\S*)]"
+    r"the result should be sequence of (?P<expected_type>[a-zA-Z0-9]+) \[(?P<expected_value>\S*)]"
 )
-def then_result_sequence(context, expected_type, expected_value):
-    expected_value = parse_sequence(expected_type, expected_value)
-    assert context.output == expected_value, (
-        "Expected " + str(expected_value) + " but got " + str(context.output)
+def then_result_sequence(context: typing.Any, expected_type: str, expected_value: str):
+    expected_val = parse_sequence(expected_type, expected_value)
+    assert context.output == expected_val, (
+        "Expected " + str(expected_val) + " but got " + str(context.output)
     )
 
 
-def parse_sequence(input_type, input_value):
-    vals = []
+def parse_sequence(input_type: str, input_value: str) -> typing.List[typing.Any]:
+    vals: typing.List[typing.Any] = []
 
     # Skip early if there are no values
     if len(input_value) == 0:
@@ -101,13 +104,13 @@ def parse_sequence(input_type, input_value):
     return vals
 
 
-def parse_hex(input_value):
+def parse_hex(input_value: str):
     return bytes.fromhex(input_value.removeprefix("0x"))
 
 
-def parse_bool(input_value):
+def parse_bool(input_value: str):
     return input_value == "true"
 
 
-def parse_string(input_value):
+def parse_string(input_value: str):
     return input_value.removeprefix('"').removesuffix('"')

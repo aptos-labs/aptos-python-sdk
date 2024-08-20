@@ -1,4 +1,6 @@
-from behave import *
+import typing
+
+from behave import then, use_step_matcher, when
 
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.bcs import Deserializer, Serializer
@@ -7,8 +9,8 @@ from aptos_sdk.bcs import Deserializer, Serializer
 use_step_matcher("re")
 
 
-@when("I serialize as (?P<input_type>[a-zA-Z0-9]+)")
-def when_serialize(context, input_type):
+@when(r"I serialize as (?P<input_type>[a-zA-Z0-9]+)")
+def when_serialize(context: typing.Any, input_type: str):
     ser = Serializer()
 
     if input_type == "bool":
@@ -41,8 +43,8 @@ def when_serialize(context, input_type):
     context.output = ser.output()
 
 
-@when("I deserialize as (?P<input_type>[a-zA-Z0-9]+)")
-def when_deserialize(context, input_type):
+@when(r"I deserialize as (?P<input_type>[a-zA-Z0-9]+)")
+def when_deserialize(context: typing.Any, input_type: str):
     des = Deserializer(context.input)
 
     try:
@@ -79,8 +81,8 @@ def when_deserialize(context, input_type):
         raise Exception("Unrecognized input type")
 
 
-@when("I serialize as sequence of (?P<input_type>[a-zA-Z0-9]+)")
-def when_serialize_sequence(context, input_type):
+@when(r"I serialize as sequence of (?P<input_type>[a-zA-Z0-9]+)")
+def when_serialize_sequence(context: typing.Any, input_type: str):
     ser = Serializer()
 
     if input_type == "bool":
@@ -119,8 +121,8 @@ def when_serialize_sequence(context, input_type):
     context.output = ser.output()
 
 
-@when("I deserialize as sequence of (?P<input_type>[a-zA-Z0-9]+)")
-def when_deserialize_sequence(context, input_type):
+@when(r"I deserialize as sequence of (?P<input_type>[a-zA-Z0-9]+)")
+def when_deserialize_sequence(context: typing.Any, input_type: str):
     des = Deserializer(context.input)
 
     if input_type == "bool":
@@ -147,8 +149,8 @@ def when_deserialize_sequence(context, input_type):
         raise Exception("Unrecognized input type")
 
 
-@when("I serialize as fixed bytes with length (?P<length>[0-9]+)")
-def when_serialize_fixed_bytes(context, length):
+@when(r"I serialize as fixed bytes with length (?P<length>[0-9]+)")
+def when_serialize_fixed_bytes(context: typing.Any, length: str):
     ser = Serializer()
 
     # TODO: Do we check the length?
@@ -156,8 +158,8 @@ def when_serialize_fixed_bytes(context, length):
     context.output = ser.output()
 
 
-@when("I deserialize as fixed bytes with length (?P<length>[0-9]+)")
-def when_deserialize_fixed_bytes(context, length):
+@when(r"I deserialize as fixed bytes with length (?P<length>[0-9]+)")
+def when_deserialize_fixed_bytes(context: typing.Any, length: str):
     try:
         des = Deserializer(context.input)
         context.output = des.fixed_bytes(int(length))
@@ -165,6 +167,6 @@ def when_deserialize_fixed_bytes(context, length):
         context.output = e
 
 
-@then("the deserialization should fail")
-def then_fail_deserialization(context):
+@then(r"the deserialization should fail")
+def then_fail_deserialization(context: typing.Any):
     assert isinstance(context.output, Exception)

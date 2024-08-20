@@ -1,0 +1,2 @@
+message: str
+OrderedDict = dict
