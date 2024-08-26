@@ -3,6 +3,8 @@
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
 ## Unreleased
+
+## 0.9.0
 - Add Multikey support for Python, with an example
 - Deprecate and remove non-BCS transaction submission
 
