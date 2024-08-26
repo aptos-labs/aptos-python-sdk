@@ -218,5 +218,5 @@ class MultiSignature(asymmetric_crypto.Signature):
 
 def index_to_bitmap_value(i: int) -> int:
     bit = i % 8
-    byte = i.__floordiv__(8)
+    byte = i // 8
     return (128 >> bit) << (byte * 8)
