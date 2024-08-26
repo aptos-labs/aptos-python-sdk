@@ -518,49 +518,6 @@ class RestClient:
         await self.wait_for_transaction(txn_hash)
         return await self.transaction_by_hash(txn_hash)
 
-    async def submit_transaction(self, sender: Account, payload: Dict[str, Any]) -> str:
-        """
-        1) Generates a transaction request
-        2) submits that to produce a raw transaction
-        3) signs the raw transaction
-        4) submits the signed transaction
-        """
-
-        txn_request = {
-            "sender": f"{sender.address()}",
-            "sequence_number": str(
-                await self.account_sequence_number(sender.address())
-            ),
-            "max_gas_amount": str(self.client_config.max_gas_amount),
-            "gas_unit_price": str(self.client_config.gas_unit_price),
-            "expiration_timestamp_secs": str(
-                int(time.time()) + self.client_config.expiration_ttl
-            ),
-            "payload": payload,
-        }
-
-        response = await self.client.post(
-            f"{self.base_url}/transactions/encode_submission", json=txn_request
-        )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-
-        to_sign = bytes.fromhex(response.json()[2:])
-        signature = sender.sign(to_sign)
-        txn_request["signature"] = {
-            "type": "ed25519_signature",
-            "public_key": f"{sender.public_key()}",
-            "signature": f"{signature}",
-        }
-
-        headers = {"Content-Type": "application/json"}
-        response = await self.client.post(
-            f"{self.base_url}/transactions", headers=headers, json=txn_request
-        )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        return response.json()["hash"]
-
     async def transaction_pending(self, txn_hash: str) -> bool:
         response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
         # TODO(@davidiw): consider raising a different error here, since this is an ambiguous state
@@ -716,17 +673,22 @@ class RestClient:
 
     async def create_bcs_transaction(
         self,
-        sender: Account,
+        sender: Account | AccountAddress,
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> RawTransaction:
+        if isinstance(sender, Account):
+            sender_address = sender.address()
+        else:
+            sender_address = sender
+
         sequence_number = (
             sequence_number
             if sequence_number is not None
-            else await self.account_sequence_number(sender.address())
+            else await self.account_sequence_number(sender_address)
         )
         return RawTransaction(
-            sender.address(),
+            sender_address,
             sequence_number,
             payload,
             self.client_config.max_gas_amount,
@@ -750,23 +712,6 @@ class RestClient:
     #
     # Transaction wrappers
     #
-
-    async def transfer(
-        self, sender: Account, recipient: AccountAddress, amount: int
-    ) -> str:
-        """Transfer a given coin amount from a given Account to the recipient's account address.
-        Returns the sequence number of the transaction used to transfer."""
-
-        payload = {
-            "type": "entry_function_payload",
-            "function": "0x1::aptos_account::transfer",
-            "type_arguments": [],
-            "arguments": [
-                f"{recipient}",
-                str(amount),
-            ],
-        }
-        return await self.submit_transaction(sender, payload)
 
     # :!:>bcs_transfer
     async def bcs_transfer(

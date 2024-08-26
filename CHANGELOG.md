@@ -3,6 +3,8 @@
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
 ## Unreleased
+- Add Multikey support for Python, with an example
+- Deprecate and remove non-BCS transaction submission
 - Set max Uleb128 to MAX_U32
 - Add Behave behavioral specifications for BCS and AccountAddress
 

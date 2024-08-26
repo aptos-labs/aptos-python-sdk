@@ -32,6 +32,7 @@ examples:
 	poetry run python -m examples.simulate_transfer_coin
 	poetry run python -m examples.transfer_coin
 	poetry run python -m examples.transfer_two_by_two
+	poetry run python -m examples.multikey
 
 examples_cli:
 	poetry run python -m examples.hello_blockchain

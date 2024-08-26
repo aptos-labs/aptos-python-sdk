@@ -41,7 +41,9 @@ async def main():
 
     # Have Alice give Bob 1_000 coins
     # :!:>section_5
-    txn_hash = await rest_client.transfer(alice, bob.address(), 1_000)  # <:!:section_5
+    txn_hash = await rest_client.bcs_transfer(
+        alice, bob.address(), 1_000
+    )  # <:!:section_5
     # :!:>section_6
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6
 
