@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  run-python-examples:
+  run-devnet-examples:
     runs-on: ubuntu-latest
     env:
       APTOS_FAUCET_URL: https://faucet.devnet.aptoslabs.com
@@ -15,7 +15,7 @@ jobs:
       APTOS_NODE_URL: https://fullnode.devnet.aptoslabs.com/v1
       FAUCET_AUTH_TOKEN: ${{ secrets.DEVNET_FAUCET_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: ./.github/actions/python-setup
         with:

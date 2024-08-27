@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  run-python-examples:
+  run-localnet-examples:
     runs-on: ubuntu-latest
     env:
       APTOS_CORE_PATH: ./aptos-core
@@ -17,8 +17,10 @@ jobs:
       APTOS_TEST_USE_EXISTING_NETWORK: true
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Checkout aptos-core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: aptos-labs/aptos-core
           path: './aptos-core'
