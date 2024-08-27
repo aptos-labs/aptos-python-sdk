@@ -17,8 +17,6 @@ jobs:
       APTOS_TEST_USE_EXISTING_NETWORK: true
 
     steps:
-      - uses: actions/checkout@v3
-
       - name: Checkout aptos-core
         uses: actions/checkout@v3
         with:
