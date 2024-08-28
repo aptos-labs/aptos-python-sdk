@@ -1,0 +1,3 @@
+from behave.model import ScenarioOutline as ScenarioOutline
+
+def patch_scenario_with_autoretry(scenario, max_attempts: int = 3): ...

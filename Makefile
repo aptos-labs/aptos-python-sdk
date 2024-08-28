@@ -3,19 +3,23 @@
 
 test:
 	poetry run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
+	poetry run behave
 
 test-coverage:
 	poetry run python -m coverage run -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
 	poetry run python -m coverage report
 
+test-spec:
+	poetry run behave
+
 fmt:
-	find ./examples ./aptos_sdk . -type f -name "*.py" | xargs poetry run autoflake -i -r --remove-all-unused-imports --remove-unused-variables --ignore-init-module-imports
-	poetry run isort aptos_sdk examples
-	poetry run black aptos_sdk examples
+	find ./examples ./aptos_sdk ./features . -type f -name "*.py" | xargs poetry run autoflake -i -r --remove-all-unused-imports --remove-unused-variables --ignore-init-module-imports
+	poetry run isort aptos_sdk examples features
+	poetry run black aptos_sdk examples features
 
 lint:
-	poetry run mypy aptos_sdk examples
-	poetry run flake8 aptos_sdk examples
+	poetry run mypy aptos_sdk examples features
+	poetry run flake8 aptos_sdk examples features
 
 examples:
 	poetry run python -m examples.aptos_token
