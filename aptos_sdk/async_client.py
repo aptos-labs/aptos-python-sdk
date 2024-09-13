@@ -569,16 +569,15 @@ class RestClient:
         return response.json()["type"] == "pending_transaction"
 
     async def _wait_for_txn(self, txn_hash: str) -> None:
-        while True:
+        is_pending = True
+        while is_pending:
             response = await self._get(endpoint=f"transactions/wait_by_hash/{txn_hash}")
             if response.status_code >= 400:
                 raise ApiError(response.text, response.status_code)
             is_pending = response.json()["type"] == "pending_transaction"
-            if not is_pending:
-                assert (
-                    "success" in response.json() and response.json()["success"]
-                ), f"{response.text} - {txn_hash}"
-                return
+        assert (
+            "success" in response.json() and response.json()["success"]
+        ), f"{response.text} - {txn_hash}"
 
     async def wait_for_transaction(self, txn_hash: str) -> None:
         """
