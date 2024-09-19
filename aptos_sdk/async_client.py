@@ -120,8 +120,14 @@ class RestClient:
         :param ledger_version: Ledger version to get state of account. If not provided, it will be the latest version.
         :return: The current sequence number for the specified address.
         """
-        account_res = await self.account(account_address, ledger_version)
-        return int(account_res["sequence_number"])
+        try:
+            account_res = await self.account(account_address, ledger_version)
+            return int(account_res["sequence_number"])
+        except ApiError as err:
+            # If the resource doesn't exist, then assume it is 0
+            if err.status_code != 404:
+                raise
+            return 0
 
     async def account_resource(
         self,
@@ -870,10 +876,13 @@ class RestClient:
         ser = Serializer()
         view_data.serialize(ser)
         headers = {"Content-Type": "application/x.aptos.view_function+bcs"}
-        response = await self.client.post(request, headers=headers, content=ser.output())
+        response = await self.client.post(
+            request, headers=headers, content=ser.output()
+        )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
         return response.json()
+
 
 class FaucetClient:
     """Faucet creates and funds accounts. This is a thin wrapper around that."""

@@ -4,7 +4,7 @@
 import asyncio
 
 from aptos_sdk.account import Account
-from aptos_sdk.async_client import ApiError, FaucetClient, ResourceNotFound, RestClient
+from aptos_sdk.async_client import FaucetClient, ResourceNotFound, RestClient
 from aptos_sdk.authenticator import Authenticator, FeePayerAuthenticator
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
@@ -38,14 +38,7 @@ async def main():
 
     print("\n=== Initial Data ===")
     # :!:>section_4
-    try:
-        alice_sequence_number = await rest_client.account_sequence_number(
-            alice.address()
-        )
-        raise Exception("This should never be accessed")
-    except ApiError:
-        alice_sequence_number = 0
-
+    alice_sequence_number = await rest_client.account_sequence_number(alice.address())
     try:
         bob_balance = await rest_client.account_balance(bob.address())
         raise Exception("This should never be accessed")
@@ -70,7 +63,7 @@ async def main():
         transaction_arguments,
     )
     raw_transaction = await rest_client.create_bcs_transaction(
-        alice, TransactionPayload(payload), alice_sequence_number
+        alice, TransactionPayload(payload)
     )
     fee_payer_transaction = FeePayerRawTransaction(raw_transaction, [], None)
     sender_authenticator = alice.sign_transaction(fee_payer_transaction)
