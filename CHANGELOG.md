@@ -4,6 +4,10 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+## 0.9.1
+- For `account_sequence_number`, return 0 if account has yet to be created to better support sponsored transactions create account if not exists
+- For `account_balance`, Use `0x1::coin::balance` instead of reading the resource
+
 ## 0.9.0
 - Add Multikey support for Python, with an example
 - Deprecate and remove non-BCS transaction submission
