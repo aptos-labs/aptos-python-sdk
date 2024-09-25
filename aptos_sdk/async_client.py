@@ -126,12 +126,14 @@ class RestClient:
         :param ledger_version: Ledger version to get state of account. If not provided, it will be the latest version.
         :return: The Aptos coin balance associated with the account
         """
-        resource = await self.account_resource(
-            account_address,
-            "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>",
+        result = await self.view_bcs_payload(
+            "0x1::coin",
+            "balance",
+            [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
+            [TransactionArgument(account_address, Serializer.struct)],
             ledger_version,
         )
-        return int(resource["data"]["coin"]["value"])
+        return int(result[0])
 
     async def account_sequence_number(
         self, account_address: AccountAddress, ledger_version: Optional[int] = None
@@ -143,8 +145,13 @@ class RestClient:
         :param ledger_version: Ledger version to get state of account. If not provided, it will be the latest version.
         :return: The current sequence number for the specified address.
         """
-        account_res = await self.account(account_address, ledger_version)
-        return int(account_res["sequence_number"])
+        try:
+            account_res = await self.account(account_address, ledger_version)
+            return int(account_res["sequence_number"])
+        except ApiError as ae:
+            if ae.status_code != 404:
+                raise
+            return 0
 
     async def account_resource(
         self,
