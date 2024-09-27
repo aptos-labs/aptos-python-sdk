@@ -7,7 +7,7 @@ from aptos_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.asymmetric_crypto_wrapper import MultiSignature, Signature
-from aptos_sdk.async_client import FaucetClient, IndexerClient, RestClient
+from aptos_sdk.async_client import FaucetClient, RestClient
 from aptos_sdk.authenticator import AccountAuthenticator, MultiKeyAuthenticator
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
@@ -17,17 +17,13 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_URL, INDEXER_URL, NODE_URL
+from .common import FAUCET_URL, NODE_URL
 
 
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1
-    if INDEXER_URL and INDEXER_URL != "none":
-        IndexerClient(INDEXER_URL)
-    else:
-        pass
 
     # :!:>section_2
     key1 = secp256k1_ecdsa.PrivateKey.random()
