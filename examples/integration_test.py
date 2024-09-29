@@ -33,7 +33,6 @@ class Test(unittest.IsolatedAsyncioTestCase):
             raise Exception("".join(cls._node.errors()))
 
         os.environ["APTOS_FAUCET_URL"] = "http://127.0.0.1:8081"
-        os.environ["APTOS_INDEXER_URL"] = "none"
         os.environ["APTOS_NODE_URL"] = "http://127.0.0.1:8080/v1"
 
     async def test_aptos_token(self):
