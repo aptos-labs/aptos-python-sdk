@@ -72,6 +72,11 @@ class Test(unittest.IsolatedAsyncioTestCase):
         )
         await large_package_publisher.main(large_package_example_dir, module_addr)
 
+    async def test_multikey(self):
+        from . import multikey
+
+        await multikey.main()
+
     async def test_multisig(self):
         from . import multisig
 

@@ -163,16 +163,14 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
 
 class MultiSignature(asymmetric_crypto.Signature):
     signatures: List[Tuple[int, Signature]]
-    BITMAP_NUM_OF_BYTES: int = 4
+    MAX_SIGNATURES: int = 16
 
     def __init__(self, signatures: List[Tuple[int, asymmetric_crypto.Signature]]):
         # Sort first to ensure no issues in order
         # signatures.sort(key=lambda x: x[0])
         self.signatures = []
         for index, signature in signatures:
-            assert (
-                index < self.BITMAP_NUM_OF_BYTES * 8
-            ), "bitmap value exceeds maximum value"
+            assert index < self.MAX_SIGNATURES, "bitmap value exceeds maximum value"
             if isinstance(signature, Signature):
                 self.signatures.append((index, signature))
             else:
@@ -189,9 +187,9 @@ class MultiSignature(asymmetric_crypto.Signature):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> MultiSignature:
         signatures = deserializer.sequence(Signature.deserialize)
-        deserializer.uleb128()
-        bitmap = deserializer.u32()
-        num_bits = MultiSignature.BITMAP_NUM_OF_BYTES * 8
+        bitmap_raw = deserializer.to_bytes()
+        bitmap = int.from_bytes(bitmap_raw, "little")
+        num_bits = len(bitmap_raw) * 8
         sig_index = 0
         indexed_signatures = []
 
@@ -201,7 +199,7 @@ class MultiSignature(asymmetric_crypto.Signature):
                 indexed_signatures.append((i, signatures[sig_index]))
                 sig_index += 1
 
-        return MultiSignature(signatures)
+        return MultiSignature(indexed_signatures)
 
     def serialize(self, serializer: Serializer):
         actual_sigs = []
@@ -212,8 +210,8 @@ class MultiSignature(asymmetric_crypto.Signature):
             actual_sigs.append(signature)
 
         serializer.sequence(actual_sigs, Serializer.struct)
-        serializer.uleb128(self.BITMAP_NUM_OF_BYTES)
-        serializer.u32(bitmap)
+        count = 1 if bitmap < 256 else 2
+        serializer.to_bytes(bitmap.to_bytes(count, "little"))
 
 
 def index_to_bitmap_value(i: int) -> int:
