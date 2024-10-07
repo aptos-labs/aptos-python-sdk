@@ -75,6 +75,12 @@ class PublicKey(asymmetric_crypto.PublicKey):
     def __str__(self) -> str:
         return f"0x{self.key.encode().hex()}"
 
+    @staticmethod
+    def from_str(value: str) -> PublicKey:
+        if value[0:2] == "0x":
+            value = value[2:]
+        return PublicKey(VerifyKey(bytes.fromhex(value)))
+
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         try:
             signature = cast(Signature, signature)
@@ -191,6 +197,12 @@ class Signature(asymmetric_crypto.Signature):
             raise Exception("Length mismatch")
 
         return Signature(signature)
+
+    @staticmethod
+    def from_str(value: str) -> Signature:
+        if value[0:2] == "0x":
+            value = value[2:]
+        return Signature(bytes.fromhex(value))
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.signature)
