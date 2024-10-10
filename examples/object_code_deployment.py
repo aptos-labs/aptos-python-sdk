@@ -57,7 +57,7 @@ async def main(package_dir):
         package_dir,
         MODULE_ADDRESS,
         publish_mode=PublishMode.OBJECT_UPGRADE,
-        code_object=code_object_address,
+        code_object_address=code_object_address,
     )
     print(f"Tx submitted: {upgrade_txn_hash[0]}")
     await rest_client.wait_for_transaction(upgrade_txn_hash[0])
