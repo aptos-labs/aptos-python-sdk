@@ -18,7 +18,7 @@ MAX_CHUNK_SIZE: int = 60000
 
 # The location of the large package publisher
 MODULE_ADDRESS: AccountAddress = AccountAddress.from_str(
-    "0xa29df848eebfe5d981f708c2a5b06d31af2be53bbd8ddc94c8523f4b903f7adb"
+    "0x0e1ca3011bdd07246d4d16d909dbb2d6953a86c4735d5acf5865d962c630cce7"
 )
 
 # Domain separator for the code object address derivation
