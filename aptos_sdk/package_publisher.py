@@ -3,7 +3,7 @@
 
 import os
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import tomli
 
@@ -14,11 +14,11 @@ from .bcs import Serializer
 from .transactions import EntryFunction, TransactionArgument, TransactionPayload
 
 # Maximum amount of publishing data, this gives us buffer for BCS overheads
-MAX_TRANSACTION_SIZE: int = 62000
+MAX_CHUNK_SIZE: int = 60000
 
 # The location of the large package publisher
 MODULE_ADDRESS: AccountAddress = AccountAddress.from_str(
-    "0xfa3911d7715238b2e3bd5b26b6a35e11ffa16cff318bc11471e84eccee8bd291"
+    "0xa29df848eebfe5d981f708c2a5b06d31af2be53bbd8ddc94c8523f4b903f7adb"
 )
 
 # Domain separator for the code object address derivation
@@ -116,8 +116,41 @@ class PackagePublisher:
         package_dir: str,
         large_package_address: AccountAddress = MODULE_ADDRESS,
         publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
-        code_object: Optional[AccountAddress] = None,
+        code_object_address: Optional[AccountAddress] = None,
     ) -> List[str]:
+        metadata, modules = PackagePublisher.load_package_artifacts(package_dir)
+
+        # If the package size is larger than a single transaction limit, use chunked publish.
+        if self.is_large_package(metadata, modules):
+            return await self.chunked_package_publish(
+                sender,
+                metadata,
+                modules,
+                large_package_address,
+                publish_mode,
+                code_object_address,
+            )
+
+        # If the deployment can fit into a single transaction, use the normal package publisher
+        if publish_mode == PublishMode.ACCOUNT_DEPLOY:
+            txn_hash = await self.publish_package(sender, metadata, modules)
+        elif publish_mode == PublishMode.OBJECT_DEPLOY:
+            txn_hash = await self.publish_package_to_object(sender, metadata, modules)
+        elif publish_mode == PublishMode.OBJECT_UPGRADE:
+            if code_object_address is None:
+                raise ValueError(
+                    "code_object_address must be provided for OBJECT_UPGRADE mode"
+                )
+            txn_hash = await self.upgrade_package_object(
+                sender, metadata, modules, code_object_address
+            )
+        else:
+            raise ValueError(f"Unexpected publish mode: {publish_mode}")
+
+        return [txn_hash]
+
+    @staticmethod
+    def load_package_artifacts(package_dir: str) -> Tuple[bytes, List[bytes]]:
         with open(os.path.join(package_dir, "Move.toml"), "rb") as f:
             data = tomli.load(f)
         package = data["package"]["name"]
@@ -138,34 +171,14 @@ class PackagePublisher:
         with open(metadata_path, "rb") as f:
             metadata = f.read()
 
-        # If the package size is larger than a single transaction limit, use chunked publish.
-        if self.is_large_package(metadata, modules):
-            return await self.chunked_package_publish(
-                sender, metadata, modules, large_package_address, publish_mode
-            )
-
-        # If the deployment can fit into a single transaction, use the normal package publisher
-        if publish_mode == PublishMode.ACCOUNT_DEPLOY:
-            txn_hash = await self.publish_package(sender, metadata, modules)
-        elif publish_mode == PublishMode.OBJECT_DEPLOY:
-            txn_hash = await self.publish_package_to_object(sender, metadata, modules)
-        elif publish_mode == PublishMode.OBJECT_UPGRADE:
-            if code_object is None:
-                raise ValueError("code_object must be provided for OBJECT_UPGRADE mode")
-            txn_hash = await self.upgrade_package_object(
-                sender, metadata, modules, code_object
-            )
-        else:
-            raise ValueError(f"Unexpected publish mode: {publish_mode}")
-
-        return [txn_hash]
+        return metadata, modules
 
     async def derive_object_address(
-        self, publisher_address: AccountAddress
+        self, publisher_address: AccountAddress, required_txns: int = 1
     ) -> AccountAddress:
         sequence_number = await self.client.account_sequence_number(publisher_address)
         return self.create_object_deployment_address(
-            publisher_address, sequence_number + 1
+            publisher_address, sequence_number + required_txns
         )
 
     @staticmethod
@@ -186,14 +199,47 @@ class PackagePublisher:
         modules: List[bytes],
         large_package_address: AccountAddress = MODULE_ADDRESS,
         publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
+        code_object_address: Optional[AccountAddress] = None,
     ) -> List[str]:
         """
         Chunks the package_metadata and modules across as many transactions as necessary.
         Each transaction has a base cost and the maximum size is currently 64K, so this chunks
-        them into 62K + the base transaction size. This should be sufficient for reasonably
+        them into 60K + the base transaction size. This should be sufficient for reasonably
         optimistic transaction batching. The batching tries to place as much data in a transaction
         before moving to the chunk to the next transaction.
         """
+
+        # Chunk the metadata and insert it into payloads. The last chunk may be small enough
+        # to be placed with other data. This may also be the only chunk.
+        payloads = PackagePublisher.prepare_chunked_payloads(
+            package_metadata,
+            modules,
+            large_package_address,
+            publish_mode,
+            code_object_address,
+        )
+
+        # Submit and wait for each transaction, including publishing.
+        txn_hashes = []
+        for idx, payload in enumerate(payloads):
+            print(f"Submitting transaction...({idx + 1}/{len(payloads)})")
+            signed_txn = await self.client.create_bcs_signed_transaction(
+                sender, payload
+            )
+            txn_hash = await self.client.submit_bcs_transaction(signed_txn)
+            await self.client.wait_for_transaction(txn_hash)
+            txn_hashes.append(txn_hash)
+        print("Done.")
+        return txn_hashes
+
+    @staticmethod
+    def prepare_chunked_payloads(
+        package_metadata: bytes,
+        modules: List[bytes],
+        large_package_address: AccountAddress,
+        publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
+        code_object_address: Optional[AccountAddress] = None,
+    ) -> List[TransactionPayload]:
 
         # Chunk the metadata and insert it into payloads. The last chunk may be small enough
         # to be placed with other data. This may also be the only chunk.
@@ -201,8 +247,8 @@ class PackagePublisher:
         metadata_chunks = PackagePublisher.create_chunks(package_metadata)
         for metadata_chunk in metadata_chunks[:-1]:
             payloads.append(
-                PackagePublisher.create_large_package_publishing_payload(
-                    large_package_address, metadata_chunk, [], [], False
+                PackagePublisher.create_large_package_staging_payload(
+                    large_package_address, metadata_chunk, [], []
                 )
             )
 
@@ -216,14 +262,13 @@ class PackagePublisher:
         for idx, module in enumerate(modules):
             chunked_module = PackagePublisher.create_chunks(module)
             for chunk in chunked_module:
-                if taken_size + len(chunk) > MAX_TRANSACTION_SIZE:
+                if taken_size + len(chunk) > MAX_CHUNK_SIZE:
                     payloads.append(
-                        PackagePublisher.create_large_package_publishing_payload(
+                        PackagePublisher.create_large_package_staging_payload(
                             large_package_address,
                             metadata_chunk,
                             modules_indices,
                             data_chunks,
-                            False,
                         )
                     )
                     metadata_chunk = b""
@@ -235,37 +280,27 @@ class PackagePublisher:
                 data_chunks.append(chunk)
                 taken_size += len(chunk)
 
-        # There will almost certainly be left over data from the chunking, so pass the last
-        # chunk for the sake of publishing.
+        # The last transaction will stage any leftover data from the chunking process.
+        # It will then assemble all staged code chunks and publish it within the large_packages Move module.
         payloads.append(
             PackagePublisher.create_large_package_publishing_payload(
                 large_package_address,
                 metadata_chunk,
                 modules_indices,
                 data_chunks,
-                True,
+                publish_mode,
+                code_object_address,
             )
         )
 
-        # Submit and wait for each transaction, including publishing.
-        txn_hashes = []
-        for payload in payloads:
-            print("Submitting transaction...")
-            signed_txn = await self.client.create_bcs_signed_transaction(
-                sender, payload
-            )
-            txn_hash = await self.client.submit_bcs_transaction(signed_txn)
-            await self.client.wait_for_transaction(txn_hash)
-            txn_hashes.append(txn_hash)
-        return txn_hashes
+        return payloads
 
     @staticmethod
-    def create_large_package_publishing_payload(
+    def create_large_package_staging_payload(
         module_address: AccountAddress,
         chunked_package_metadata: bytes,
         modules_indices: List[int],
         chunked_modules: List[bytes],
-        publish: bool,
     ) -> TransactionPayload:
         transaction_arguments = [
             TransactionArgument(chunked_package_metadata, Serializer.to_bytes),
@@ -275,12 +310,58 @@ class PackagePublisher:
             TransactionArgument(
                 chunked_modules, Serializer.sequence_serializer(Serializer.to_bytes)
             ),
-            TransactionArgument(publish, Serializer.bool),
         ]
 
         payload = EntryFunction.natural(
             f"{module_address}::large_packages",
-            "stage_code",
+            "stage_code_chunk",
+            [],
+            transaction_arguments,
+        )
+
+        return TransactionPayload(payload)
+
+    @staticmethod
+    def create_large_package_publishing_payload(
+        module_address: AccountAddress,
+        chunked_package_metadata: bytes,
+        modules_indices: List[int],
+        chunked_modules: List[bytes],
+        publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
+        code_object_address: Optional[AccountAddress] = None,
+    ) -> TransactionPayload:
+        transaction_arguments = [
+            TransactionArgument(chunked_package_metadata, Serializer.to_bytes),
+            TransactionArgument(
+                modules_indices, Serializer.sequence_serializer(Serializer.u16)
+            ),
+            TransactionArgument(
+                chunked_modules, Serializer.sequence_serializer(Serializer.to_bytes)
+            ),
+        ]
+
+        # Add code_object_address argument if the publishing mode is OBJECT_UPGRADE
+        if publish_mode == PublishMode.OBJECT_UPGRADE:
+            if code_object_address is None:
+                raise ValueError(
+                    "code_object_address must be provided for OBJECT_UPGRADE mode"
+                )
+            transaction_arguments.append(
+                TransactionArgument(code_object_address, Serializer.struct)
+            )
+
+        if publish_mode == PublishMode.ACCOUNT_DEPLOY:
+            function_name = "stage_code_chunk_and_publish_to_account"
+        elif publish_mode == PublishMode.OBJECT_DEPLOY:
+            function_name = "stage_code_chunk_and_publish_to_object"
+        elif publish_mode == PublishMode.OBJECT_UPGRADE:
+            function_name = "stage_code_chunk_and_upgrade_object_code"
+        else:
+            raise ValueError(f"Unexpected publish mode: {publish_mode}")
+
+        payload = EntryFunction.natural(
+            f"{module_address}::large_packages",
+            function_name,
             [],
             transaction_arguments,
         )
@@ -296,7 +377,7 @@ class PackagePublisher:
         for module in modules:
             total_size += len(module)
 
-        return total_size >= MAX_TRANSACTION_SIZE
+        return total_size >= MAX_CHUNK_SIZE
 
     @staticmethod
     def create_chunks(data: bytes) -> List[bytes]:
@@ -304,7 +385,7 @@ class PackagePublisher:
         read_data = 0
         while read_data < len(data):
             start_read_data = read_data
-            read_data = min(read_data + MAX_TRANSACTION_SIZE, len(data))
+            read_data = min(read_data + MAX_CHUNK_SIZE, len(data))
             taken_data = data[start_read_data:read_data]
             chunks.append(taken_data)
         return chunks
