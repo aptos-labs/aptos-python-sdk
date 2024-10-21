@@ -27,7 +27,7 @@ make test
 * Download and install the [Aptos CLI](https://aptos.dev/tools/aptos-cli/use-cli/running-a-local-network).
 * Set the environment variable `APTOS_CLI_PATH` to the full path of the CLI.
 * Retrieve the [Aptos Core Github Repo](https://github.com/aptos-labs/aptos-core) (git clone https://github.com/aptos-labs/aptos-core)
-* Set the environment variable `APTOS_CORE_REPO` to the full path of the Repository.
+* Set the environment variable `APTOS_CORE_PATH` to the full path of the Repository.
 * `make integration_test`
 
 You can do this a bit more manually by:
@@ -41,7 +41,7 @@ aptos node run-local-testnet --force-restart --assume-yes --with-indexer-api
 Next, tell the end-to-end tests to talk to this locally running testnet:
 
 ```bash
-export APTOS_CORE_REPO="/path/to/repo"
+export APTOS_CORE_PATH="/path/to/repo"
 export APTOS_FAUCET_URL="http://127.0.0.1:8081"
 export APTOS_INDEXER_URL="http://127.0.0.1:8090/v1/graphql"
 export APTOS_NODE_URL="http://127.0.0.1:8080/v1"

@@ -13,24 +13,26 @@ from typing import Optional
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper, AptosInstance
 
-from .common import APTOS_CORE_PATH
-
 
 class Test(unittest.IsolatedAsyncioTestCase):
     _node: Optional[AptosInstance] = None
+    _aptos_core_path: str
 
     @classmethod
-    def setUpClass(self):
+    def setUpClass(cls):
+        cls._aptos_core_path = os.getenv("APTOS_CORE_PATH")
+        if not cls._aptos_core_path:
+            raise Exception("Environment variable `APTOS_CORE_PATH` is not set")
+
         if os.getenv("APTOS_TEST_USE_EXISTING_NETWORK"):
             return
 
-        self._node = AptosCLIWrapper.start_node()
-        operational = asyncio.run(self._node.wait_until_operational())
+        cls._node = AptosCLIWrapper.start_node()
+        operational = asyncio.run(cls._node.wait_until_operational())
         if not operational:
-            raise Exception("".join(self._node.errors()))
+            raise Exception("".join(cls._node.errors()))
 
         os.environ["APTOS_FAUCET_URL"] = "http://127.0.0.1:8081"
-        os.environ["APTOS_INDEXER_CLIENT"] = "none"
         os.environ["APTOS_NODE_URL"] = "http://127.0.0.1:8080/v1"
 
     async def test_aptos_token(self):
@@ -47,7 +49,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         from . import hello_blockchain
 
         hello_blockchain_dir = os.path.join(
-            APTOS_CORE_PATH, "aptos-move", "move-examples", "hello_blockchain"
+            self._aptos_core_path, "aptos-move", "move-examples", "hello_blockchain"
         )
         AptosCLIWrapper.test_package(
             hello_blockchain_dir, {"hello_blockchain": AccountAddress.from_str("0xa")}
@@ -62,7 +64,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         from . import large_package_publisher
 
         large_packages_dir = os.path.join(
-            APTOS_CORE_PATH, "aptos-move", "move-examples", "large_packages"
+            self._aptos_core_path, "aptos-move", "move-examples", "large_packages"
         )
         module_addr = await large_package_publisher.publish_large_packages(
             large_packages_dir
@@ -126,7 +128,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         from . import your_coin
 
         moon_coin_path = os.path.join(
-            APTOS_CORE_PATH, "aptos-move", "move-examples", "moon_coin"
+            self._aptos_core_path, "aptos-move", "move-examples", "moon_coin"
         )
         AptosCLIWrapper.test_package(
             moon_coin_path, {"MoonCoin": AccountAddress.from_str("0xa")}
@@ -134,11 +136,11 @@ class Test(unittest.IsolatedAsyncioTestCase):
         await your_coin.main(moon_coin_path)
 
     @classmethod
-    def tearDownClass(self):
+    def tearDownClass(cls):
         if os.getenv("APTOS_TEST_USE_EXISTING_NETWORK"):
             return
 
-        self._node.stop()
+        cls._node.stop()
 
 
 if __name__ == "__main__":
