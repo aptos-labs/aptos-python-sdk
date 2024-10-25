@@ -1,6 +1,15 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+This example demonstrates publishing Move packages using the `publish_package_in_path` method from the
+`PackagePublisher` class. This method provides more control over the package publishing process, directly loading
+artifacts from a pre-compiled package directory and handling both Account and Object deployment.
+
+Note: For a higher-level abstraction that handles compilation and deployment automatically, you may use
+`compile_and_publish_move_package`, as demonstrated in the `large_package_publisher.py` example.
+"""
+
 import asyncio
 import os
 import sys

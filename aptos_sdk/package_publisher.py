@@ -321,7 +321,7 @@ class PackagePublisher:
         )
         return await self.client.submit_bcs_transaction(signed_transaction)
 
-    async def publish_move_package(
+    async def compile_and_publish_move_package(
         self,
         sender: Account,
         package_dir: str,
@@ -339,25 +339,25 @@ class PackagePublisher:
 
         Note: This method requires the local Aptos CLI for compilation and will not work without it.
         """
-
-        if not AptosCLIWrapper.does_cli_exist():
-            raise Exception("AptosCLI does not exist.")
+        AptosCLIWrapper.assert_cli_exists()
 
         # Determine the account or object address for publishing the package.
         if publish_mode == PublishMode.ACCOUNT_DEPLOY:
             deploy_address = sender.address()
 
         elif publish_mode == PublishMode.OBJECT_DEPLOY:
+            # Calculate the number of transactions needed for the chunked publish to predict the code object address.
+            # Start by assuming a single transaction for a preliminary build to estimate the artifact size.
             deploy_address = await CompileHelper.derive_object_address(
                 self.client, sender.address()
             )
 
-            # Compile the package as a preliminary build to check if chunking is required.
             AptosCLIWrapper.compile_package(package_dir, {module_name: deploy_address})
             metadata, modules = PublishHelper.load_package_artifacts(package_dir)
 
             # If the package size requires chunked publishing, recalculate the deploy address.
             if PublishHelper.is_large_package(metadata, modules):
+                # Number of transactions required for the chunked publish.
                 required_txns = len(
                     PublishHelper.prepare_chunked_payloads(
                         metadata,
@@ -384,6 +384,8 @@ class PackagePublisher:
 
         # Compile the package with the correct deployment address.
         AptosCLIWrapper.compile_package(package_dir, {module_name: deploy_address})
+
+        print(f"Deploying {module_name} to {deploy_address}...")
 
         return await self.publish_package_in_path(
             sender,
