@@ -15,6 +15,10 @@ from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
 
 
 async def publish_large_packages(large_packages_dir) -> AccountAddress:
+    """
+    Publish the `large_packages.move` module under Alice's account for localnet tests.
+    This module is not yet part of the Aptos framework, so it must be manually published for testing.
+    """
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 

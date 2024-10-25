@@ -118,6 +118,13 @@ class PackagePublisher:
         publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
         code_object_address: Optional[AccountAddress] = None,
     ) -> List[str]:
+        """
+        Publishes a Move package from the specified directory under the sender's account.
+
+        The package in `package_dir` must be pre-compiled, as this method loads the artifacts from that directory.
+        This method handles both regular and large packages. If the package size exceeds `MAX_CHUNK_SIZE`,
+        chunked publishing is triggered, allowing the deployment to be split across multiple transactions.
+        """
         metadata, modules = PackagePublisher.load_package_artifacts(package_dir)
 
         # If the package size is larger than a single transaction limit, use chunked publish.
