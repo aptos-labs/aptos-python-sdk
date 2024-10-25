@@ -9,6 +9,7 @@ import tomli
 
 from .account import Account
 from .account_address import AccountAddress
+from .aptos_cli_wrapper import AptosCLIWrapper
 from .async_client import RestClient
 from .bcs import Serializer
 from .transactions import EntryFunction, TransactionArgument, TransactionPayload
@@ -97,7 +98,7 @@ class PublishHelper:
     def prepare_chunked_payloads(
         package_metadata: bytes,
         modules: List[bytes],
-        large_package_address: AccountAddress,
+        large_packages_module_address: AccountAddress,
         publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
         code_object_address: Optional[AccountAddress] = None,
     ) -> List[TransactionPayload]:
@@ -109,7 +110,7 @@ class PublishHelper:
         for metadata_chunk in metadata_chunks[:-1]:
             payloads.append(
                 PublishHelper.create_large_package_staging_payload(
-                    large_package_address, metadata_chunk, [], []
+                    large_packages_module_address, metadata_chunk, [], []
                 )
             )
 
@@ -126,7 +127,7 @@ class PublishHelper:
                 if taken_size + len(chunk) > MAX_CHUNK_SIZE:
                     payloads.append(
                         PublishHelper.create_large_package_staging_payload(
-                            large_package_address,
+                            large_packages_module_address,
                             metadata_chunk,
                             modules_indices,
                             data_chunks,
@@ -145,7 +146,7 @@ class PublishHelper:
         # It will then assemble all staged code chunks and publish it within the large_packages Move module.
         payloads.append(
             PublishHelper.create_large_package_publishing_payload(
-                large_package_address,
+                large_packages_module_address,
                 metadata_chunk,
                 modules_indices,
                 data_chunks,
@@ -320,11 +321,83 @@ class PackagePublisher:
         )
         return await self.client.submit_bcs_transaction(signed_transaction)
 
+    async def publish_move_package(
+        self,
+        sender: Account,
+        package_dir: str,
+        module_name: str,
+        large_packages_module_address: AccountAddress = MODULE_ADDRESS,
+        publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
+        code_object_address: Optional[AccountAddress] = None,
+    ) -> List[str]:
+        """
+        Compiles and publishes a Move package, handling both regular and large packages, as well as account and object
+        deployments.
+
+        This method abstracts away complexities such as object address derivation, chunked publishing, and preliminary
+        compilation if needed.
+
+        Note: This method requires the local Aptos CLI for compilation and will not work without it.
+        """
+
+        if not AptosCLIWrapper.does_cli_exist():
+            raise Exception("AptosCLI does not exist.")
+
+        # Determine the account or object address for publishing the package.
+        if publish_mode == PublishMode.ACCOUNT_DEPLOY:
+            deploy_address = sender.address()
+
+        elif publish_mode == PublishMode.OBJECT_DEPLOY:
+            deploy_address = await CompileHelper.derive_object_address(
+                self.client, sender.address()
+            )
+
+            # Compile the package as a preliminary build to check if chunking is required.
+            AptosCLIWrapper.compile_package(package_dir, {module_name: deploy_address})
+            metadata, modules = PublishHelper.load_package_artifacts(package_dir)
+
+            # If the package size requires chunked publishing, recalculate the deploy address.
+            if PublishHelper.is_large_package(metadata, modules):
+                required_txns = len(
+                    PublishHelper.prepare_chunked_payloads(
+                        metadata,
+                        modules,
+                        large_packages_module_address,
+                        PublishMode.OBJECT_DEPLOY,
+                    )
+                )
+
+                if required_txns > 1:
+                    deploy_address = await CompileHelper.derive_object_address(
+                        self.client, sender.address(), required_txns
+                    )
+
+        elif publish_mode == PublishMode.OBJECT_UPGRADE:
+            if code_object_address is None:
+                raise ValueError(
+                    "code_object_address must be provided for OBJECT_UPGRADE mode"
+                )
+            deploy_address = code_object_address
+
+        else:
+            raise ValueError(f"Unexpected publish mode: {publish_mode}")
+
+        # Compile the package with the correct deployment address.
+        AptosCLIWrapper.compile_package(package_dir, {module_name: deploy_address})
+
+        return await self.publish_package_in_path(
+            sender,
+            package_dir,
+            large_packages_module_address,
+            publish_mode,
+            code_object_address,
+        )
+
     async def publish_package_in_path(
         self,
         sender: Account,
         package_dir: str,
-        large_package_address: AccountAddress = MODULE_ADDRESS,
+        large_packages_module_address: AccountAddress = MODULE_ADDRESS,
         publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
         code_object_address: Optional[AccountAddress] = None,
     ) -> List[str]:
@@ -343,7 +416,7 @@ class PackagePublisher:
                 sender,
                 metadata,
                 modules,
-                large_package_address,
+                large_packages_module_address,
                 publish_mode,
                 code_object_address,
             )
@@ -371,7 +444,7 @@ class PackagePublisher:
         sender: Account,
         package_metadata: bytes,
         modules: List[bytes],
-        large_package_address: AccountAddress = MODULE_ADDRESS,
+        large_packages_module_address: AccountAddress = MODULE_ADDRESS,
         publish_mode: PublishMode = PublishMode.ACCOUNT_DEPLOY,
         code_object_address: Optional[AccountAddress] = None,
     ) -> List[str]:
@@ -388,7 +461,7 @@ class PackagePublisher:
         payloads = PublishHelper.prepare_chunked_payloads(
             package_metadata,
             modules,
-            large_package_address,
+            large_packages_module_address,
             publish_mode,
             code_object_address,
         )
