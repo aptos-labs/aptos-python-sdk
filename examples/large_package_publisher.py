@@ -9,7 +9,13 @@ from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
 from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
-from aptos_sdk.package_publisher import MODULE_ADDRESS, PackagePublisher, PublishMode
+from aptos_sdk.package_publisher import (
+    MODULE_ADDRESS,
+    CompileHelper,
+    PackagePublisher,
+    PublishHelper,
+    PublishMode,
+)
 
 from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
 
@@ -76,7 +82,9 @@ async def main(
 
     # Calculate the number of transactions needed for the chunked publish to predict the code object address.
     # Start by deriving the address assuming a single transaction for a preliminary build to estimate artifact size.
-    code_object_address = await publisher.derive_object_address(alice.address())
+    code_object_address = await CompileHelper.derive_object_address(
+        rest_client, alice.address()
+    )
 
     print("\nCompiling package as a preliminary build...")
     if AptosCLIWrapper.does_cli_exist():
@@ -89,11 +97,11 @@ async def main(
             "\nUpdate the module with the derived code object address, compile, and press enter."
         )
 
-    metadata, modules = publisher.load_package_artifacts(large_package_example_dir)
+    metadata, modules = PublishHelper.load_package_artifacts(large_package_example_dir)
 
     # Number of transactions required for the chunked publish.
     required_txns = len(
-        publisher.prepare_chunked_payloads(
+        PublishHelper.prepare_chunked_payloads(
             metadata,
             modules,
             large_packages_module_address,
@@ -102,8 +110,8 @@ async def main(
     )
 
     if required_txns > 1:
-        code_object_address = await publisher.derive_object_address(
-            alice.address(), required_txns
+        code_object_address = await CompileHelper.derive_object_address(
+            rest_client, alice.address(), required_txns
         )
         print("\nCompiling the package with updated object address...")
         if AptosCLIWrapper.does_cli_exist():

@@ -8,7 +8,12 @@ import sys
 from aptos_sdk.account import Account
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
 from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.package_publisher import MODULE_ADDRESS, PackagePublisher, PublishMode
+from aptos_sdk.package_publisher import (
+    MODULE_ADDRESS,
+    CompileHelper,
+    PackagePublisher,
+    PublishMode,
+)
 
 from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
 
@@ -29,7 +34,9 @@ async def main(package_dir):
     print(f"Alice: {alice_balance}")
 
     # The object address is derived from publisher's address and sequence number.
-    code_object_address = await package_publisher.derive_object_address(alice.address())
+    code_object_address = await CompileHelper.derive_object_address(
+        rest_client, alice.address()
+    )
     module_name = "hello_blockchain"
 
     print("\nCompiling package...")
