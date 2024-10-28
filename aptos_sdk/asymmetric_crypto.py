@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+from enum import Enum
+
 from typing_extensions import Protocol
 
 from .bcs import Deserializable, Serializable
 
 
-class PrivateKeyVariant:
+class PrivateKeyVariant(Enum):
     Ed25519 = "ed25519"
     Secp256k1 = "secp256k1"
 
@@ -26,7 +28,7 @@ class PrivateKey(Deserializable, Serializable, Protocol):
 
     [Read about AIP-80](https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-80.md)
     """
-    AIP80_PREFIXES = {
+    AIP80_PREFIXES: dict[PrivateKeyVariant, str] = {
         PrivateKeyVariant.Ed25519: "ed25519-priv-",
         PrivateKeyVariant.Secp256k1: "secp256k1-priv-",
     }
@@ -46,7 +48,7 @@ class PrivateKey(Deserializable, Serializable, Protocol):
             raise ValueError(f"Unknown private key type: {key_type}")
         aip80_prefix = PrivateKey.AIP80_PREFIXES[key_type]
 
-        key_value: str = None
+        key_value: str | None = None
         if isinstance(private_key, str):
             key_value = private_key
         elif isinstance(private_key, bytes):
