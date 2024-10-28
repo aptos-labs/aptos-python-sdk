@@ -16,7 +16,7 @@ from aptos_sdk.aptos_token_client import (
 )
 from aptos_sdk.async_client import FaucetClient, RestClient
 
-from .common import FAUCET_URL, NODE_URL
+from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 def get_owner(obj: ReadObject) -> AccountAddress:
@@ -54,7 +54,9 @@ async def main():
     # Create API and faucet clients.
     # :!:>section_1a
     rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1a
+    faucet_client = FaucetClient(
+        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
+    )  # <:!:section_1a
 
     # Create client for working with the token module.
     # :!:>section_1b

@@ -14,12 +14,14 @@ from aptos_sdk.transactions import (
 )
 from aptos_sdk.type_tag import StructTag, TypeTag
 
-from .common import FAUCET_URL, NODE_URL
+from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 async def main():
     rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1
+    faucet_client = FaucetClient(
+        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
+    )  # <:!:section_1
 
     alice = Account.generate()
     bob = Account.generate()

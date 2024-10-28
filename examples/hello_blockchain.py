@@ -30,7 +30,7 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_URL, NODE_URL
+from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 class HelloBlockchainClient(RestClient):
@@ -65,7 +65,7 @@ class HelloBlockchainClient(RestClient):
 async def publish_contract(package_dir: str) -> AccountAddress:
     contract_publisher = Account.generate()
     rest_client = HelloBlockchainClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
     await faucet_client.fund_account(contract_publisher.address(), 10_000_000)
 
     AptosCLIWrapper.compile_package(
@@ -104,7 +104,7 @@ async def main(contract_address: AccountAddress):
     print(f"Bob: {bob.address()}")
 
     rest_client = HelloBlockchainClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice_fund = faucet_client.fund_account(alice.address(), 10_000_000)
     bob_fund = faucet_client.fund_account(bob.address(), 10_000_000)

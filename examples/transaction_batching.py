@@ -24,7 +24,7 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_URL, NODE_URL
+from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 def generate_rest_client(node_url: str) -> RestClient:
@@ -295,7 +295,7 @@ class Accounts:
 
 
 async def fund_from_faucet(rest_client: RestClient, source: Account):
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     fund_txns = []
     for _ in range(40):
