@@ -14,7 +14,7 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_URL, NODE_URL
+from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 WIDTH = 19
 
@@ -125,7 +125,7 @@ def rotation_payload(
 async def main():
     # Initialize the clients used to interact with the blockchain
     rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     # Generate random accounts Alice and Bob
     alice = Account.generate()

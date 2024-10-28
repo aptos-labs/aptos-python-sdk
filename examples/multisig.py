@@ -22,7 +22,7 @@ from aptos_sdk.transactions import (
 )
 from aptos_sdk.type_tag import StructTag, TypeTag
 
-from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
+from .common import APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 should_wait = True
 
@@ -38,7 +38,7 @@ async def main(should_wait_input=True):
     should_wait = should_wait_input
 
     rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     # :!:>section_1
     alice = Account.generate()
