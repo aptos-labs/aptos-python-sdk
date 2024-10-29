@@ -208,6 +208,7 @@ class TransactionPayload:
     SCRIPT: int = 0
     MODULE_BUNDLE: int = 1
     SCRIPT_FUNCTION: int = 2
+    MULTISIG: int = 3
 
     variant: int
     value: Any
@@ -219,6 +220,8 @@ class TransactionPayload:
             self.variant = TransactionPayload.MODULE_BUNDLE
         elif isinstance(payload, EntryFunction):
             self.variant = TransactionPayload.SCRIPT_FUNCTION
+        elif isinstance(payload, Multisig):
+            self.variant = TransactionPayload.MULTISIG
         else:
             raise Exception("Invalid type")
         self.value = payload
@@ -241,6 +244,8 @@ class TransactionPayload:
             payload = ModuleBundle.deserialize(deserializer)
         elif variant == TransactionPayload.SCRIPT_FUNCTION:
             payload = EntryFunction.deserialize(deserializer)
+        elif variant == TransactionPayload.MULTISIG:
+            payload = Multisig.deserialize(deserializer)
         else:
             raise Exception("Invalid type")
 
@@ -431,6 +436,66 @@ class EntryFunction:
         serializer.str(self.function)
         serializer.sequence(self.ty_args, Serializer.struct)
         serializer.sequence(self.args, Serializer.to_bytes)
+
+
+class Multisig:
+    multisig_address: AccountAddress
+    transaction_payload: MultisigTransactionPayload
+
+    def __init__(
+        self,
+        multisig_address: AccountAddress,
+        transaction_payload: Optional[MultisigTransactionPayload] = None,
+    ):
+        self.multisig_address = multisig_address
+        self.transaction_payload = transaction_payload
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> Multisig:
+        multisig_address = AccountAddress.deserialize(deserializer)
+        payload_present = deserializer.bool()
+        transaction_payload = None
+        if payload_present:
+            transaction_payload = MultisigTransactionPayload.deserialize(deserializer)
+        return Multisig(multisig_address, transaction_payload)
+
+    def serialize(self, serializer: Serializer):
+        self.multisig_address.serialize(serializer)
+        serializer.bool(self.transaction_payload is not None)
+        if self.transaction_payload is not None:
+            self.transaction_payload.serialize(serializer)
+
+
+class MultisigTransactionPayload:
+    ENTRY_FUNCTION: int = 0
+    payload_variant: int
+    transaction_payload: EntryFunction
+
+    """
+    Currently `MultisigTransactionPayload` only supports `EntryFunction` type payload
+    """
+
+    def __init__(self, transaction_payload: Any):
+        if isinstance(transaction_payload, EntryFunction):
+            self.payload_variant = self.ENTRY_FUNCTION
+        else:
+            raise Exception("Invalid payload type")
+        self.transaction_payload = transaction_payload
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> MultisigTransactionPayload:
+        payload_variant = deserializer.uleb128()
+        if payload_variant == MultisigTransactionPayload.ENTRY_FUNCTION:
+            transaction_payload = EntryFunction.deserialize(deserializer)
+        else:
+            raise Exception("Invalid payload type")
+        return MultisigTransactionPayload(transaction_payload)
+
+    def serialize(self, serializer: Serializer):
+        # As `MultisigTransactionPayload` is an enum at rust layer, We need to define the enum property number.
+        # Currently, we only support `EntryFunction` hence we will always choose 0th property of the enum.
+        serializer.uleb128(self.payload_variant)
+        self.transaction_payload.serialize(serializer)
 
 
 class ModuleId:
