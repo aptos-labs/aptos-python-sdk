@@ -59,6 +59,11 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def hex(self) -> str:
         return f"0x{self.key.encode().hex()}"
 
+    def aip80(self) -> str:
+        return PrivateKey.format_private_key(
+            self.hex(), asymmetric_crypto.PrivateKeyVariant.Ed25519
+        )
+
     def public_key(self) -> PublicKey:
         return PublicKey(self.key.verify_key)
 
