@@ -77,6 +77,16 @@ class RawTransactionWithData(RawTransactionInternal, Protocol):
         hasher.update(b"APTOS::RawTransactionWithData")
         return hasher.digest()
 
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> RawTransactionWithData:
+        enum_type = deserializer.u8()
+        if enum_type == 0:
+            return MultiAgentRawTransaction.deserialize_inner(deserializer)
+        elif enum_type == 1:
+            return FeePayerRawTransaction.deserialize_inner(deserializer)
+        else:
+            raise Exception("Unhandled RawTransaction enum type")
+
 
 class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
     # Sender's address
@@ -179,6 +189,21 @@ class MultiAgentRawTransaction(RawTransactionWithData):
         serializer.struct(self.raw_transaction)
         serializer.sequence(self.secondary_signers, Serializer.struct)
 
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> MultiAgentRawTransaction:
+        raw_txn_type = deserializer.u8()
+        if raw_txn_type != 0:
+            raise Exception(f"Enum type mismatch, expected 0 got {raw_txn_type}")
+
+        return MultiAgentRawTransaction.deserialize_inner(deserializer)
+
+    @staticmethod
+    def deserialize_inner(deserializer: Deserializer) -> MultiAgentRawTransaction:
+        raw_txn = RawTransaction.deserialize(deserializer)
+        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
+
+        return MultiAgentRawTransaction(raw_txn, secondary_signers)
+
 
 class FeePayerRawTransaction(RawTransactionWithData):
     secondary_signers: List[AccountAddress]
@@ -202,6 +227,26 @@ class FeePayerRawTransaction(RawTransactionWithData):
             AccountAddress.from_str("0x0") if self.fee_payer is None else self.fee_payer
         )
         serializer.struct(fee_payer)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> FeePayerRawTransaction:
+        raw_txn_type = deserializer.u8()
+        if raw_txn_type != 1:
+            raise Exception(f"Enum type mismatch, expected 1 got {raw_txn_type}")
+
+        return FeePayerRawTransaction.deserialize_inner(deserializer)
+
+    @staticmethod
+    def deserialize_inner(deserializer: Deserializer) -> FeePayerRawTransaction:
+        raw_txn = RawTransaction.deserialize(deserializer)
+        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
+        fee_payer = deserializer.sequence(AccountAddress.deserialize)
+        if len(fee_payer) == 0:
+            fee_payer_optional = None
+        else:
+            fee_payer_optional = fee_payer[0]
+
+        return FeePayerRawTransaction(raw_txn, secondary_signers, fee_payer_optional)
 
 
 class TransactionPayload:

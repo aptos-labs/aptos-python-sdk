@@ -4,6 +4,7 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+- Added support for deserialize RawTransactionWithData
 - Added support for AIP-80 compliance for Ed25519 and Secp256k1 private keys.
 - Added helper functions for AIP-80 including `PrivateKey.format_private_key` and `PrivateKey.parse_hex_input`
 
