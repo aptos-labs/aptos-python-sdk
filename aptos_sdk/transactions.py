@@ -77,6 +77,16 @@ class RawTransactionWithData(RawTransactionInternal, Protocol):
         hasher.update(b"APTOS::RawTransactionWithData")
         return hasher.digest()
 
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> RawTransactionWithData:
+        enum_type = deserializer.u8()
+        if enum_type == 0:
+            return MultiAgentRawTransaction.deserialize_inner(deserializer)
+        elif enum_type == 1:
+            return FeePayerRawTransaction.deserialize_inner(deserializer)
+        else:
+            raise Exception("Unhandled RawTransaction enum type")
+
 
 class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
     # Sender's address
@@ -179,6 +189,21 @@ class MultiAgentRawTransaction(RawTransactionWithData):
         serializer.struct(self.raw_transaction)
         serializer.sequence(self.secondary_signers, Serializer.struct)
 
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> MultiAgentRawTransaction:
+        raw_txn_type = deserializer.u8()
+        if raw_txn_type != 0:
+            raise Exception(f"Enum type mismatch, expected 0 got {raw_txn_type}")
+
+        return MultiAgentRawTransaction.deserialize_inner(deserializer)
+
+    @staticmethod
+    def deserialize_inner(deserializer: Deserializer) -> MultiAgentRawTransaction:
+        raw_txn = RawTransaction.deserialize(deserializer)
+        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
+
+        return MultiAgentRawTransaction(raw_txn, secondary_signers)
+
 
 class FeePayerRawTransaction(RawTransactionWithData):
     secondary_signers: List[AccountAddress]
@@ -202,6 +227,26 @@ class FeePayerRawTransaction(RawTransactionWithData):
             AccountAddress.from_str("0x0") if self.fee_payer is None else self.fee_payer
         )
         serializer.struct(fee_payer)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> FeePayerRawTransaction:
+        raw_txn_type = deserializer.u8()
+        if raw_txn_type != 1:
+            raise Exception(f"Enum type mismatch, expected 1 got {raw_txn_type}")
+
+        return FeePayerRawTransaction.deserialize_inner(deserializer)
+
+    @staticmethod
+    def deserialize_inner(deserializer: Deserializer) -> FeePayerRawTransaction:
+        raw_txn = RawTransaction.deserialize(deserializer)
+        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
+        fee_payer = AccountAddress.deserialize(deserializer)
+        if fee_payer == AccountAddress.from_str("0x0"):
+            fee_payer_optional = None
+        else:
+            fee_payer_optional = fee_payer
+
+        return FeePayerRawTransaction(raw_txn, secondary_signers, fee_payer_optional)
 
 
 class TransactionPayload:
@@ -776,3 +821,81 @@ class Test(unittest.TestCase):
             isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator)
         )
         self.assertTrue(signed_txn.verify())
+
+    def test_deserialize_raw_transaction(self):
+        input = "6b4003b51a1b33c398fe2b8fd3ca6a1d5dae0967350547813df937cdae2c36d400000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e736665720002206f20ce883cf1503cb4dc135e81a7a7b705486d342eaf182314e1a8299bc1586408e803000000000000a08601000000000064000000000000007a382e67000000009d"
+        der = Deserializer(bytes.fromhex(input))
+        raw_txn = der.struct(RawTransaction)
+
+        ser = Serializer()
+        raw_txn.serialize(ser)
+        self.assertEqual(ser.output().hex(), input)
+
+        self.assertTrue(isinstance(raw_txn, RawTransaction))
+
+    def test_deserialize_raw_transaction_fee_payer_with_data(self):
+        # From Go's RawTransactionWithData
+        input = "01e5275b443b31ba82afc1780036e77b4bc11bb2d67cfbefd079abde7cf00a1c3b00000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e736665720002201152725822d847a4c4922f2d67af98ae76614b9137780cebcb9a14ea3646a63508e803000000000000a086010000000000640000000000000090392e67000000009d000000000000000000000000000000000000000000000000000000000000000000"
+
+        # As a generic raw transaction with data
+        der = Deserializer(bytes.fromhex(input))
+        raw_txn_with_data = RawTransactionWithData.deserialize(der)
+
+        ser = Serializer()
+        raw_txn_with_data.serialize(ser)
+        self.assertEqual(ser.output().hex(), input)
+
+        self.assertTrue(isinstance(raw_txn_with_data, FeePayerRawTransaction))
+
+        # As a fee payer transaction, with no fee payer
+        der2 = Deserializer(bytes.fromhex(input))
+        fee_payer = FeePayerRawTransaction.deserialize(der2)
+
+        ser2 = Serializer()
+        fee_payer.serialize(ser2)
+        self.assertEqual(ser2.output().hex(), input)
+
+        self.assertTrue(isinstance(fee_payer, FeePayerRawTransaction))
+        self.assertEqual(None, fee_payer.fee_payer)
+
+        # From Go's RawTransactionWithData
+        input = "01a5ea85eada4d5cf6d0bdd1d1d348cab3812b2b76d1a4ce235ab5c42d3a530bc900000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e73666572000220ffa66435120c841909d355aff22998ef838786baf699c1b96274cc542569333908e803000000000000a0860100000000006400000000000000b13b2e67000000009d00a5ea85eada4d5cf6d0bdd1d1d348cab3812b2b76d1a4ce235ab5c42d3a530bc9"
+        # As a fee payer transaction, with fee payer
+        der2 = Deserializer(bytes.fromhex(input))
+        fee_payer = FeePayerRawTransaction.deserialize(der2)
+
+        ser3 = Serializer()
+        fee_payer.serialize(ser3)
+        self.assertEqual(ser3.output().hex(), input)
+
+        self.assertTrue(isinstance(fee_payer, FeePayerRawTransaction))
+        self.assertEqual(
+            AccountAddress.from_str(
+                "0xa5ea85eada4d5cf6d0bdd1d1d348cab3812b2b76d1a4ce235ab5c42d3a530bc9"
+            ),
+            fee_payer.fee_payer,
+        )
+
+    def test_deserialize_raw_transaction_multi_agent(self):
+        # fee payer
+        input_fee_payer = "01f3e03d9a7f4512518d4d02580a015bdd728883b7d974c7239def2b97a9103c9c00000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e73666572000220251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a46008e803000000000000a08601000000000064000000000000001a3d2e67000000009d01251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a460f3e03d9a7f4512518d4d02580a015bdd728883b7d974c7239def2b97a9103c9c"
+        # multi agent
+        input_ma = "00f3e03d9a7f4512518d4d02580a015bdd728883b7d974c7239def2b97a9103c9c00000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e73666572000220251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a46008e803000000000000a08601000000000064000000000000001a3d2e67000000009d01251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a460"
+
+        der = Deserializer(bytes.fromhex(input_fee_payer))
+        raw_txn_with_data = RawTransactionWithData.deserialize(der)
+
+        ser = Serializer()
+        raw_txn_with_data.serialize(ser)
+        self.assertEqual(ser.output().hex(), input_fee_payer)
+
+        self.assertTrue(isinstance(raw_txn_with_data, FeePayerRawTransaction))
+
+        der = Deserializer(bytes.fromhex(input_ma))
+        raw_txn_with_data = RawTransactionWithData.deserialize(der)
+
+        ser = Serializer()
+        raw_txn_with_data.serialize(ser)
+        self.assertEqual(ser.output().hex(), input_ma)
+
+        self.assertTrue(isinstance(raw_txn_with_data, MultiAgentRawTransaction))
