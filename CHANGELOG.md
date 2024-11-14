@@ -3,6 +3,7 @@
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
 ## Unreleased
+- Update ecdsa to 0.19.0
 
 ## 0.10.0
 
