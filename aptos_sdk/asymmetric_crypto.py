@@ -50,7 +50,10 @@ class PrivateKey(Deserializable, Serializable, Protocol):
 
         key_value: str | None = None
         if isinstance(private_key, str):
-            key_value = private_key
+            if private_key.startswith(aip80_prefix):
+                key_value = private_key.split("-")[2]
+            else:
+                key_value = private_key
         elif isinstance(private_key, bytes):
             key_value = f"0x{private_key.hex()}"
         else:
@@ -97,10 +100,6 @@ class PrivateKey(Deserializable, Serializable, Protocol):
                     )
                 raise ValueError("Invalid HexString input.")
         elif isinstance(value, bytes):
-            if strict is None:
-                print(
-                    "It is recommended that private keys are AIP-80 compliant (https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-80.md)."
-                )
             return value
         else:
             raise TypeError("Input value must be a string or bytes.")
