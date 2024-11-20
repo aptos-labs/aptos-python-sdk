@@ -4,6 +4,9 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+- `PrivateKey.format_private_key` can now format a AIP-80 compliant private key
+- Removed strictness warnnings for `PrivateKey.parse_hex_input`
+
 ## 0.10.0
 
 - Added support for deserialize RawTransactionWithData
