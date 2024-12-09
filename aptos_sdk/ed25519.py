@@ -29,13 +29,40 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         return self.hex()
 
     @staticmethod
-    def from_str(value: str) -> PrivateKey:
-        if value[0:2] == "0x":
-            value = value[2:]
-        return PrivateKey(SigningKey(bytes.fromhex(value)))
+    def from_hex(value: str | bytes, strict: bool | None = None) -> PrivateKey:
+        """
+        Parse a HexInput that may be a hex string, bytes, or an AIP-80 compliant string to a private key.
+
+        :param value: A hex string, byte array, or AIP-80 compliant string.
+        :param strict: If true, the value MUST be compliant with AIP-80.
+        :return: Parsed Ed25519 private key.
+        """
+        return PrivateKey(
+            SigningKey(
+                PrivateKey.parse_hex_input(
+                    value, asymmetric_crypto.PrivateKeyVariant.Ed25519, strict
+                )
+            )
+        )
+
+    @staticmethod
+    def from_str(value: str, strict: bool | None = None) -> PrivateKey:
+        """
+        Parse a HexInput that may be a hex string or an AIP-80 compliant string to a private key.
+
+        :param value: A hex string or AIP-80 compliant string.
+        :param strict: If true, the value MUST be compliant with AIP-80.
+        :return: Parsed Ed25519 private key.
+        """
+        return PrivateKey.from_hex(value, strict)
 
     def hex(self) -> str:
         return f"0x{self.key.encode().hex()}"
+
+    def aip80(self) -> str:
+        return PrivateKey.format_private_key(
+            self.hex(), asymmetric_crypto.PrivateKeyVariant.Ed25519
+        )
 
     def public_key(self) -> PublicKey:
         return PublicKey(self.key.verify_key)
@@ -278,6 +305,26 @@ class MultiSignature(asymmetric_crypto.Signature):
 
 
 class Test(unittest.TestCase):
+    def test_private_key_from_str(self):
+        private_key_hex = PrivateKey.from_str(
+            "0x4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe", False
+        )
+        private_key_with_prefix = PrivateKey.from_str(
+            "ed25519-priv-0x4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe",
+            True,
+        )
+        private_key_bytes = PrivateKey.from_hex(
+            bytes.fromhex(
+                "4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
+            ),
+            False,
+        )
+        self.assertEqual(
+            private_key_hex.hex(),
+            private_key_with_prefix.hex(),
+            private_key_bytes.hex(),
+        )
+
     def test_sign_and_verify(self):
         in_value = b"test_message"
 
@@ -317,10 +364,10 @@ class Test(unittest.TestCase):
     def test_multisig(self):
         # Generate signatory private keys.
         private_key_1 = PrivateKey.from_str(
-            "4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
+            "ed25519-priv-0x4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
         )
         private_key_2 = PrivateKey.from_str(
-            "1e70e49b78f976644e2c51754a2f049d3ff041869c669523ba95b172c7329901"
+            "ed25519-priv-0x1e70e49b78f976644e2c51754a2f049d3ff041869c669523ba95b172c7329901"
         )
         # Generate multisig public key with threshold of 1.
         multisig_public_key = MultiPublicKey(

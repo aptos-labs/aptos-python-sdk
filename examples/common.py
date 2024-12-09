@@ -13,6 +13,7 @@ FAUCET_URL = os.getenv(
     "APTOS_FAUCET_URL",
     "https://faucet.devnet.aptoslabs.com",
 )
+FAUCET_AUTH_TOKEN = os.getenv("FAUCET_AUTH_TOKEN")
 INDEXER_URL = os.getenv(
     "APTOS_INDEXER_URL",
     "https://api.devnet.aptoslabs.com/v1/graphql",

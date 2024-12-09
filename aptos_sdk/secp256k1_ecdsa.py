@@ -30,17 +30,41 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         return self.hex()
 
     @staticmethod
-    def from_str(value: str) -> PrivateKey:
-        if value[0:2] == "0x":
-            value = value[2:]
-        if len(value) != PrivateKey.LENGTH * 2:
+    def from_hex(value: str | bytes, strict: bool | None = None) -> PrivateKey:
+        """
+        Parse a HexInput that may be a hex string, bytes, or an AIP-80 compliant string to a private key.
+
+        :param value: A hex string, byte array, or AIP-80 compliant string.
+        :param strict: If true, the value MUST be compliant with AIP-80.
+        :return: Parsed private key as bytes.
+        """
+        parsed_value = PrivateKey.parse_hex_input(
+            value, asymmetric_crypto.PrivateKeyVariant.Secp256k1, strict
+        )
+        if len(parsed_value.hex()) != PrivateKey.LENGTH * 2:
             raise Exception("Length mismatch")
         return PrivateKey(
-            SigningKey.from_string(bytes.fromhex(value), SECP256k1, hashlib.sha3_256)
+            SigningKey.from_string(parsed_value, SECP256k1, hashlib.sha3_256)
         )
+
+    @staticmethod
+    def from_str(value: str, strict: bool | None = None) -> PrivateKey:
+        """
+        Parse a HexInput that may be a hex string or an AIP-80 compliant string to a private key.
+
+        :param value: A hex string or AIP-80 compliant string.
+        :param strict: If true, the value MUST be compliant with AIP-80.
+        :return: Parsed Secp256k1 private key.
+        """
+        return PrivateKey.from_hex(value, strict)
 
     def hex(self) -> str:
         return f"0x{self.key.to_string().hex()}"
+
+    def aip80(self) -> str:
+        return PrivateKey.format_private_key(
+            self.hex(), asymmetric_crypto.PrivateKeyVariant.Ed25519
+        )
 
     def public_key(self) -> PublicKey:
         return PublicKey(self.key.verifying_key)
@@ -177,10 +201,28 @@ class Signature(asymmetric_crypto.Signature):
 
 
 class Test(unittest.TestCase):
-    def test_vectors(self):
-        private_key_hex = (
-            "0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+    def test_private_key_from_str(self):
+        private_key_hex = PrivateKey.from_str(
+            "0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4", False
         )
+        private_key_with_prefix = PrivateKey.from_str(
+            "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4",
+            True,
+        )
+        private_key_bytes = PrivateKey.from_hex(
+            bytes.fromhex(
+                "306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+            ),
+            False,
+        )
+        self.assertEqual(
+            private_key_hex.hex(),
+            private_key_with_prefix.hex(),
+            private_key_bytes.hex(),
+        )
+
+    def test_vectors(self):
+        private_key_hex = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
         public_key_hex = "0x04210c9129e35337ff5d6488f90f18d842cf985f06e0baeff8df4bfb2ac4221863e2631b971a237b5db0aa71188e33250732dd461d56ee623cbe0426a5c2db79ef"
         signature_hex = "0xa539b0973e76fa99b2a864eebd5da950b4dfb399c7afe57ddb34130e454fc9db04dceb2c3d4260b8cc3d3952ab21b5d36c7dc76277fe3747764e6762d12bd9a9"
         data = b"Hello world"

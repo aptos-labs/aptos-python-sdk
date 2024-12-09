@@ -28,7 +28,7 @@ from aptos_sdk.transactions import (
 )
 from aptos_sdk.type_tag import StructTag, TypeTag
 
-from .common import FAUCET_URL, NODE_URL
+from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 class CoinClient(RestClient):
@@ -88,7 +88,7 @@ async def main(moon_coin_path: str):
     print(f"Bob: {bob.address()}")
 
     rest_client = CoinClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice_fund = faucet_client.fund_account(alice.address(), 20_000_000)
     bob_fund = faucet_client.fund_account(bob.address(), 20_000_000)

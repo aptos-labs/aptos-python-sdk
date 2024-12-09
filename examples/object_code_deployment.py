@@ -24,12 +24,12 @@ from aptos_sdk.package_publisher import (
     PublishMode,
 )
 
-from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
+from .common import APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 async def main(package_dir):
     rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
     package_publisher = PackagePublisher(rest_client)
     alice = Account.generate()
 

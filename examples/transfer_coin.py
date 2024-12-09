@@ -6,13 +6,15 @@ import asyncio
 from aptos_sdk.account import Account
 from aptos_sdk.async_client import FaucetClient, IndexerClient, RestClient
 
-from .common import FAUCET_URL, INDEXER_URL, NODE_URL
+from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, NODE_URL
 
 
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1
+    faucet_client = FaucetClient(
+        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
+    )  # <:!:section_1
     if INDEXER_URL and INDEXER_URL != "none":
         indexer_client = IndexerClient(INDEXER_URL)
     else:
