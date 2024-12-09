@@ -1,6 +1,15 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+This example demonstrates publishing Move packages using the `publish_package_in_path` method from the
+`PackagePublisher` class. This method provides more control over the package publishing process, directly loading
+artifacts from a pre-compiled package directory and handling both Account and Object deployment.
+
+Note: For a higher-level abstraction that handles compilation and deployment automatically, you may use
+`compile_and_publish_move_package`, as demonstrated in the `large_package_publisher.py` example.
+"""
+
 import asyncio
 import os
 import sys
@@ -8,7 +17,12 @@ import sys
 from aptos_sdk.account import Account
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
 from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.package_publisher import MODULE_ADDRESS, PackagePublisher, PublishMode
+from aptos_sdk.package_publisher import (
+    MODULE_ADDRESS,
+    CompileHelper,
+    PackagePublisher,
+    PublishMode,
+)
 
 from .common import APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
@@ -29,7 +43,9 @@ async def main(package_dir):
     print(f"Alice: {alice_balance}")
 
     # The object address is derived from publisher's address and sequence number.
-    code_object_address = await package_publisher.derive_object_address(alice.address())
+    code_object_address = await CompileHelper.derive_object_address(
+        rest_client, alice.address()
+    )
     module_name = "hello_blockchain"
 
     print("\nCompiling package...")
@@ -57,7 +73,7 @@ async def main(package_dir):
         package_dir,
         MODULE_ADDRESS,
         publish_mode=PublishMode.OBJECT_UPGRADE,
-        code_object=code_object_address,
+        code_object_address=code_object_address,
     )
     print(f"Tx submitted: {upgrade_txn_hash[0]}")
     await rest_client.wait_for_transaction(upgrade_txn_hash[0])

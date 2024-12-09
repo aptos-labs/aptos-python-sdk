@@ -56,9 +56,6 @@ class Test(unittest.IsolatedAsyncioTestCase):
         await hello_blockchain.main(contract_address)
 
     async def test_large_package_publisher(self):
-        # TODO -- this is currently broken, out of gas
-        return
-
         from . import large_package_publisher
 
         large_packages_dir = os.path.join(
