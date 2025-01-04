@@ -14,7 +14,7 @@ class Status(Enum):
     failed: int
     undefined: int
     executing: int
-    IGNORE_LINT = 99 # Used to ignore linting error
+    IGNORE_LINT = 99  # Used to ignore linting error
     def __eq__(self, other): ...
     @classmethod
     def from_name(cls, name): ...
