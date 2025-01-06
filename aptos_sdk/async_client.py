@@ -36,7 +36,7 @@ class ClientConfig:
     gas_unit_price: int = 100
     max_gas_amount: int = 100_000
     transaction_wait_in_seconds: int = 20
-    http2: bool = False
+    http2: bool = True
     api_key: Optional[str] = None
 
 
