@@ -471,6 +471,8 @@ async def main(should_wait_input=True):
     print(f"Chad's balance:   {chad_balance}")
     print(f"Multisig balance: {multisig_balance}")  # <:!:section_12
 
+    await rest_client.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
