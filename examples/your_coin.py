@@ -144,6 +144,8 @@ async def main(moon_coin_path: str):
     balance = await rest_client.get_balance(alice.address(), bob.address())
     print(f"Bob's updated MoonCoin balance: {balance}")
 
+    await rest_client.close()
+
 
 if __name__ == "__main__":
     assert (

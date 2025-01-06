@@ -64,6 +64,8 @@ async def main(
         alice, large_package_example_dir, large_packages_account
     )
 
+    await rest_client.close()
+
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
