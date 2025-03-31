@@ -2,10 +2,12 @@
 
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
-## Unreleased
+## 0.11.0
 
 - `PrivateKey.format_private_key` can now format a AIP-80 compliant private key
 - Removed strictness warnnings for `PrivateKey.parse_hex_input`
+- Make HTTP2 default
+- Update all dependencies
 
 ## 0.10.0
 
