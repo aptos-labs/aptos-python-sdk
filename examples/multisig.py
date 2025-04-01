@@ -417,7 +417,7 @@ async def main(should_wait_input=True):
     # :!:>section_12
     print("\n=== Invoking Move script ===")
 
-    with open(f"{build_path}bytecode_scripts/set_and_transfer.mv", "rb") as f:
+    with open(f"{build_path}bytecode_scripts/set_and_transfer_0.mv", "rb") as f:
         script_code = f.read()
 
     payload = Script(
