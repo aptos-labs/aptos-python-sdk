@@ -99,7 +99,6 @@ class Test(unittest.IsolatedAsyncioTestCase):
         await secp256k1_ecdsa_transfer_coin.main()
 
     async def test_simple_aptos_token(self):
-        return
         from . import simple_aptos_token
 
         await simple_aptos_token.main()
