@@ -115,6 +115,12 @@ async def main():
         alice.address(), collection_name
     )
 
+    collection_data = await get_collection_data(token_client, collection_addr)
+    print(
+        "\nCollection data: "
+        + json.dumps({"address": str(collection_addr), **collection_data}, indent=4)
+    )
+
     # :!:>section_5
     txn_hash = await token_client.mint_token(
         alice,
@@ -128,12 +134,6 @@ async def main():
 
     minted_tokens = await token_client.tokens_minted_from_transaction(txn_hash)
     assert len(minted_tokens) == 1
-
-    collection_data = await get_collection_data(token_client, collection_addr)
-    print(
-        "\nCollection data: "
-        + json.dumps({"address": str(collection_addr), **collection_data}, indent=4)
-    )
 
     token_addr = minted_tokens[0]
 
