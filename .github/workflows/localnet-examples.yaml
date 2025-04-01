@@ -40,5 +40,8 @@ jobs:
         shell: bash
 
       - name: Run examples on localnet
-        run: make integration_test
-        shell: bash
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 1
+          timeout_minutes: 20
+          command: make integration_test
