@@ -2,6 +2,10 @@
 
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
+## Unreleased
+
+- **[Breaking Change]**: `ed25519` and `secp256k1` private key's `__str__` will now return the AIP-80 compliant string
+
 ## 0.11.0
 
 - `PrivateKey.format_private_key` can now format a AIP-80 compliant private key
