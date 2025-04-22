@@ -27,7 +27,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         return self.key == other.key
 
     def __str__(self):
-        return self.hex()
+        return self.aip80()
 
     @staticmethod
     def from_hex(value: str | bytes, strict: bool | None = None) -> PrivateKey:
@@ -63,7 +63,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def aip80(self) -> str:
         return PrivateKey.format_private_key(
-            self.hex(), asymmetric_crypto.PrivateKeyVariant.Ed25519
+            self.hex(), asymmetric_crypto.PrivateKeyVariant.Secp256k1
         )
 
     def public_key(self) -> PublicKey:
@@ -220,6 +220,10 @@ class Test(unittest.TestCase):
             private_key_with_prefix.hex(),
             private_key_bytes.hex(),
         )
+
+    def test_private_key_aip80_formatting(self):
+        private_key_with_prefix = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+        self.assertEqual(str(PrivateKey.from_str(private_key_with_prefix, True)), private_key_with_prefix)
 
     def test_vectors(self):
         private_key_hex = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
