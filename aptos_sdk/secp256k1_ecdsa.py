@@ -223,7 +223,10 @@ class Test(unittest.TestCase):
 
     def test_private_key_aip80_formatting(self):
         private_key_with_prefix = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
-        self.assertEqual(str(PrivateKey.from_str(private_key_with_prefix, True)), private_key_with_prefix)
+        self.assertEqual(
+            str(PrivateKey.from_str(private_key_with_prefix, True)),
+            private_key_with_prefix,
+        )
 
     def test_vectors(self):
         private_key_hex = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
