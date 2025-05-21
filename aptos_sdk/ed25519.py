@@ -327,7 +327,10 @@ class Test(unittest.TestCase):
 
     def test_private_key_aip80_formatting(self):
         private_key_with_prefix = "ed25519-priv-0x4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
-        self.assertEqual(str(PrivateKey.from_str(private_key_with_prefix, True)), private_key_with_prefix)
+        self.assertEqual(
+            str(PrivateKey.from_str(private_key_with_prefix, True)),
+            private_key_with_prefix,
+        )
 
     def test_sign_and_verify(self):
         in_value = b"test_message"
