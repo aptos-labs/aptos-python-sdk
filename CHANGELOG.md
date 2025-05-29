@@ -12,6 +12,7 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 - Make HTTP2 default
 - Update all dependencies
 - Add ability for `account_balance` with other coins
+- Upgrade to Poetry 2.1.3
 
 ## 0.10.0
 
