@@ -11,6 +11,7 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 - Removed strictness warnnings for `PrivateKey.parse_hex_input`
 - Make HTTP2 default
 - Update all dependencies
+- Add ability for `account_balance` with other coins
 
 ## 0.10.0
 

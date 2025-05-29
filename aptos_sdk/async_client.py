@@ -117,19 +117,24 @@ class RestClient:
         return response.json()
 
     async def account_balance(
-        self, account_address: AccountAddress, ledger_version: Optional[int] = None
+        self,
+        account_address: AccountAddress,
+        ledger_version: Optional[int] = None,
+        coin_type: Optional[str] = None,
     ) -> int:
         """
         Fetch the Aptos coin balance associated with the account.
 
         :param account_address: Address of the account, with or without a '0x' prefix.
         :param ledger_version: Ledger version to get state of account. If not provided, it will be the latest version.
+        :param coin_type: Coin type to get balance for, defaults to "0x1::aptos_coin::AptosCoin".
         :return: The Aptos coin balance associated with the account
         """
+        coin_type = coin_type or "0x1::aptos_coin::AptosCoin"
         result = await self.view_bcs_payload(
             "0x1::coin",
             "balance",
-            [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
+            [TypeTag(StructTag.from_str(coin_type))],
             [TransactionArgument(account_address, Serializer.struct)],
             ledger_version,
         )
