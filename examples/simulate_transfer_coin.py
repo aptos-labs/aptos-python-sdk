@@ -46,7 +46,7 @@ async def main():
     )
 
     print("\n=== Simulate after creating Bob's Account ===")
-    await faucet_client.fund_account(bob.address(), 0)
+    await faucet_client.fund_account(bob.address(), 1)
     output = await rest_client.simulate_transaction(transaction, alice)
     assert output[0]["vm_status"] == "Executed successfully", "This should succeed"
     print(json.dumps(output, indent=4, sort_keys=True))
