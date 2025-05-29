@@ -37,7 +37,7 @@ examples:
 examples_cli:
 	poetry run python -m examples.hello_blockchain
 	#	poetry run python -m examples.large_package_publisher CURRENTLY BROKEN -- OUT OF GAS
-	poetry run python -m examples.multisig
+	#poetry run python -m examples.multisig CURRENTLY BROKEN requires aptos-core checkout
 	poetry run python -m examples.object_code_deployment
 	poetry run python -m examples.your_coin
 
