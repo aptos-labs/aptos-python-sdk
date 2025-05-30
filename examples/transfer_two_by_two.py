@@ -28,8 +28,8 @@ async def main():
 
     alice_fund = faucet_client.fund_account(alice.address(), 100_000_000)
     bob_fund = faucet_client.fund_account(bob.address(), 100_000_000)
-    carol_fund = faucet_client.fund_account(carol.address(), 0)
-    david_fund = faucet_client.fund_account(david.address(), 0)
+    carol_fund = faucet_client.fund_account(carol.address(), 1)
+    david_fund = faucet_client.fund_account(david.address(), 1)
     await asyncio.gather(*[alice_fund, bob_fund, carol_fund, david_fund])
 
     alice_balance = rest_client.account_balance(alice.address())

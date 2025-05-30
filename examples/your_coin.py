@@ -69,14 +69,14 @@ class CoinClient(RestClient):
         self,
         coin_address: AccountAddress,
         account_address: AccountAddress,
-    ) -> str:
+    ) -> int:
         """Returns the coin balance of the given account"""
 
-        balance = await self.account_resource(
+        return await self.account_balance(
             account_address,
-            f"0x1::coin::CoinStore<{coin_address}::moon_coin::MoonCoin>",
+            None,
+            f"{coin_address}::moon_coin::MoonCoin",
         )
-        return balance["data"]["coin"]["value"]
 
 
 async def main(moon_coin_path: str):
