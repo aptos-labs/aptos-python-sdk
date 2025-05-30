@@ -80,6 +80,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
 
     async def test_multisig(self):
         from . import multisig
+
         # This test is currently broken, needs an aptos core checkout
         return
         await multisig.main(False)
