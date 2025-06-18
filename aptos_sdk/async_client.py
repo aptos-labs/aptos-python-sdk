@@ -542,16 +542,16 @@ class RestClient:
 
         count = 0
         while await self.transaction_pending(txn_hash):
-            assert (
-                count < self.client_config.transaction_wait_in_seconds
-            ), f"transaction {txn_hash} timed out"
+            assert count < self.client_config.transaction_wait_in_seconds, (
+                f"transaction {txn_hash} timed out"
+            )
             await asyncio.sleep(1)
             count += 1
 
         response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
-        assert (
-            "success" in response.json() and response.json()["success"]
-        ), f"{response.text} - {txn_hash}"
+        assert "success" in response.json() and response.json()["success"], (
+            f"{response.text} - {txn_hash}"
+        )
 
     async def account_transaction_sequence_number_status(
         self, address: AccountAddress, sequence_number: int
@@ -743,7 +743,8 @@ class RestClient:
         signed_transaction = await self.create_bcs_signed_transaction(
             sender, TransactionPayload(payload), sequence_number=sequence_number
         )
-        return await self.submit_bcs_transaction(signed_transaction)  # <:!:bcs_transfer
+        # <:!:bcs_transfer
+        return await self.submit_bcs_transaction(signed_transaction)
 
     async def transfer_coins(
         self,
