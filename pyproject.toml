@@ -5,8 +5,8 @@ description = "Aptos SDK"
 authors = ["Aptos Labs <opensource@aptoslabs.com>"]
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/aptos-labs/aptos-core"
-homepage = "https://github.com/aptos-labs/aptos-core/tree/main/ecosystem/python/sdk"
+repository = "https://github.com/aptos-labs/aptos-python-sdk"
+homepage = "https://aptos.dev/en/build/sdks/python-sdk"
 keywords = ["web3", "sdk", "aptos", "blockchain"]
 
 [tool.setuptools.package-data]
