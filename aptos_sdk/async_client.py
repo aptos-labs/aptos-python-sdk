@@ -1,6 +1,155 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+Asynchronous client library for interacting with the Aptos blockchain.
+
+This module provides comprehensive async client implementations for connecting to and
+interacting with Aptos full nodes, faucet services, and indexer services. It supports
+the full range of Aptos blockchain operations including account management, transaction
+submission, resource queries, and event monitoring.
+
+Key Features:
+- **RestClient**: Full-featured async client for Aptos REST API
+- **IndexerClient**: GraphQL client for querying indexed blockchain data
+- **FaucetClient**: Client for test network coin funding operations
+- **BCS Support**: Binary Canonical Serialization for efficient data handling
+- **Multi-Agent Transactions**: Support for complex multi-signature scenarios
+- **Transaction Simulation**: Gas estimation and execution preview
+- **Event Monitoring**: Real-time blockchain event querying
+- **Error Handling**: Comprehensive exception hierarchy for API errors
+
+Client Types:
+    RestClient: Primary interface to Aptos full nodes via REST API
+    IndexerClient: GraphQL interface to Aptos indexer services  
+    FaucetClient: Test network funding and account creation
+
+Transaction Types:
+    - Single-agent transactions (standard transfers, function calls)
+    - Multi-agent transactions (requiring multiple signatures)
+    - View function calls (read-only operations)
+    - BCS-encoded transactions (efficient binary format)
+
+Query Capabilities:
+    - Account information (balance, sequence number, resources)
+    - Transaction history and status
+    - Blockchain events and logs
+    - Move module and resource data
+    - Table lookups and aggregator values
+    - Block and ledger information
+
+Examples:
+    Basic client setup and account query::
+    
+        from aptos_sdk.async_client import RestClient, ClientConfig
+        from aptos_sdk.account_address import AccountAddress
+        
+        # Create client with custom configuration
+        config = ClientConfig(
+            max_gas_amount=200_000,
+            gas_unit_price=150,
+            transaction_wait_in_seconds=30
+        )
+        
+        client = RestClient("https://fullnode.devnet.aptoslabs.com/v1", config)
+        
+        # Query account information
+        address = AccountAddress.from_str("***123...")
+        account_info = await client.account(address)
+        balance = await client.account_balance(address)
+        
+        print(f"Sequence number: {account_info['sequence_number']}")
+        print(f"Balance: {balance} octas")
+        
+        await client.close()
+        
+    Transaction submission::
+    
+        from aptos_sdk.account import Account
+        
+        # Create sender account
+        sender = Account.generate()
+        recipient = AccountAddress.from_str("***456...")
+        
+        # Transfer 1 APT (1 * 10^8 octas)
+        txn_hash = await client.bcs_transfer(
+            sender=sender,
+            recipient=recipient,
+            amount=100_000_000  # 1 APT in octas
+        )
+        
+        # Wait for transaction completion
+        await client.wait_for_transaction(txn_hash)
+        txn_info = await client.transaction_by_hash(txn_hash)
+        
+    Multi-agent transaction::
+    
+        # Create multi-agent transaction requiring multiple signatures
+        signed_txn = await client.create_multi_agent_bcs_transaction(
+            sender=primary_account,
+            secondary_accounts=[account2, account3],
+            payload=transaction_payload
+        )
+        
+        txn_hash = await client.submit_bcs_transaction(signed_txn)
+        
+    IndexerClient usage::
+    
+        indexer = IndexerClient(
+            "https://indexer.devnet.aptoslabs.com/v1/graphql",
+            bearer_token="optional_token"
+        )
+        
+        # GraphQL query example
+        query = """
+        query GetTransactions($address: String!) {
+            account_transactions(where: {account_address: {_eq: $address}}) {
+                transaction_version
+                transaction_timestamp
+                success
+            }
+        }
+        """
+        
+        result = await indexer.query(query, {"address": str(address)})
+        
+    Faucet usage for testnet::
+    
+        faucet = FaucetClient(
+            "https://faucet.devnet.aptoslabs.com",
+            rest_client=client
+        )
+        
+        # Fund account with test coins
+        account = Account.generate()
+        txn_hash = await faucet.fund_account(
+            address=account.address(),
+            amount=500_000_000  # 5 APT
+        )
+        
+        await faucet.close()
+
+Error Handling:
+    The module provides specific exception types for different error scenarios:
+    
+    - ApiError: General API request failures (HTTP 4xx/5xx)
+    - AccountNotFound: Requested account doesn't exist
+    - ResourceNotFound: Requested resource not found in account
+    
+Best Practices:
+    - Always call client.close() when done to clean up connections
+    - Use context managers or try/finally blocks for resource cleanup
+    - Configure appropriate timeouts for your use case
+    - Handle specific exceptions (AccountNotFound, ResourceNotFound) when expected
+    - Use BCS transactions for better performance and lower fees
+    - Implement retry logic for transient network errors
+    - Cache chain ID and other static values when making many requests
+
+Note:
+    All client operations are async and must be awaited. The clients use httpx
+    for HTTP/2 support and connection pooling for optimal performance.
+"""
+
 import asyncio
 import logging
 import time
@@ -30,7 +179,59 @@ U64_MAX = 18446744073709551615
 
 @dataclass
 class ClientConfig:
-    """Common configuration for clients, particularly for submitting transactions"""
+    """Configuration parameters for Aptos REST API clients.
+    
+    This class encapsulates common settings used by REST clients for transaction
+    submission, gas management, and network communication. These parameters affect
+    transaction costs, execution timeouts, and API authentication.
+    
+    Transaction Parameters:
+        expiration_ttl: Time-to-live for transactions in seconds (default: 600)
+        gas_unit_price: Price per unit of gas in octas (default: 100)
+        max_gas_amount: Maximum gas units allowed per transaction (default: 100,000)
+        transaction_wait_in_seconds: Timeout for transaction confirmation (default: 20)
+        
+    Network Parameters:
+        http2: Enable HTTP/2 for better performance (default: True)
+        api_key: Optional API key for authenticated requests (default: None)
+        
+    Examples:
+        Default configuration::
+        
+            config = ClientConfig()
+            client = RestClient(node_url, config)
+            
+        High-throughput configuration::
+        
+            config = ClientConfig(
+                gas_unit_price=150,       # Higher gas price for faster processing
+                max_gas_amount=200_000,   # Higher gas limit for complex transactions
+                transaction_wait_in_seconds=60,  # Longer wait for busy networks
+                expiration_ttl=300        # Shorter expiration for high-frequency ops
+            )
+            
+        Authenticated requests::
+        
+            config = ClientConfig(
+                api_key="your-api-key-here",
+                http2=True  # Recommended for API services
+            )
+            
+        Conservative settings::
+        
+            config = ClientConfig(
+                gas_unit_price=100,       # Standard gas price
+                max_gas_amount=50_000,    # Lower gas limit to prevent runaway
+                expiration_ttl=1200       # Longer expiration for manual workflows
+            )
+    
+    Notes:
+        - Gas prices may need adjustment based on network congestion
+        - Higher gas limits allow more complex transactions but cost more
+        - HTTP/2 is recommended for better connection reuse and performance
+        - API keys are required for some premium or rate-limited services
+        - Transaction expiration prevents stale transactions from executing
+    """
 
     expiration_ttl: int = 600
     gas_unit_price: int = 100
@@ -41,11 +242,131 @@ class ClientConfig:
 
 
 class IndexerClient:
-    """A wrapper around the Aptos Indexer Service on Hasura"""
+    """GraphQL client for querying indexed Aptos blockchain data.
+    
+    This client provides access to the Aptos Indexer Service, which indexes
+    blockchain data into a PostgreSQL database exposed via Hasura GraphQL API.
+    The indexer provides rich querying capabilities for transactions, accounts,
+    events, and other blockchain data.
+    
+    Key Features:
+    - **Rich Queries**: Complex filtering, sorting, and aggregation of blockchain data
+    - **Real-time Data**: Access to up-to-date indexed blockchain information
+    - **Flexible API**: GraphQL interface supporting custom query structures
+    - **Authentication**: Optional bearer token authentication for premium access
+    - **High Performance**: Optimized database queries for fast data retrieval
+    
+    Use Cases:
+    - Analytics and reporting on blockchain activity
+    - Transaction history and account analysis
+    - Event monitoring and notification systems
+    - DeFi protocol data aggregation
+    - NFT marketplace data queries
+    - Portfolio tracking applications
+    
+    Attributes:
+        client: The underlying GraphQL client for executing queries
+        
+    Examples:
+        Basic setup and query::
+        
+            indexer = IndexerClient(
+                "https://indexer.mainnet.aptoslabs.com/v1/graphql",
+                bearer_token="optional-auth-token"
+            )
+            
+            # Query account transactions
+            query = """
+            query GetAccountTransactions($address: String!, $limit: Int!) {
+                account_transactions(
+                    where: {account_address: {_eq: $address}},
+                    limit: $limit,
+                    order_by: {transaction_version: desc}
+                ) {
+                    transaction_version
+                    success
+                    gas_used
+                    transaction_timestamp
+                }
+            }
+            """
+            
+            result = await indexer.query(query, {
+                "address": "0x1",
+                "limit": 100
+            })
+            
+        Token transfer queries::
+        
+            query = """
+            query GetTokenTransfers($token_address: String!) {
+                token_activities(
+                    where: {
+                        token_data_id: {_eq: $token_address},
+                        type: {_eq: "0x3::token_transfers::TokenTransferEvent"}
+                    },
+                    limit: 50,
+                    order_by: {transaction_version: desc}
+                ) {
+                    from_address
+                    to_address
+                    amount
+                    transaction_version
+                    transaction_timestamp
+                }
+            }
+            """
+            
+            transfers = await indexer.query(query, {
+                "token_address": "0xabc123..."
+            })
+            
+        Account resource tracking::
+        
+            query = """
+            query GetAccountResources($address: String!) {
+                account_resources(
+                    where: {account_address: {_eq: $address}}
+                ) {
+                    resource_type
+                    resource_data
+                    write_set_change_index
+                    transaction_version
+                }
+            }
+            """
+            
+            resources = await indexer.query(query, {"address": address})
+    
+    Note:
+        The indexer service may have query limits and rate limiting. Some
+        advanced features may require authentication tokens. Check the specific
+        indexer service documentation for available schema and limitations.
+    """
 
     client: python_graphql_client.GraphqlClient
 
     def __init__(self, indexer_url: str, bearer_token: Optional[str] = None):
+        """Initialize the IndexerClient with connection parameters.
+        
+        Args:
+            indexer_url: The GraphQL endpoint URL for the Aptos indexer service.
+            bearer_token: Optional authentication token for premium access.
+            
+        Examples:
+            Public access::
+            
+                client = IndexerClient(
+                    "https://indexer.devnet.aptoslabs.com/v1/graphql"
+                )
+                
+            Authenticated access::
+            
+                client = IndexerClient(
+                    "https://indexer.mainnet.aptoslabs.com/v1/graphql",
+                    bearer_token="your-token-here"
+                )
+        """
         headers = {}
         if bearer_token:
             headers["Authorization"] = f"Bearer {bearer_token}"
@@ -54,11 +375,230 @@ class IndexerClient:
         )
 
     async def query(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a GraphQL query against the Aptos Indexer.
+
+        This async method executes GraphQL queries with variable substitution
+        and returns the structured response data.
+
+        Args:
+            query: GraphQL query string with proper syntax and structure.
+            variables: Dictionary of variables to substitute in the query.
+            
+        Returns:
+            Dictionary containing the GraphQL response data and metadata.
+            
+        Raises:
+            Exception: On GraphQL syntax errors, network issues, or server errors.
+            
+        Examples:
+            Simple account query::
+            
+                query = """
+                query GetAccount($address: String!) {
+                    account_transactions(
+                        where: {account_address: {_eq: $address}}
+                        limit: 10
+                    ) {
+                        transaction_version
+                        success
+                    }
+                }
+                """
+                
+                result = await indexer.query(query, {"address": "0x1"})
+                transactions = result["data"]["account_transactions"]
+                
+            Complex aggregation query::
+            
+                query = """
+                query GetDailyStats($date: timestamptz!) {
+                    transactions_aggregate(
+                        where: {
+                            inserted_at: {_gte: $date}
+                        }
+                    ) {
+                        aggregate {
+                            count
+                            sum {
+                                gas_used
+                            }
+                        }
+                    }
+                }
+                """
+                
+                stats = await indexer.query(query, {
+                    "date": "2024-01-01T00:00:00Z"
+                })
+        
+        Note:
+            The query must follow GraphQL syntax. Use the indexer's schema
+            documentation to understand available fields and relationships.
+        """
         return await self.client.execute_async(query, variables)
 
 
 class RestClient:
-    """A wrapper around the Aptos-core Rest API"""
+    """Comprehensive async client for the Aptos blockchain REST API.
+    
+    This client provides complete access to Aptos full node functionality through
+    the REST API, supporting all blockchain operations including account management,
+    transaction submission, resource queries, event monitoring, and more.
+    
+    Core Capabilities:
+    - **Account Operations**: Balance queries, resource access, transaction history
+    - **Transaction Management**: Submission, simulation, status tracking, waiting
+    - **Blockchain Queries**: Block data, ledger info, event streams
+    - **Move Integration**: View functions, resource inspection, module access
+    - **Advanced Features**: Multi-agent transactions, BCS encoding, gas estimation
+    
+    Performance Features:
+    - **HTTP/2 Support**: Efficient connection reuse and multiplexing
+    - **Connection Pooling**: Optimized for high-throughput applications  
+    - **Async/Await**: Non-blocking operations for better concurrency
+    - **Configurable Timeouts**: Flexible timeout management for different use cases
+    - **Automatic Retries**: Built-in resilience for transient network issues
+    
+    Transaction Types:
+    - Single-signature transactions (most common)
+    - Multi-signature transactions (shared accounts, DAOs)
+    - Script transactions (custom Move code execution)
+    - Entry function calls (smart contract interactions)
+    
+    Attributes:
+        _chain_id: Cached network chain ID (mainnet=1, testnet=2, etc.)
+        client: Underlying HTTP client with connection pooling
+        client_config: Configuration for gas, timeouts, and other parameters
+        base_url: Base URL of the Aptos full node REST API
+        
+    Examples:
+        Basic client setup::
+        
+            from aptos_sdk.async_client import RestClient, ClientConfig
+            
+            # Use default configuration
+            client = RestClient("https://fullnode.mainnet.aptoslabs.com/v1")
+            
+            # Custom configuration for high-throughput apps
+            config = ClientConfig(
+                max_gas_amount=200_000,
+                gas_unit_price=150,
+                transaction_wait_in_seconds=60
+            )
+            client = RestClient("https://fullnode.devnet.aptoslabs.com/v1", config)
+            
+        Account operations::
+        
+            from aptos_sdk.account_address import AccountAddress
+            
+            address = AccountAddress.from_str("0x1")
+            
+            # Get account information
+            account_data = await client.account(address)
+            sequence_number = account_data["sequence_number"]
+            
+            # Check balance
+            balance = await client.account_balance(address)
+            print(f"Balance: {balance / 10**8} APT")
+            
+            # Get all resources
+            resources = await client.account_resources(address)
+            for resource in resources:
+                print(f"Resource: {resource['type']}")
+                
+        Transaction submission::
+        
+            from aptos_sdk.account import Account
+            
+            # Create accounts
+            sender = Account.generate()
+            recipient = AccountAddress.from_str("0x456...")
+            
+            # Simple transfer
+            txn_hash = await client.bcs_transfer(
+                sender=sender,
+                recipient=recipient, 
+                amount=100_000_000  # 1 APT in octas
+            )
+            
+            # Wait for confirmation
+            await client.wait_for_transaction(txn_hash)
+            txn_data = await client.transaction_by_hash(txn_hash)
+            
+            if txn_data["success"]:
+                print(f"Transfer successful! Gas used: {txn_data['gas_used']}")
+                
+        Transaction simulation::
+        
+            # Create transaction without submitting
+            raw_txn = await client.create_bcs_transaction(
+                sender=sender_account,
+                payload=transaction_payload
+            )
+            
+            # Simulate to estimate gas
+            simulation = await client.simulate_transaction(
+                transaction=raw_txn,
+                sender=sender_account,
+                estimate_gas_usage=True
+            )
+            
+            print(f"Estimated gas: {simulation[0]['gas_used']}")
+            print(f"Success: {simulation[0]['success']}")
+            
+        Multi-agent transactions::
+        
+            # Transactions requiring multiple signatures
+            signed_txn = await client.create_multi_agent_bcs_transaction(
+                sender=primary_account,
+                secondary_accounts=[account2, account3],
+                payload=shared_transaction_payload
+            )
+            
+            txn_hash = await client.submit_bcs_transaction(signed_txn)
+            
+        View function calls::
+        
+            # Read-only function calls (no gas cost)
+            result = await client.view(
+                function="0x1::coin::balance",
+                type_arguments=["0x1::aptos_coin::AptosCoin"],
+                arguments=[str(address)]
+            )
+            balance = int(result[0])
+            
+        Event monitoring::
+        
+            # Get events by creation number
+            events = await client.event_by_creation_number(
+                account_address=contract_address,
+                creation_number=0,  # First event stream
+                limit=100
+            )
+            
+            for event in events:
+                print(f"Event: {event['type']}, Data: {event['data']}")
+    
+    Error Handling:
+        The client raises specific exceptions for different failure modes:
+        - ApiError: HTTP errors (4xx, 5xx status codes)
+        - AccountNotFound: Account doesn't exist on-chain
+        - ResourceNotFound: Requested resource not found in account
+        
+    Best Practices:
+        - Always call await client.close() when done
+        - Use try/finally or async context managers for cleanup
+        - Cache chain_id() result for better performance
+        - Configure appropriate gas limits for your transactions
+        - Implement exponential backoff for retries on failures
+        - Use BCS transactions for better performance and fees
+        - Monitor gas usage and adjust pricing as needed
+        
+    Note:
+        This client is designed for production use with proper connection
+        management, timeout handling, and error recovery. It supports both
+        mainnet and testnet environments.
+    """
 
     _chain_id: Optional[int]
     client: httpx.AsyncClient
@@ -66,6 +606,40 @@ class RestClient:
     base_url: str
 
     def __init__(self, base_url: str, client_config: ClientConfig = ClientConfig()):
+        """Initialize the REST client with configuration parameters.
+        
+        Args:
+            base_url: Base URL of the Aptos full node REST API.
+                Examples: "https://fullnode.mainnet.aptoslabs.com/v1",
+                         "https://fullnode.devnet.aptoslabs.com/v1"
+            client_config: Configuration for gas, timeouts, and networking.
+                Defaults to standard settings if not provided.
+                
+        Examples:
+            Mainnet client::
+            
+                client = RestClient("https://fullnode.mainnet.aptoslabs.com/v1")
+                
+            Testnet with custom config::
+            
+                config = ClientConfig(
+                    gas_unit_price=200,
+                    max_gas_amount=150_000,
+                    api_key="your-api-key"
+                )
+                client = RestClient(
+                    "https://fullnode.testnet.aptoslabs.com/v1",
+                    config
+                )
+                
+            Local development node::
+            
+                client = RestClient("http://localhost:8080/v1")
+        
+        Note:
+            The client automatically configures HTTP/2, connection pooling,
+            proper headers, and timeouts for optimal performance.
+        """
         self.base_url = base_url
         # Default limits
         limits = httpx.Limits()
@@ -86,9 +660,23 @@ class RestClient:
             self.client.headers["Authorization"] = f"Bearer {client_config.api_key}"
 
     async def close(self):
+        """
+        Close the underlying HTTP client connection.
+
+        This is a coroutine that should be called when done with the client
+        to properly clean up resources.
+        """
         await self.client.aclose()
 
     async def chain_id(self):
+        """
+        Get the chain ID of the network.
+
+        This is a coroutine that fetches and caches the chain ID from the node.
+
+        :return: The numeric chain ID (e.g., 1 for mainnet, 2 for testnet)
+        :raises ApiError: If the node info request fails
+        """
         if not self._chain_id:
             info = await self.info()
             self._chain_id = int(info["chain_id"])
@@ -395,6 +983,15 @@ class RestClient:
         return response.json()
 
     async def current_timestamp(self) -> float:
+        """
+        Get the current ledger timestamp in seconds.
+
+        This is a coroutine that fetches the latest ledger info and
+        converts the timestamp from microseconds to seconds.
+
+        :return: Current ledger timestamp as a float in seconds
+        :raises ApiError: If the node info request fails
+        """
         info = await self.info()
         return float(info["ledger_timestamp"]) / 1_000_000
 
@@ -406,6 +1003,20 @@ class RestClient:
         key: Any,
         ledger_version: Optional[int] = None,
     ) -> Any:
+        """
+        Retrieve an item from a Move table by its key.
+
+        This is a coroutine that queries a table item using the table handle
+        and key information.
+
+        :param handle: The table handle identifying the table
+        :param key_type: The Move type of the key (e.g., "address", "u64")
+        :param value_type: The Move type of the value (e.g., "u128", "vector<u8>")
+        :param key: The key value to look up
+        :param ledger_version: Ledger version to query. If not provided, uses the latest version
+        :return: The value stored at the given key in the table
+        :raises ApiError: If the request fails or the key is not found
+        """
         response = await self._post(
             endpoint=f"tables/{handle}/item",
             data={
@@ -425,6 +1036,18 @@ class RestClient:
         resource_type: str,
         aggregator_path: List[str],
     ) -> int:
+        """
+        Retrieve the current value of an aggregator.
+
+        This is a coroutine that follows a path through a resource to find
+        an aggregator and returns its current value.
+
+        :param account_address: Address of the account containing the resource
+        :param resource_type: The Move type of the resource containing the aggregator
+        :param aggregator_path: Path through the resource structure to the aggregator
+        :return: Current value of the aggregator as an integer
+        :raises ApiError: If the resource is not found or the aggregator path is invalid
+        """
         source = await self.account_resource(account_address, resource_type)
         source_data = data = source["data"]
 
@@ -464,6 +1087,15 @@ class RestClient:
     #
 
     async def info(self) -> Dict[str, str]:
+        """
+        Get information about the Aptos node.
+
+        This is a coroutine that retrieves general information about the node
+        including chain ID, ledger version, and timestamps.
+
+        :return: Dictionary containing node information
+        :raises ApiError: If the request fails
+        """
         response = await self.client.get(self.base_url)
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
@@ -478,6 +1110,17 @@ class RestClient:
         signed_transaction: SignedTransaction,
         estimate_gas_usage: bool = False,
     ) -> Dict[str, Any]:
+        """
+        Simulate a BCS-encoded signed transaction without executing it.
+
+        This is a coroutine that submits a transaction for simulation to estimate
+        gas usage and validate execution without making on-chain changes.
+
+        :param signed_transaction: The signed transaction to simulate
+        :param estimate_gas_usage: If True, estimate gas unit price and max gas amount
+        :return: Simulation result containing execution information
+        :raises ApiError: If the simulation request fails
+        """
         headers = {"Content-Type": "application/x.aptos.signed_transaction+bcs"}
         params = {}
         if estimate_gas_usage:
@@ -503,6 +1146,18 @@ class RestClient:
         sender: Account,
         estimate_gas_usage: bool = False,
     ) -> Dict[str, Any]:
+        """
+        Simulate a raw transaction without executing it on-chain.
+
+        This is a coroutine that signs a transaction with a simulated signature
+        (all zeros) and submits it for simulation.
+
+        :param transaction: The raw transaction to simulate
+        :param sender: The account that would send the transaction
+        :param estimate_gas_usage: If True, estimate gas unit price and max gas amount
+        :return: Simulation result containing execution information
+        :raises ApiError: If the simulation request fails
+        """
         # Note that simulated transactions are not signed and have all 0 signatures!
         authenticator = sender.sign_simulated_transaction(transaction)
         return await self.simulate_bcs_transaction(
@@ -513,6 +1168,16 @@ class RestClient:
     async def submit_bcs_transaction(
         self, signed_transaction: SignedTransaction
     ) -> str:
+        """
+        Submit a BCS-encoded signed transaction to the blockchain.
+
+        This is a coroutine that submits a transaction for execution.
+        The transaction will be added to the mempool and eventually executed.
+
+        :param signed_transaction: The signed transaction to submit
+        :return: The transaction hash as a hex string
+        :raises ApiError: If the submission fails
+        """
         headers = {"Content-Type": "application/x.aptos.signed_transaction+bcs"}
         response = await self.client.post(
             f"{self.base_url}/transactions",
@@ -526,11 +1191,32 @@ class RestClient:
     async def submit_and_wait_for_bcs_transaction(
         self, signed_transaction: SignedTransaction
     ) -> Dict[str, Any]:
+        """
+        Submit a BCS-encoded signed transaction and wait for it to complete.
+
+        This is a coroutine that submits a transaction and polls until it's
+        no longer pending, then returns the transaction details.
+
+        :param signed_transaction: The signed transaction to submit
+        :return: The completed transaction details
+        :raises ApiError: If submission fails or transaction times out
+        :raises AssertionError: If transaction fails or times out
+        """
         txn_hash = await self.submit_bcs_transaction(signed_transaction)
         await self.wait_for_transaction(txn_hash)
         return await self.transaction_by_hash(txn_hash)
 
     async def transaction_pending(self, txn_hash: str) -> bool:
+        """
+        Check if a transaction is still pending.
+
+        This is a coroutine that queries the transaction status to determine
+        if it's still pending execution.
+
+        :param txn_hash: The transaction hash to check
+        :return: True if the transaction is still pending, False otherwise
+        :raises ApiError: If the status check request fails
+        """
         response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
         # TODO(@davidiw): consider raising a different error here, since this is an ambiguous state
         if response.status_code == 404:
@@ -576,12 +1262,32 @@ class RestClient:
         return len(data) == 1 and data[0]["type"] != "pending_transaction"
 
     async def transaction_by_hash(self, txn_hash: str) -> Dict[str, Any]:
+        """
+        Retrieve a transaction by its hash.
+
+        This is a coroutine that fetches transaction details using the
+        transaction hash.
+
+        :param txn_hash: The transaction hash to look up
+        :return: Transaction details as a dictionary
+        :raises ApiError: If the transaction is not found or request fails
+        """
         response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
         return response.json()
 
     async def transaction_by_version(self, version: int) -> Dict[str, Any]:
+        """
+        Retrieve a transaction by its ledger version.
+
+        This is a coroutine that fetches transaction details using the
+        ledger version number.
+
+        :param version: The ledger version of the transaction to retrieve
+        :return: Transaction details as a dictionary
+        :raises ApiError: If the transaction is not found or request fails
+        """
         response = await self._get(endpoint=f"transactions/by_version/{version}")
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
@@ -655,6 +1361,18 @@ class RestClient:
         secondary_accounts: List[Account],
         payload: TransactionPayload,
     ) -> SignedTransaction:
+        """
+        Create a multi-agent BCS transaction with multiple signers.
+
+        This is a coroutine that creates a transaction requiring signatures
+        from multiple accounts (sender and secondary accounts).
+
+        :param sender: The primary account sending the transaction
+        :param secondary_accounts: Additional accounts that must sign the transaction
+        :param payload: The transaction payload to execute
+        :return: A signed multi-agent transaction
+        :raises ApiError: If account sequence number lookup fails
+        """
         raw_transaction = MultiAgentRawTransaction(
             RawTransaction(
                 sender.address(),
@@ -689,6 +1407,18 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> RawTransaction:
+        """
+        Create a raw BCS transaction ready for signing.
+
+        This is a coroutine that builds a raw transaction with the specified
+        payload and transaction parameters.
+
+        :param sender: The sender account or address
+        :param payload: The transaction payload to execute
+        :param sequence_number: Specific sequence number, or None to fetch from chain
+        :return: An unsigned raw transaction
+        :raises ApiError: If sequence number lookup or chain ID fetch fails
+        """
         if isinstance(sender, Account):
             sender_address = sender.address()
         else:
@@ -715,6 +1445,18 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> SignedTransaction:
+        """
+        Create and sign a BCS transaction ready for submission.
+
+        This is a coroutine that creates a raw transaction and signs it
+        with the sender's private key.
+
+        :param sender: The account that will send and sign the transaction
+        :param payload: The transaction payload to execute
+        :param sequence_number: Specific sequence number, or None to fetch from chain
+        :return: A fully signed transaction ready for submission
+        :raises ApiError: If sequence number lookup or chain ID fetch fails
+        """
         raw_transaction = await self.create_bcs_transaction(
             sender, payload, sequence_number
         )
@@ -733,13 +1475,25 @@ class RestClient:
         amount: int,
         sequence_number: Optional[int] = None,
     ) -> str:
+        """
+        Transfer Aptos coins from sender to recipient.
+
+        This is a coroutine that creates, signs, and submits a transfer transaction.
+
+        :param sender: The account sending the coins
+        :param recipient: Address of the account to receive the coins
+        :param amount: Amount of coins to transfer in octas (1 APT = 10^8 octas)
+        :param sequence_number: Specific sequence number, or None to fetch from chain
+        :return: The transaction hash as a hex string
+        :raises ApiError: If transaction creation or submission fails
+        """
         transaction_arguments = [
             TransactionArgument(recipient, Serializer.struct),
             TransactionArgument(amount, Serializer.u64),
         ]
 
         payload = EntryFunction.natural(
-            "0x1::aptos_account",
+            "***::aptos_account",
             "transfer",
             [],
             transaction_arguments,
@@ -758,13 +1512,27 @@ class RestClient:
         amount: int,
         sequence_number: Optional[int] = None,
     ) -> str:
+        """
+        Transfer coins of a specific type from sender to recipient.
+
+        This is a coroutine that creates, signs, and submits a transfer transaction
+        for any coin type (not just Aptos coins).
+
+        :param sender: The account sending the coins
+        :param recipient: Address of the account to receive the coins
+        :param coin_type: The fully qualified coin type (e.g., "***::usdc::USDC")
+        :param amount: Amount of coins to transfer (in the coin's base units)
+        :param sequence_number: Specific sequence number, or None to fetch from chain
+        :return: The transaction hash as a hex string
+        :raises ApiError: If transaction creation or submission fails
+        """
         transaction_arguments = [
             TransactionArgument(recipient, Serializer.struct),
             TransactionArgument(amount, Serializer.u64),
         ]
 
         payload = EntryFunction.natural(
-            "0x1::aptos_account",
+            "***::aptos_account",
             "transfer_coins",
             [TypeTag(StructTag.from_str(coin_type))],
             transaction_arguments,
@@ -778,13 +1546,25 @@ class RestClient:
     async def transfer_object(
         self, owner: Account, object: AccountAddress, to: AccountAddress
     ) -> str:
+        """
+        Transfer ownership of an object to another account.
+
+        This is a coroutine that creates, signs, and submits a transaction to
+        transfer ownership of an Aptos object.
+
+        :param owner: The current owner of the object
+        :param object: The address of the object to transfer
+        :param to: The address of the new owner
+        :return: The transaction hash as a hex string
+        :raises ApiError: If transaction creation or submission fails
+        """
         transaction_arguments = [
             TransactionArgument(object, Serializer.struct),
             TransactionArgument(to, Serializer.struct),
         ]
 
         payload = EntryFunction.natural(
-            "0x1::object",
+            "***::object",
             "transfer_call",
             [],
             transaction_arguments,
@@ -919,6 +1699,12 @@ class FaucetClient:
             self.headers["Authorization"] = f"Bearer {auth_token}"
 
     async def close(self):
+        """
+        Close the underlying REST client connection.
+
+        This is a coroutine that should be called when done with the faucet client
+        to properly clean up resources.
+        """
         await self.rest_client.close()
 
     async def fund_account(
@@ -936,6 +1722,13 @@ class FaucetClient:
         return txn_hash
 
     async def healthy(self) -> bool:
+        """
+        Check if the faucet service is healthy and responding.
+
+        This is a coroutine that performs a health check on the faucet service.
+
+        :return: True if the faucet is healthy, False otherwise
+        """
         response = await self.rest_client.client.get(self.base_url)
         return "tap:ok" == response.text
 

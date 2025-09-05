@@ -1,3 +1,125 @@
+"""
+Authentication Key Rotation Example for Aptos Python SDK.
+
+This example demonstrates how to perform authentication key rotation on the Aptos
+blockchain, showcasing both single-key and multi-key rotation scenarios. Authentication
+key rotation allows changing the private key that controls an account while keeping
+the same account address, providing crucial security and recovery capabilities.
+
+Key rotation is essential for:
+    - **Key Compromise Recovery**: When a private key is suspected to be compromised
+    - **Proactive Security**: Periodic key rotation as a security best practice
+    - **Key Management**: Transitioning from single keys to multi-signature setups
+    - **Access Transfer**: Transferring account control to different parties
+    - **Emergency Recovery**: Recovering access using backup keys
+
+Features Demonstrated:
+    - Single Ed25519 key rotation from one private key to another
+    - Multi-signature key rotation from single key to multi-key setup
+    - Rotation proof challenge generation and signing
+    - Authentication key validation after rotation
+    - Account reconstruction with new private keys
+    - On-chain verification of rotation completion
+
+Key Concepts:
+    - **Authentication Key**: The key that proves ownership of an account
+    - **Account Address**: Remains constant even after key rotation
+    - **Rotation Proof**: Cryptographic proof that the current key holder
+      authorizes the key change
+    - **Dual Signatures**: Both current and new keys must sign the rotation proof
+    - **Multi-Key Migration**: Transitioning from single to multi-signature control
+
+Security Model:
+    The rotation process requires signatures from both:
+    1. **Current Key**: Proves current control of the account
+    2. **New Key**: Proves possession of the new private key
+    
+    This dual-signature requirement prevents unauthorized key rotations even
+    if an attacker knows the new private key but not the current one.
+
+Workflow Overview:
+    1. **Setup Phase**:
+       - Generate accounts (Alice as primary, Bob's key as rotation target)
+       - Fund Alice's account for transaction fees
+       - Display initial account states
+    
+    2. **Single Key Rotation**:
+       - Create rotation proof challenge with sequence number and addresses
+       - Sign the challenge with both current (Alice) and new (Bob) keys
+       - Submit rotation transaction to the blockchain
+       - Verify authentication key change on-chain
+       - Reconstruct Alice's account object with new private key
+    
+    3. **Multi-Key Migration**:
+       - Create multi-key setup combining multiple Ed25519 keys
+       - Generate rotation proof for single-to-multi transition
+       - Submit multi-key rotation transaction
+       - Validate the new multi-signature authentication key
+
+Rotation Proof Challenge Components:
+    - **Sequence Number**: Current account sequence to prevent replay attacks
+    - **Originator**: The account address being rotated
+    - **Current Auth Key**: The authentication key being replaced
+    - **New Public Key**: The public key portion of the replacement key
+
+Transaction Structure:
+    The rotation transaction calls `0x1::account::rotate_authentication_key` with:
+    - Authentication schemes for both keys (current and new)
+    - Public keys for both current and new authentication
+    - Signatures from both keys proving authorization
+
+Security Considerations:
+    - **Private Key Protection**: Store rotation keys securely
+    - **Replay Protection**: Each rotation uses current sequence number
+    - **Atomic Operations**: Rotation either succeeds completely or fails
+    - **Verification**: Always verify rotation completion on-chain
+    - **Key Material**: Securely dispose of old private keys after rotation
+
+Common Use Cases:
+    - **Suspected Compromise**: Immediate rotation to new secure keys
+    - **Operational Security**: Periodic key rotation policies
+    - **Multi-Sig Migration**: Moving high-value accounts to multi-signature
+    - **Recovery Operations**: Using backup keys to regain account access
+    - **Organizational Changes**: Transferring control between team members
+
+Error Scenarios:
+    - Invalid signatures in rotation proof
+    - Insufficient account balance for transaction fees
+    - Network connectivity issues during submission
+    - Sequence number mismatches (replay protection)
+    - Malformed rotation proof challenges
+
+Prerequisites:
+    - Active Aptos network connection (devnet/testnet)
+    - Faucet access for funding transaction fees
+    - Understanding of Ed25519 cryptographic signatures
+    - Knowledge of account authentication mechanisms
+
+Usage:
+    Run this script to see authentication key rotation in action:
+        python3 examples/rotate_key.py
+
+Expected Output:
+    - Formatted display of account information before rotation
+    - Progress indicators during rotation operations
+    - Updated account information after each rotation
+    - Verification of successful authentication key changes
+    - Final multi-signature authentication key confirmation
+
+Learning Objectives:
+    - Master authentication key rotation mechanics
+    - Understand dual-signature security requirements
+    - Practice single-to-multi-key migrations
+    - Learn rotation proof challenge construction
+    - Gain experience with advanced account security patterns
+
+Related Examples:
+    - multikey.py: Multi-signature account creation and usage
+    - hello_blockchain.py: Basic account and transaction patterns
+    - authenticate.py: Authentication and signature verification
+    - multisig.py: Legacy multi-signature account patterns
+"""
+
 import asyncio
 from typing import List, cast
 
@@ -20,10 +142,50 @@ WIDTH = 19
 
 
 def truncate(address: str) -> str:
+    """
+    Truncate a long address string for display purposes.
+    
+    Takes a long address string and returns a shortened version showing
+    only the first 6 and last 6 characters, with "..." in between.
+    This is useful for displaying addresses in formatted tables.
+    
+    Args:
+        address: The full address string to truncate.
+        
+    Returns:
+        A shortened string in the format "123abc...def456".
+        
+    Example:
+        >>> truncate("***23456789abcdef")
+        "***23...def"
+    """
     return address[0:6] + "..." + address[-6:]
 
 
 def format_account_info(account: Account) -> str:
+    """
+    Format account information for tabular display.
+    
+    Extracts key information from an Account object and formats it
+    into a fixed-width string suitable for table display. Each field
+    is truncated and left-justified to maintain consistent formatting.
+    
+    Args:
+        account: The Account object to format.
+        
+    Returns:
+        A formatted string containing truncated account information
+        with consistent spacing for table display.
+        
+    The formatted string contains:
+        - Account address (truncated)
+        - Authentication key (truncated)
+        - Private key hex representation (truncated)
+        - Public key string representation (truncated)
+    
+    Example Output:
+        "***bcd...456    ***def...789    abc123...xyz    ed25519..."
+    """
     vals = [
         str(account.address()),
         account.auth_key(),
