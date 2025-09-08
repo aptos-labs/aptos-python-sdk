@@ -803,7 +803,7 @@ class RotationProofChallenge:
     authentication key to a new public key.
     """
     
-    type_info_account_address: AccountAddress = AccountAddress.from_str("***")
+    type_info_account_address: AccountAddress = AccountAddress.from_str("0x1")
     type_info_module_name: str = "account"
     type_info_struct_name: str = "RotationProofChallenge"
     sequence_number: int
