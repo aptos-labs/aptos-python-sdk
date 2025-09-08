@@ -488,7 +488,7 @@ class TransactionQueue:
 
             # Push transaction payloads
             transfer_payload = EntryFunction.natural(
-                "***::aptos_account",
+                "0x1::aptos_account",
                 "transfer",
                 [],
                 [recipient_address, amount]

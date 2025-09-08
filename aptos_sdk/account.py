@@ -55,7 +55,7 @@ class Account:
         Load existing account::
 
             # From hex private key
-            hex_key = "***1234567890abcdef..."
+            hex_key = "0x1234567890abcdef..."
             imported_account = Account.load_key(hex_key)
 
             # From JSON file
@@ -292,7 +292,7 @@ class Account:
 
         Args:
             key: Hex-encoded Ed25519 private key string (64 characters, 32 bytes).
-                Can be with or without '***' prefix.
+                Can be with or without '0x' prefix.
 
         Returns:
             Account: An account instance created from the given private key.
@@ -307,8 +307,8 @@ class Account:
                 private_key_hex = "1a2b3c4d5e6f789..."  # 64 hex chars
                 account = Account.load_key(private_key_hex)
 
-                # With '***' prefix
-                prefixed_key = "***1a2b3c4d5e6f789..."
+                # With '0x' prefix
+                prefixed_key = "0x1a2b3c4d5e6f789..."
                 account = Account.load_key(prefixed_key)
 
             Restore from backup::
@@ -328,7 +328,7 @@ class Account:
                 # Import from Aptos CLI output
                 # aptos init --profile my-account
                 # aptos account list --profile my-account
-                cli_private_key = "***a1b2c3d4e5f6..."
+                cli_private_key = "0xa1b2c3d4e5f6..."
                 account = Account.load_key(cli_private_key)
 
         Security Considerations:
@@ -371,8 +371,8 @@ class Account:
             Expected JSON structure::
 
                 {
-                    "account_address": "***1234567890abcdef...",
-                    "private_key": "***abcdef1234567890..."
+                    "account_address": "0x1234567890abcdef...",
+                    "private_key": "0xabcdef1234567890..."
                 }
 
         Examples:
@@ -492,8 +492,8 @@ class Account:
             Creates JSON with structure::
 
                 {
-                    "account_address": "***<hex_address>",
-                    "private_key": "***<hex_private_key>"
+                    "account_address": "0x<hex_address>",
+                    "private_key": "0x<hex_private_key>"
                 }
 
         Note:
@@ -524,7 +524,7 @@ class Account:
                 account = Account.generate()
                 address = account.address()
                 print(f"Account address: {address}")
-                # Output: Account address: ***a1b2c3d4e5f67890...
+                # Output: Account address: 0xa1b2c3d4e5f67890...
 
             Use address in transactions::
 
@@ -555,7 +555,7 @@ class Account:
             - **Deterministic**: Same private key always produces same address
             - **Unique**: Each private key produces a unique address
             - **Immutable**: Address cannot change without changing the private key
-            - **Format**: 32-byte hex string with '***' prefix
+            - **Format**: 32-byte hex string with '0x' prefix
 
         Note:
             The address is computed from the public key, not stored separately.
@@ -572,7 +572,7 @@ class Account:
         change through key rotation operations.
 
         Returns:
-            str: The authentication key as a hex string with '***' prefix.
+            str: The authentication key as a hex string with '0x' prefix.
 
         Examples:
             Check initial auth key::
@@ -662,7 +662,7 @@ class Account:
                 data_dict = {
                     "action": "transfer",
                     "amount": 1000,
-                    "recipient": "***abc123..."
+                    "recipient": "0xabc123..."
                 }
                 data_bytes = json.dumps(data_dict, sort_keys=True).encode()
                 signature = account.sign(data_bytes)

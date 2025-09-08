@@ -56,7 +56,7 @@ Examples:
     Working with hex strings::
 
         # Create from hex string
-        hex_key = "***234abcd..."
+        hex_key = "0x1234abcd..."
         private_key = PrivateKey.from_hex(hex_key)
 
         # Get hex representation
@@ -67,7 +67,7 @@ Examples:
     AIP-80 compliant formatting::
 
         # AIP-80 formatted private key
-        aip80_key = "secp256k1-priv-***234abcd..."
+        aip80_key = "secp256k1-priv-0x1234abcd..."
         private_key = PrivateKey.from_str(aip80_key, strict=True)
 
         # Convert to AIP-80 format
@@ -92,7 +92,7 @@ Examples:
     Cross-chain compatibility::
 
         # Import Ethereum private key
-        ethereum_key = "***456789abcdef..."
+        ethereum_key = "0x123456789abcdef..."
         aptos_key = PrivateKey.from_hex(ethereum_key)
 
         # Same key can be used on both chains
@@ -150,12 +150,12 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
         Create from existing key material::
 
-            hex_key = "***234567890abcdef..."
+            hex_key = "0x1234567890abcdef..."
             private_key = PrivateKey.from_hex(hex_key)
 
         Create from AIP-80 format::
 
-            aip80_key = "secp256k1-priv-***234567890abcdef..."
+            aip80_key = "secp256k1-priv-0x1234567890abcdef..."
             private_key = PrivateKey.from_str(aip80_key, strict=True)
 
         Sign and verify::
@@ -184,7 +184,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         Example:
             This is typically not called directly. Use the factory methods:
             >>> private_key = PrivateKey.random()
-            >>> private_key = PrivateKey.from_hex("***abc123...")
+            >>> private_key = PrivateKey.from_hex("0xabc123...")
         """
         self.key = key
 
@@ -198,8 +198,8 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
             True if both private keys are cryptographically equivalent.
 
         Example:
-            >>> key1 = PrivateKey.from_hex("***abc123...")
-            >>> key2 = PrivateKey.from_hex("***abc123...")
+            >>> key1 = PrivateKey.from_hex("0xabc123...")
+            >>> key2 = PrivateKey.from_hex("0xabc123...")
             >>> key1 == key2
             True
         """
@@ -215,7 +215,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
         Example:
             >>> str(private_key)
-            'secp256k1-priv-***234567890abcdef...'
+            'secp256k1-priv-0x1234567890abcdef...'
         """
         return self.aip80()
 
@@ -228,10 +228,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
         Args:
             value: Private key in various formats:
-                - Raw hex string: "***234567890abcdef..."
-                - Hex with prefix: "***234567890abcdef..."
-                - Raw bytes: bytes.fromhex("234567890abcdef...")
-                - AIP-80 format: "secp256k1-priv-***234567890abcdef..."
+                - Raw hex string: "0x1234567890abcdef..."
+                - Hex with prefix: "0x1234567890abcdef..."
+                - Raw bytes: bytes.fromhex("0x1234567890abcdef...")
+                - AIP-80 format: "secp256k1-priv-0x1234567890abcdef..."
             strict: AIP-80 compliance mode:
                 - True: Only accept AIP-80 compliant strings
                 - False: Accept legacy formats without warning
@@ -247,12 +247,12 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         Examples:
             From raw hex::
 
-                key = PrivateKey.from_hex("***234567890abcdef...")
+                key = PrivateKey.from_hex("0x1234567890abcdef...")
 
             From AIP-80 format::
 
                 key = PrivateKey.from_hex(
-                    "secp256k1-priv-***234567890abcdef...",
+                    "secp256k1-priv-0x1234567890abcdef...",
                     strict=True
                 )
 
@@ -287,8 +287,8 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
             A new secp256k1 PrivateKey instance.
 
         Example:
-            >>> key = PrivateKey.from_str("secp256k1-priv-***abc123...")
-            >>> key = PrivateKey.from_str("***abc123...", strict=False)
+            >>> key = PrivateKey.from_str("secp256k1-priv-0xabc123...")
+            >>> key = PrivateKey.from_str("0xabc123...", strict=False)
         """
         return PrivateKey.from_hex(value, strict)
 
@@ -300,9 +300,9 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
         Example:
             >>> private_key.hex()
-            '***abc123456789def...'
+            '0xabc123456789def...'
         """
-        return f"***{self.key.to_string().hex()}"
+        return f"0x{self.key.to_string().hex()}"
 
     def aip80(self) -> str:
         """Get the AIP-80 compliant string representation.
@@ -312,7 +312,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
         Example:
             >>> private_key.aip80()
-            'secp256k1-priv-***abc123456789def...'
+            'secp256k1-priv-0xabc123456789def...'
         """
         return PrivateKey.format_private_key(
             self.hex(), asymmetric_crypto.PrivateKeyVariant.Secp256k1
@@ -460,7 +460,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
         Create from hex string::
 
             # With or without 0x04 prefix
-            hex_key = "***4..." # 65 bytes with prefix
+            hex_key = "0x4..." # 65 bytes with prefix
             public_key = PublicKey.from_str(hex_key)
 
         Verify a signature::
@@ -522,7 +522,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
         Example:
             >>> str(public_key)
-            '***4...'  # 65 bytes with 0x04 prefix
+            '0x4...'  # 65 bytes with 0x04 prefix
         """
         return self.hex()
 
@@ -545,7 +545,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             From uncompressed format with prefix::
 
                 # 130 hex chars (65 bytes) with 0x04 prefix
-                key = PublicKey.from_str("***4210c9129e...")
+                key = PublicKey.from_str("0x4210c9129e...")
 
             From raw format::
 
@@ -572,12 +572,12 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
         Example:
             >>> public_key.hex()
-            '***4210c9129e35337ff5d6488f90f18d842cf...'  # 65 bytes with prefix
+            '0x4210c9129e35337ff5d6488f90f18d842cf...'  # 65 bytes with prefix
 
         Note:
             The '0x04' prefix indicates an uncompressed public key format.
         """
-        return f"***4{self.key.to_string().hex()}"
+        return f"0x04{self.key.to_string().hex()}"
 
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         """Verify a signature against this public key.
@@ -705,7 +705,7 @@ class Signature(asymmetric_crypto.Signature):
 
         Create from hex string::
 
-            sig_hex = "***1234abcd..."
+            sig_hex = "0x1234abcd..."
             signature = Signature.from_str(sig_hex)
 
         Verify with public key::
@@ -763,7 +763,7 @@ class Signature(asymmetric_crypto.Signature):
 
         Example:
             >>> str(signature)
-            '***c9a34d6...'  # 64 bytes
+            '0xc9a34d6...'  # 64 bytes
         """
         return self.hex()
 
@@ -775,9 +775,9 @@ class Signature(asymmetric_crypto.Signature):
 
         Example:
             >>> signature.hex()
-            '***a1b2c3d4...'  # 64 bytes as hex
+            '0xa1b2c3d4...'  # 64 bytes as hex
         """
-        return f"***{self.signature.hex()}"
+        return f"{self.signature.hex()}"
 
     @staticmethod
     def from_str(value: str) -> Signature:
@@ -795,7 +795,7 @@ class Signature(asymmetric_crypto.Signature):
             Exception: If the signature length is invalid.
 
         Example:
-            >>> sig = Signature.from_str("***a1b2c3d4...")
+            >>> sig = Signature.from_str("0xa1b2c3d4...")
             >>> len(sig.data())
             64
         """

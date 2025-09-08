@@ -156,8 +156,8 @@ def truncate(address: str) -> str:
         A shortened string in the format "123abc...def456".
 
     Example:
-        >>> truncate("***23456789abcdef")
-        "***23...def"
+        >>> truncate("0x123456789abcdef")
+        "0x123...def"
     """
     return address[0:6] + "..." + address[-6:]
 
@@ -184,7 +184,7 @@ def format_account_info(account: Account) -> str:
         - Public key string representation (truncated)
 
     Example Output:
-        "***bcd...456    ***def...789    abc123...xyz    ed25519..."
+        "0xbcd...456    0xdef...789    abc123...xyz    ed25519..."
     """
     vals = [
         str(account.address()),

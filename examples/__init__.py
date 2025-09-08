@@ -28,7 +28,7 @@ Quick Start:
     Most examples can be run directly from the command line::
     
         # Basic blockchain interaction
-        python -m examples.hello_blockchain ***contract_address***
+        python -m examples.hello_blockchain <contract_address>
         
         # NFT operations
         python -m examples.aptos_token

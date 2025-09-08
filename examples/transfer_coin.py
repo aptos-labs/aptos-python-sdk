@@ -69,7 +69,7 @@ APT Token Details:
     - **Unit**: APT tokens are measured in "octas" (1 APT = 100,000,000 octas)
     - **Precision**: 8 decimal places (similar to Bitcoin's satoshis)
     - **Gas**: Transaction fees are paid in APT and deducted automatically
-    - **Type**: APT is represented as "***::aptos_coin::AptosCoin" on-chain
+    - **Type**: APT is represented as "0x1::aptos_coin::AptosCoin" on-chain
 
 Indexer Integration:
     If an indexer URL is configured, the example demonstrates:
@@ -168,8 +168,8 @@ async def main():
     Expected Output::
 
         === Addresses ===
-        Alice: ***abc123...
-        Bob: ***def456...
+        Alice: 0xabc123...
+        Bob: 0xdef456...
 
         === Initial Balances ===
         Alice: 100000000

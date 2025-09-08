@@ -74,7 +74,7 @@ Examples:
 
         from aptos_sdk.account_address import AccountAddress
 
-        recipient_address = AccountAddress.from_str("***recipient...")
+        recipient_address = AccountAddress.from_str("<recipient...>")
         recipient = Account.load("./recipient.json")
 
         # Offer token to recipient

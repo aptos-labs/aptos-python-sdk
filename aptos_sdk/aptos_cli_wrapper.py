@@ -39,8 +39,8 @@ Examples:
 
         # Define named addresses
         named_addresses = {
-            "MyModule": AccountAddress.from_str("***1234..."),
-            "Treasury": AccountAddress.from_str("***5678...")
+            "MyModule": AccountAddress.from_str("0x1234..."),
+            "Treasury": AccountAddress.from_str("0x5678...")
         }
 
         # Compile the package
@@ -164,8 +164,8 @@ class AptosCLIWrapper:
             from aptos_sdk.account_address import AccountAddress
 
             named_addresses = {
-                "admin": AccountAddress.from_str("***1"),
-                "user": AccountAddress.from_str("***2")
+                "admin": AccountAddress.from_str("0x1"),
+                "user": AccountAddress.from_str("0x2")
             }
 
             AptosCLIWrapper.compile_package(
@@ -202,19 +202,19 @@ class AptosCLIWrapper:
 
             Single address::
 
-                >>> addresses = {"admin": AccountAddress.from_str("***1")}
+                >>> addresses = {"admin": AccountAddress.from_str("0x1")}
                 >>> AptosCLIWrapper.prepare_named_addresses(addresses)
-                ['--named-addresses', 'admin=***1']
+                ['--named-addresses', 'admin=0x1']
 
             Multiple addresses::
 
                 >>> addresses = {
-                ...     "admin": AccountAddress.from_str("***1"),
-                ...     "user": AccountAddress.from_str("***2")
+                ...     "admin": AccountAddress.from_str("0x1"),
+                ...     "user": AccountAddress.from_str("0x2")
                 ... }
                 >>> args = AptosCLIWrapper.prepare_named_addresses(addresses)
                 >>> args
-                ['--named-addresses', 'admin=***1,user=***2']
+                ['--named-addresses', 'admin=0x1,user=0x2']
 
         Note:
             The CLI expects named addresses in a comma-separated format after
@@ -266,8 +266,8 @@ class AptosCLIWrapper:
                 from aptos_sdk.account_address import AccountAddress
 
                 named_addresses = {
-                    "deployer": AccountAddress.from_str("***1234..."),
-                    "resource_account": AccountAddress.from_str("***5678...")
+                    "deployer": AccountAddress.from_str("0x1234..."),
+                    "resource_account": AccountAddress.from_str("0x5678...")
                 }
 
                 AptosCLIWrapper.compile_package(
@@ -396,8 +396,8 @@ class AptosCLIWrapper:
                 from aptos_sdk.account_address import AccountAddress
 
                 test_addresses = {
-                    "test_admin": AccountAddress.from_str("***cafe"),
-                    "test_user": AccountAddress.from_str("***beef")
+                    "test_admin": AccountAddress.from_str("0xcafe"),
+                    "test_user": AccountAddress.from_str("0xbeef")
                 }
 
                 AptosCLIWrapper.test_package(
@@ -420,7 +420,7 @@ class AptosCLIWrapper:
                     // Test logic here
                 }
 
-                #[test(admin = @***1, user = @***2)]
+                #[test(admin = @0x1, user = @0x2)]
                 public fun test_with_addresses(admin: &signer, user: &signer) {
                     // Test with specific signers
                 }

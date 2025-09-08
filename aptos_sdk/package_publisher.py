@@ -86,7 +86,7 @@ Examples:
     Package upgrade workflow::
 
         # Identify the object to upgrade
-        code_object = AccountAddress.from_str("***existing_object_address")
+        code_object = AccountAddress.from_str("<existing_object_address>")
 
         # Deploy upgrade
         txn_hashes = await publisher.publish_package_in_path(
@@ -260,7 +260,7 @@ class PackagePublisher:
             from aptos_sdk.account_address import AccountAddress
 
             # Address of the existing code object
-            code_object = AccountAddress.from_str("***abcdef...")
+            code_object = AccountAddress.from_str("0xabcdef...")
 
             # Publish the upgrade
             txn_hashes = await publisher.publish_package_in_path(
@@ -548,7 +548,7 @@ class PackagePublisher:
                     sender=account,
                     package_dir="./updated_package",
                     publish_mode=PublishMode.OBJECT_UPGRADE,
-                    code_object=AccountAddress.from_str("***abcdef...")
+                    code_object=AccountAddress.from_str("0xabcdef...")
                 )
 
         Note:

@@ -46,7 +46,7 @@ Examples:
 
         # Create transfer payload
         transfer_payload = EntryFunction.natural(
-            "***::aptos_account",
+            "0x1::aptos_account",
             "transfer",
             [],
             [recipient, 1_000_000]  # 1 APT in octas
@@ -309,7 +309,7 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 
             # Create transfer payload
             payload = EntryFunction.natural(
-                "***::aptos_account",
+                "0x1::aptos_account",
                 "transfer",
                 [],
                 [recipient, 1_000_000]  # 1 APT
@@ -334,9 +334,9 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 
             # Call custom module function
             contract_payload = EntryFunction.natural(
-                "***abc123::my_module",
+                "0xabc123::my_module",
                 "custom_function",
-                ["***::aptos_coin::AptosCoin"],  # Type arguments
+                ["0x1::aptos_coin::AptosCoin"],  # Type arguments
                 [1000, "hello world", True]      # Function arguments
             )
 
@@ -465,7 +465,7 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 
                 # Create transfer payload
                 payload = EntryFunction.natural(
-                    "***::aptos_account", "transfer", [],
+                    "0x1::aptos_account", "transfer", [],
                     [recipient_address, 1_000_000]
                 )
 
@@ -484,9 +484,9 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 
                 # Contract interaction with type arguments
                 contract_call = EntryFunction.natural(
-                    "***deadbeef::defi_module",
+                    "0xdeadbeef::defi_module",
                     "swap_tokens",
-                    ["***::aptos_coin::AptosCoin", "***::test_coin::TestCoin"],
+                    ["0x1::aptos_coin::AptosCoin", "0x12345::test_coin::TestCoin"],
                     [input_amount, min_output_amount, slippage_tolerance]
                 )
 
@@ -955,7 +955,7 @@ class EntryFunction:
         """
         Create an EntryFunction from natural string representation.
 
-        :param module: Module name in string format (e.g., "***::coin")
+        :param module: Module name in string format (e.g., "0x1::coin")
         :param function: Function name
         :param ty_args: Type arguments for the function
         :param args: Transaction arguments to be encoded

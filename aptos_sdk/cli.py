@@ -32,7 +32,7 @@ Examples:
 
         python -m aptos_sdk.cli publish-package \
             --package-dir ./my-move-package \
-            --account ***1234... \
+            --account 0x1234... \
             --private-key-path ./private_key.txt \
             --rest-api https://fullnode.devnet.aptoslabs.com/v1
 
@@ -40,11 +40,11 @@ Examples:
 
         python -m aptos_sdk.cli publish-package \
             --package-dir ./my-move-package \
-            --account ***1234... \
+            --account 0x1234... \
             --private-key-path ./private_key.txt \
             --rest-api https://fullnode.devnet.aptoslabs.com/v1 \
-            --named-address my_addr=***5678... \
-            --named-address other_addr=***9abc...
+            --named-address my_addr=0x5678... \
+            --named-address other_addr=0x9abc...
 
     Programmatic usage::
 
@@ -55,7 +55,7 @@ Examples:
         await main([
             'publish-package',
             '--package-dir', './my-package',
-            '--account', '***1234...',
+            '--account', '0x1234...',
             '--private-key-path', './key.txt',
             '--rest-api', 'https://fullnode.devnet.aptoslabs.com/v1'
         ])
@@ -69,11 +69,11 @@ Examples:
 
         # Direct function call
         private_key = PrivateKey.from_str("ed25519-priv-...")
-        account = Account(AccountAddress.from_str("***123..."), private_key)
+        account = Account(AccountAddress.from_str("0x123..."), private_key)
 
         await publish_package(
             package_dir="./my-package",
-            named_addresses={"MyModule": AccountAddress.from_str("***456...")},
+            named_addresses={"MyModule": AccountAddress.from_str("0x456...")},
             signer=account,
             rest_api="https://fullnode.devnet.aptoslabs.com/v1"
         )
@@ -155,7 +155,7 @@ async def publish_package(
 
             # Create account from private key
             private_key = PrivateKey.from_str("ed25519-priv-...")
-            account = Account(AccountAddress.from_str("***123..."), private_key)
+            account = Account(AccountAddress.from_str("0x123..."), private_key)
 
             # Publish package
             await publish_package(
@@ -168,8 +168,8 @@ async def publish_package(
         Package with named addresses::
 
             named_addresses = {
-                "MyContract": AccountAddress.from_str("***456..."),
-                "Treasury": AccountAddress.from_str("***789...")
+                "MyContract": AccountAddress.from_str("0x456..."),
+                "Treasury": AccountAddress.from_str("0x789...")
             }
 
             await publish_package(
@@ -214,16 +214,16 @@ def key_value(indata: str) -> Tuple[str, AccountAddress]:
     Examples:
         Parse named address::
 
-            >>> name, addr = key_value("MyContract=***1234...")
+            >>> name, addr = key_value("MyContract=0x1234...")
             >>> print(f"Name: {name}, Address: {addr}")
-            Name: MyContract, Address: ***1234...
+            Name: MyContract, Address: 0x1234...
 
         Multiple named addresses::
 
             named_pairs = [
-                key_value("TokenContract=***1111..."),
-                key_value("Treasury=***2222..."),
-                key_value("Admin=***3333...")
+                key_value("TokenContract=0x1111..."),
+                key_value("Treasury=0x2222..."),
+                key_value("Admin=0x3333...")
             ]
 
             # Convert to dictionary
@@ -231,8 +231,8 @@ def key_value(indata: str) -> Tuple[str, AccountAddress]:
 
     Command-line usage::
 
-        --named-address MyContract=***1234... \
-        --named-address Treasury=***5678...
+        --named-address MyContract=0x1234... \
+        --named-address Treasury=0x5678...
 
     Note:
         This function is primarily used by the argument parser to convert
@@ -264,7 +264,7 @@ async def main(args: List[str]):
 
             python -m aptos_sdk.cli publish-package \
                 --package-dir ./my-package \
-                --account ***1234... \
+                --account 0x1234... \
                 --private-key-path ./key.txt \
                 --rest-api https://fullnode.devnet.aptoslabs.com/v1
 
@@ -276,10 +276,10 @@ async def main(args: List[str]):
             await main([=
                 'publish-package',
                 '--package-dir', './package',
-                '--account', '***1234...',
+                '--account', '0x1234...',
                 '--private-key-path', './key.txt',
                 '--rest-api', 'https://fullnode.devnet.aptoslabs.com/v1',
-                '--named-address', 'MyAddr=***5678...'
+                '--named-address', 'MyAddr=0x5678...'
             ])
 
     Supported Commands:

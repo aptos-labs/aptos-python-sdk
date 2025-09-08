@@ -112,7 +112,7 @@ Examples:
         from aptos_sdk.account_address import AccountAddress
 
         # Soul-bound tokens cannot be transferred
-        recipient = AccountAddress.from_str("***abc123...")
+        recipient = AccountAddress.from_str("0x4abc123...")
 
         soul_bound_txn = await token_client.mint_soul_bound_token(
             creator=creator,
@@ -127,7 +127,7 @@ Examples:
     Read token information::
 
         # Read token details from blockchain
-        token_address = AccountAddress.from_str("***token_address...")
+        token_address = AccountAddress.from_str("0x4token_address...")
         token_data = await token_client.read_object(token_address)
 
         print(f"Token data: {token_data}")
@@ -147,7 +147,7 @@ Examples:
         from aptos_sdk.account_address import AccountAddress
 
         # Transfer token to another account
-        recipient = AccountAddress.from_str("***recipient_address...")
+        recipient = AccountAddress.from_str("0x4recipient_address...")
         owner = Account.load("./token_owner.json")
 
         transfer_txn = await token_client.transfer_token(
@@ -235,7 +235,7 @@ class Object:
 
             resource_data = {
                 "allow_ungated_transfer": True,
-                "owner": "***abc123..."
+                "owner": "0x4abc123..."
             }
             obj = Object.parse(resource_data)
             print(f"Object owner: {obj.owner}")
@@ -249,7 +249,7 @@ class Object:
     allow_ungated_transfer: bool
     owner: AccountAddress
 
-    struct_tag: str = "***::object::ObjectCore"
+    struct_tag: str = "0x1::object::ObjectCore"
 
     def __init__(self, allow_ungated_transfer, owner):
         self.allow_ungated_transfer = allow_ungated_transfer
@@ -290,7 +290,7 @@ class Collection:
         Parse collection data from blockchain::
 
             resource_data = {
-                "creator": "***abc123...",
+                "creator": "0x4abc123...",
                 "description": "A collection of unique digital art pieces",
                 "name": "Art Collection",
                 "uri": "https://example.com/collection.json"
@@ -308,7 +308,7 @@ class Collection:
     name: str
     uri: str
 
-    struct_tag: str = "***::collection::Collection"
+    struct_tag: str = "0x4::collection::Collection"
 
     def __init__(self, creator, description, name, uri):
         self.creator = creator
@@ -360,7 +360,7 @@ class Royalty:
             resource_data = {
                 "numerator": 500,
                 "denominator": 10000,
-                "payee_address": "***abc123..."
+                "payee_address": "0x4abc123..."
             }
             royalty = Royalty.parse(resource_data)
             print(f"Royalty: {royalty}")  # 5% royalty
@@ -374,7 +374,7 @@ class Royalty:
     denominator: int
     payee_address: AccountAddress
 
-    struct_tag: str = "***::royalty::Royalty"
+    struct_tag: str = "0x4::royalty::Royalty"
 
     def __init__(self, numerator, denominator, payee_address):
         self.numerator = numerator
@@ -417,7 +417,7 @@ class Token:
         Parse token data from blockchain::
 
             resource_data = {
-                "collection": {"inner": "***collection_address..."},
+                "collection": {"inner": "0x4collection_address..."},
                 "index": 42,
                 "description": "A legendary sword with special powers",
                 "name": "Legendary Sword #42",
@@ -438,7 +438,7 @@ class Token:
     name: str
     uri: str
 
-    struct_tag: str = "***::token::Token"
+    struct_tag: str = "0x4::token::Token"
 
     def __init__(
         self,
@@ -701,7 +701,7 @@ class PropertyMap:
 
             # These can be used directly in transaction calls
             # names = ["name", "level", "is_rare", "metadata", "damage"]
-            # types = ["***::string::String", "u64", "bool", "vector<u8>", "u32"]
+            # types = ["0x1::string::String", "u64", "bool", "vector<u8>", "u32"]
             # values = [b"...", b"...", b"...", b"...", b"..."]  # BCS serialized
 
         Parse from blockchain data::
@@ -710,8 +710,8 @@ class PropertyMap:
             resource_data = {
                 "inner": {
                     "data": [
-                        {"key": "level", "value": {"type": 4, "value": "***64..."}},
-                        {"key": "rarity", "value": {"type": 9, "value": "***legendary"}}
+                        {"key": "level", "value": {"type": 4, "value": "0x464..."}},
+                        {"key": "rarity", "value": {"type": 9, "value": "0x4legendary"}}
                     ]
                 }
             }
@@ -745,7 +745,7 @@ class PropertyMap:
 
     properties: List[Property]
 
-    struct_tag: str = "***::property_map::PropertyMap"
+    struct_tag: str = "0x4::property_map::PropertyMap"
 
     def __init__(self, properties: List[Property]):
         self.properties = properties
@@ -812,7 +812,7 @@ class ReadObject:
             from aptos_sdk.account_address import AccountAddress
 
             # Read object from blockchain
-            token_address = AccountAddress.from_str("***token_address...")
+            token_address = AccountAddress.from_str("0x4token_address...")
             read_object = await token_client.read_object(token_address)
 
             # Access different resource types
@@ -857,9 +857,9 @@ class ReadObject:
 
             # This will show something like:
             # ReadObject
-            #     ***::token::Token: Token[collection: ***abc..., name: Sword #1, ...]
-            #     ***::property_map::PropertyMap: PropertyMap[Property[level, u64, 42], ...]
-            #     ***::object::ObjectCore: Object[allow_ungated_transfer: True, owner: ***def...]
+            #     0x4::token::Token: Token[collection: 0x4abc..., name: Sword #1, ...]
+            #     0x4::property_map::PropertyMap: PropertyMap[Property[level, u64, 42], ...]
+            #     0x1::object::ObjectCore: Object[allow_ungated_transfer: True, owner: 0x4def...]
 
     Usage Patterns:
         Conditional resource access::
@@ -1218,9 +1218,9 @@ class AptosTokenClient:
         :raises ApiError: If transaction submission fails
         """
         payload = EntryFunction.natural(
-            "***::aptos_token",
+            "0x4::aptos_token",
             "burn",
-            [TypeTag(StructTag.from_str("***::token::Token"))],
+            [TypeTag(StructTag.from_str("0x4::token::Token"))],
             [TransactionArgument(token, Serializer.struct)],
         )
 
@@ -1239,9 +1239,9 @@ class AptosTokenClient:
         :raises ApiError: If transaction submission fails
         """
         payload = EntryFunction.natural(
-            "***::aptos_token",
+            "0x4::aptos_token",
             "freeze_transfer",
-            [TypeTag(StructTag.from_str("***::token::Token"))],
+            [TypeTag(StructTag.from_str("0x4::token::Token"))],
             [TransactionArgument(token, Serializer.struct)],
         )
 
@@ -1260,9 +1260,9 @@ class AptosTokenClient:
         :raises ApiError: If transaction submission fails
         """
         payload = EntryFunction.natural(
-            "***::aptos_token",
+            "0x4::aptos_token",
             "unfreeze_transfer",
-            [TypeTag(StructTag.from_str("***::token::Token"))],
+            [TypeTag(StructTag.from_str("0x4::token::Token"))],
             [TransactionArgument(token, Serializer.struct)],
         )
 
@@ -1287,9 +1287,9 @@ class AptosTokenClient:
         transaction_arguments.extend(prop.to_transaction_arguments())
 
         payload = EntryFunction.natural(
-            "***::aptos_token",
+            "0x4::aptos_token",
             "add_property",
-            [TypeTag(StructTag.from_str("***::token::Token"))],
+            [TypeTag(StructTag.from_str("0x4::token::Token"))],
             transaction_arguments,
         )
 
@@ -1316,9 +1316,9 @@ class AptosTokenClient:
         ]
 
         payload = EntryFunction.natural(
-            "***::aptos_token",
+            "0x4::aptos_token",
             "remove_property",
-            [TypeTag(StructTag.from_str("***::token::Token"))],
+            [TypeTag(StructTag.from_str("0x4::token::Token"))],
             transaction_arguments,
         )
 
@@ -1343,9 +1343,9 @@ class AptosTokenClient:
         transaction_arguments.extend(prop.to_transaction_arguments())
 
         payload = EntryFunction.natural(
-            "***::aptos_token",
+            "0x4::aptos_token",
             "update_property",
-            [TypeTag(StructTag.from_str("***::token::Token"))],
+            [TypeTag(StructTag.from_str("0x4::token::Token"))],
             transaction_arguments,
         )
 
@@ -1368,8 +1368,8 @@ class AptosTokenClient:
         mints = []
         for event in output["events"]:
             if event["type"] not in (
-                "***::collection::MintEvent",
-                "***::collection::Mint",
+                "0x4::collection::MintEvent",
+                "0x4::collection::Mint",
             ):
                 continue
             mints.append(AccountAddress.from_str_relaxed(event["data"]["token"]))

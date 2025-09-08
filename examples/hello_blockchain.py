@@ -44,7 +44,7 @@ Prerequisites:
         cd ~/aptos-core/aptos-move/move-examples/hello_blockchain
 
         # Publish the module (replace with your address)
-        aptos move publish --named-addresses hello_blockchain=***your_address***
+        aptos move publish --named-addresses hello_blockchain=<your_address>
 
     Using this script::
 
@@ -52,12 +52,12 @@ Prerequisites:
         contract_addr = await publish_contract("./path/to/hello_blockchain")
 
         # Option 2: Run with existing contract
-        python -m examples.hello_blockchain ***contract_address***
+        python -m examples.hello_blockchain <contract_address>
 
 Usage Examples:
     Run with existing contract::
 
-        python -m examples.hello_blockchain ***0x123abc...***
+        python -m examples.hello_blockchain 0x123abc...
 
     Programmatic usage::
 
@@ -72,7 +72,7 @@ Usage Examples:
             await main(contract_addr)
 
             # Option 2: Use existing contract
-            existing_addr = AccountAddress.from_str("***0x123...***")
+            existing_addr = AccountAddress.from_str("0x123...")
             await main(existing_addr)
 
         asyncio.run(run_example())
@@ -85,7 +85,7 @@ Usage Examples:
         os.environ["APTOS_FAUCET_URL"] = "https://faucet.testnet.aptoslabs.com"
 
         # Run example on testnet
-        python -m examples.hello_blockchain ***contract_address***
+        python -m examples.hello_blockchain <contract_address>
 
 Expected Output:
     The script will display:
@@ -97,8 +97,8 @@ Expected Output:
     Example output::
 
         === Addresses ===
-        Alice: ***0xabc123...
-        Bob: ***0xdef456...
+        Alice: 0xabc123...
+        Bob: 0xdef456...
 
         === Initial Balances ===
         Alice: 10000000
@@ -461,7 +461,7 @@ async def main(contract_address: AccountAddress):
 
             from aptos_sdk.account_address import AccountAddress
 
-            contract_addr = AccountAddress.from_str("******bc123...***")
+            contract_addr = AccountAddress.from_str("0xabc123...")
             await main(contract_addr)
 
         End-to-end deployment and interaction::

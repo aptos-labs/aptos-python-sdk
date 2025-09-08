@@ -54,7 +54,7 @@ Examples:
         client = RestClient("https://fullnode.devnet.aptoslabs.com/v1", config)
 
         # Query account information
-        address = AccountAddress.from_str("***123...")
+        address = AccountAddress.from_str("0x123...")
         account_info = await client.account(address)
         balance = await client.account_balance(address)
 
@@ -69,7 +69,7 @@ Examples:
 
         # Create sender account
         sender = Account.generate()
-        recipient = AccountAddress.from_str("***456...")
+        recipient = AccountAddress.from_str("0x456...")
 
         # Transfer 1 APT (1 * 10^8 octas)
         txn_hash = await client.bcs_transfer(
@@ -1493,7 +1493,7 @@ class RestClient:
         ]
 
         payload = EntryFunction.natural(
-            "***::aptos_account",
+            "0x1::aptos_account",
             "transfer",
             [],
             transaction_arguments,
@@ -1520,7 +1520,7 @@ class RestClient:
 
         :param sender: The account sending the coins
         :param recipient: Address of the account to receive the coins
-        :param coin_type: The fully qualified coin type (e.g., "***::usdc::USDC")
+        :param coin_type: The fully qualified coin type (e.g., "0x123456::usdc::USDC")
         :param amount: Amount of coins to transfer (in the coin's base units)
         :param sequence_number: Specific sequence number, or None to fetch from chain
         :return: The transaction hash as a hex string
@@ -1532,7 +1532,7 @@ class RestClient:
         ]
 
         payload = EntryFunction.natural(
-            "***::aptos_account",
+            "0x1::aptos_account",
             "transfer_coins",
             [TypeTag(StructTag.from_str(coin_type))],
             transaction_arguments,
@@ -1564,7 +1564,7 @@ class RestClient:
         ]
 
         payload = EntryFunction.natural(
-            "***::object",
+            "0x1::object",
             "transfer_call",
             [],
             transaction_arguments,
