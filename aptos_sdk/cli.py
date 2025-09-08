@@ -29,15 +29,15 @@ Use Cases:
 
 Examples:
     Basic package publishing::
-    
+
         python -m aptos_sdk.cli publish-package \
             --package-dir ./my-move-package \
             --account ***1234... \
             --private-key-path ./private_key.txt \
             --rest-api https://fullnode.devnet.aptoslabs.com/v1
-            
+
     Package with named addresses::
-    
+
         python -m aptos_sdk.cli publish-package \
             --package-dir ./my-move-package \
             --account ***1234... \
@@ -45,12 +45,12 @@ Examples:
             --rest-api https://fullnode.devnet.aptoslabs.com/v1 \
             --named-address my_addr=***5678... \
             --named-address other_addr=***9abc...
-            
+
     Programmatic usage::
-    
+
         import asyncio
         from aptos_sdk.cli import main
-        
+
         # Run CLI command programmatically
         await main([
             'publish-package',
@@ -59,18 +59,18 @@ Examples:
             '--private-key-path', './key.txt',
             '--rest-api', 'https://fullnode.devnet.aptoslabs.com/v1'
         ])
-        
+
     Integration with scripts::
-    
+
         from aptos_sdk.cli import publish_package
         from aptos_sdk.account import Account
         from aptos_sdk.account_address import AccountAddress
         from aptos_sdk.ed25519 import PrivateKey
-        
+
         # Direct function call
         private_key = PrivateKey.from_str("ed25519-priv-...")
         account = Account(AccountAddress.from_str("***123..."), private_key)
-        
+
         await publish_package(
             package_dir="./my-package",
             named_addresses={"MyModule": AccountAddress.from_str("***456...")},
@@ -87,7 +87,7 @@ Requirements:
 File Format Requirements:
     Private Key File: Should contain a single line with the private key in
     Ed25519 format, either as raw hex or AIP-80 compliant string.
-    
+
     Move Package: Must have proper Move.toml configuration file with
     dependencies and named addresses properly specified.
 
@@ -128,35 +128,35 @@ async def publish_package(
     rest_api: str,
 ):
     """Compile and publish a Move package to the Aptos blockchain.
-    
+
     This function orchestrates the complete package publishing workflow:
     1. Compiles the Move package using the Aptos CLI
     2. Creates a REST client connection to the specified network
     3. Publishes the compiled package to the blockchain
-    
+
     Args:
         package_dir: Path to the Move package directory containing Move.toml.
         named_addresses: Dictionary mapping named address identifiers to
             their resolved AccountAddress values.
         signer: Account that will sign and pay for the package publication.
         rest_api: URL of the Aptos REST API endpoint to publish to.
-        
+
     Raises:
         Exception: If the Move package compilation fails.
         ApiError: If the package publication transaction fails.
         FileNotFoundError: If the package directory or files don't exist.
-        
+
     Examples:
         Basic package publishing::
-        
+
             from aptos_sdk.account import Account
             from aptos_sdk.account_address import AccountAddress
             from aptos_sdk.ed25519 import PrivateKey
-            
+
             # Create account from private key
             private_key = PrivateKey.from_str("ed25519-priv-...")
             account = Account(AccountAddress.from_str("***123..."), private_key)
-            
+
             # Publish package
             await publish_package(
                 package_dir="./my-move-package",
@@ -164,21 +164,21 @@ async def publish_package(
                 signer=account,
                 rest_api="https://fullnode.devnet.aptoslabs.com/v1"
             )
-            
+
         Package with named addresses::
-        
+
             named_addresses = {
                 "MyContract": AccountAddress.from_str("***456..."),
                 "Treasury": AccountAddress.from_str("***789...")
             }
-            
+
             await publish_package(
                 package_dir="./complex-package",
                 named_addresses=named_addresses,
                 signer=deployer_account,
                 rest_api="https://fullnode.mainnet.aptoslabs.com/v1"
             )
-    
+
     Note:
         - Requires the Aptos CLI to be installed and available
         - The signer account must have sufficient APT to pay for gas
@@ -194,46 +194,46 @@ async def publish_package(
 
 def key_value(indata: str) -> Tuple[str, AccountAddress]:
     """Parse a named address string into name and AccountAddress components.
-    
+
     This function parses command-line named address arguments in the format
     "name=address" and returns a tuple suitable for use in named address
     dictionaries.
-    
+
     Args:
         indata: String in format "name=address" where address can be any
             valid AccountAddress format (hex string, shortened address, etc.)
-            
+
     Returns:
         Tuple of (name, AccountAddress) where name is the identifier and
         AccountAddress is the parsed address object.
-        
+
     Raises:
         ValueError: If the input string is not in the expected "name=address" format.
         Exception: If the address portion cannot be parsed as a valid AccountAddress.
-        
+
     Examples:
         Parse named address::
-        
+
             >>> name, addr = key_value("MyContract=***1234...")
             >>> print(f"Name: {name}, Address: {addr}")
             Name: MyContract, Address: ***1234...
-            
+
         Multiple named addresses::
-        
+
             named_pairs = [
                 key_value("TokenContract=***1111..."),
                 key_value("Treasury=***2222..."),
                 key_value("Admin=***3333...")
             ]
-            
+
             # Convert to dictionary
             named_addresses = dict(named_pairs)
-            
+
     Command-line usage::
-    
+
         --named-address MyContract=***1234... \
         --named-address Treasury=***5678...
-        
+
     Note:
         This function is primarily used by the argument parser to convert
         command-line string arguments into structured data for Move compilation.
@@ -248,32 +248,32 @@ def key_value(indata: str) -> Tuple[str, AccountAddress]:
 
 async def main(args: List[str]):
     """Main entry point for the Aptos Python SDK CLI.
-    
+
     This function sets up the argument parser, validates inputs, and dispatches
     to the appropriate command handlers. It provides comprehensive error checking
     and user-friendly error messages.
-    
+
     Args:
         args: List of command-line arguments (typically from sys.argv[1:])
-        
+
     Raises:
         SystemExit: On invalid arguments, missing requirements, or command failure.
-        
+
     Examples:
         Run from command line::
-        
+
             python -m aptos_sdk.cli publish-package \
                 --package-dir ./my-package \
                 --account ***1234... \
                 --private-key-path ./key.txt \
                 --rest-api https://fullnode.devnet.aptoslabs.com/v1
-                
+
         Run programmatically::
-        
+
             import asyncio
             from aptos_sdk.cli import main
-            
-            await main([
+
+            await main([=
                 'publish-package',
                 '--package-dir', './package',
                 '--account', '***1234...',
@@ -281,22 +281,22 @@ async def main(args: List[str]):
                 '--rest-api', 'https://fullnode.devnet.aptoslabs.com/v1',
                 '--named-address', 'MyAddr=***5678...'
             ])
-            
+
     Supported Commands:
         publish-package: Compile and deploy a Move package
-        
+
     Required Arguments (for publish-package):
         --account: Account address that will publish the package
         --package-dir: Path to Move package directory
         --private-key-path: Path to private key file
         --rest-api: Aptos REST API endpoint URL
-        
+
     Optional Arguments:
         --named-address: Named address mappings (can be specified multiple times)
-        
+
     Environment Variables:
         APTOS_CLI_PATH: Path to Aptos CLI executable (if not in PATH)
-        
+
     Note:
         The function performs extensive validation before executing commands
         to provide clear error messages for common configuration issues.
@@ -318,14 +318,14 @@ async def main(args: List[str]):
         default=[],
     )
     parser.add_argument(
-        "--package-dir", 
-        help="Path to the Move package directory containing Move.toml", 
-        type=str
+        "--package-dir",
+        help="Path to the Move package directory containing Move.toml",
+        type=str,
     )
     parser.add_argument(
-        "--private-key-path", 
-        help="Path to file containing the signer's private key", 
-        type=str
+        "--private-key-path",
+        help="Path to file containing the signer's private key",
+        type=str,
     )
     parser.add_argument(
         "--rest-api",

@@ -27,12 +27,12 @@ Network Configurations:
     - Node: https://api.devnet.aptoslabs.com/v1
     - Faucet: https://faucet.devnet.aptoslabs.com
     - Indexer: https://api.devnet.aptoslabs.com/v1/graphql
-    
+
     Testnet:
     - Node: https://api.testnet.aptoslabs.com/v1
     - Faucet: https://faucet.testnet.aptoslabs.com
     - Indexer: https://api.testnet.aptoslabs.com/v1/graphql
-    
+
     Mainnet:
     - Node: https://api.mainnet.aptoslabs.com/v1
     - Faucet: N/A (no public faucet on mainnet)
@@ -40,39 +40,39 @@ Network Configurations:
 
 Usage Examples:
     Using default devnet configuration::
-    
+
         from examples.common import NODE_URL, FAUCET_URL
         from aptos_sdk.async_client import RestClient, FaucetClient
-        
+
         # Connect to devnet by default
         rest_client = RestClient(NODE_URL)
         faucet_client = FaucetClient(FAUCET_URL, rest_client)
-        
+
     Switching to testnet::
-    
+
         import os
         os.environ["APTOS_NODE_URL"] = "https://api.testnet.aptoslabs.com/v1"
         os.environ["APTOS_FAUCET_URL"] = "https://faucet.testnet.aptoslabs.com"
-        
+
         # Now imports will use testnet URLs
         from examples.common import NODE_URL, FAUCET_URL
-        
+
     Using with authentication token::
-    
+
         import os
         os.environ["FAUCET_AUTH_TOKEN"] = "your_faucet_token_here"
-        
+
         from examples.common import FAUCET_URL, FAUCET_AUTH_TOKEN
         from aptos_sdk.async_client import FaucetClient, RestClient
-        
+
         rest_client = RestClient(NODE_URL)
         faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
-        
+
     Development with local aptos-core::
-    
+
         import os
         os.environ["APTOS_CORE_PATH"] = "/path/to/your/aptos-core"
-        
+
         from examples.common import APTOS_CORE_PATH
         # Use APTOS_CORE_PATH for local Move package compilation
 

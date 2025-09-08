@@ -31,59 +31,59 @@ Workflow:
 
 Prerequisites:
     Before running this example, deploy the hello_blockchain Move module:
-    
+
     Using Aptos CLI::
-    
+
         # Install Aptos CLI if not already installed
         curl -fsSL "https://aptos.dev/scripts/install_cli.py" | python3
-        
+
         # Initialize your account
         aptos init
-        
+
         # Navigate to the Move example
         cd ~/aptos-core/aptos-move/move-examples/hello_blockchain
-        
+
         # Publish the module (replace with your address)
         aptos move publish --named-addresses hello_blockchain=***your_address***
-        
+
     Using this script::
-    
+
         # Option 1: Use the publish_contract function
         contract_addr = await publish_contract("./path/to/hello_blockchain")
-        
+
         # Option 2: Run with existing contract
         python -m examples.hello_blockchain ***contract_address***
 
 Usage Examples:
     Run with existing contract::
-    
+
         python -m examples.hello_blockchain ***0x123abc...***
-        
+
     Programmatic usage::
-    
+
         import asyncio
         from examples.hello_blockchain import main, publish_contract
         from aptos_sdk.account_address import AccountAddress
-        
+
         # Deploy and run
         async def run_example():
             # Option 1: Deploy new contract
             contract_addr = await publish_contract("./hello_blockchain")
             await main(contract_addr)
-            
+
             # Option 2: Use existing contract
             existing_addr = AccountAddress.from_str("***0x123...***")
             await main(existing_addr)
-            
+
         asyncio.run(run_example())
-        
+
     Custom network configuration::
-    
+
         import os
         # Switch to testnet
         os.environ["APTOS_NODE_URL"] = "https://api.testnet.aptoslabs.com/v1"
         os.environ["APTOS_FAUCET_URL"] = "https://faucet.testnet.aptoslabs.com"
-        
+
         # Run example on testnet
         python -m examples.hello_blockchain ***contract_address***
 
@@ -93,22 +93,22 @@ Expected Output:
     - Initial account balances after funding
     - Message storage and retrieval for both accounts
     - Transaction hashes and confirmations
-    
+
     Example output::
-    
+
         === Addresses ===
         Alice: ***0xabc123...
         Bob: ***0xdef456...
-        
+
         === Initial Balances ===
         Alice: 10000000
         Bob: 10000000
-        
+
         === Testing Alice ===
         Initial value: None
         Setting the message to "Hello, Blockchain"
         New value: {'message': 'Hello, Blockchain', 'message_change_events': {...}}
-        
+
         === Testing Bob ===
         Initial value: None
         Setting the message to "Hello, Blockchain"
@@ -116,15 +116,15 @@ Expected Output:
 
 Move Smart Contract Structure:
     The hello_blockchain.move file should contain::
-    
+
         module hello_blockchain::message {
             use std::string::String;
             use std::signer;
-            
+
             struct MessageHolder has key {
                 message: String,
             }
-            
+
             public entry fun set_message(account: &signer, message: String) {
                 let account_addr = signer::address_of(account);
                 if (!exists<MessageHolder>(account_addr)) {
@@ -149,7 +149,7 @@ Security Notes:
     - Private keys are generated randomly and not persisted
     - All transactions are publicly visible on the blockchain
     - Smart contracts are immutable once deployed
-    
+
 Learning Objectives:
     After running this example, you should understand:
     1. How to create and fund Aptos accounts programmatically
@@ -181,63 +181,63 @@ from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 class HelloBlockchainClient(RestClient):
     """Extended REST client with domain-specific methods for hello_blockchain contract.
-    
+
     This class demonstrates how to extend the base RestClient to add application-specific
     functionality for interacting with a particular smart contract. It encapsulates
     the details of resource queries and transaction construction for the hello_blockchain
     Move module.
-    
+
     Key Features:
     - **Resource Queries**: Simplified access to MessageHolder resources
     - **Transaction Construction**: Automated entry function payload creation
     - **Error Handling**: Graceful handling of missing resources
     - **Type Safety**: Proper typing for contract-specific operations
-    
+
     Examples:
         Basic usage::
-        
+
             client = HelloBlockchainClient("https://api.devnet.aptoslabs.com/v1")
-            
+
             # Read message (returns None if not set)
             message = await client.get_message(contract_addr, user_addr)
-            
+
             # Set message (creates or updates MessageHolder resource)
             txn_hash = await client.set_message(contract_addr, account, "Hello!")
             await client.wait_for_transaction(txn_hash)
-    
+
     Note:
         This pattern of extending RestClient is recommended for applications that
         interact with specific smart contracts frequently. It provides a clean
         abstraction over raw resource queries and transaction construction.
     """
-    
+
     async def get_message(
         self, contract_address: AccountAddress, account_address: AccountAddress
     ) -> Optional[Dict[str, Any]]:
         """Retrieve the MessageHolder resource for a specific account.
-        
+
         This method queries the blockchain for the MessageHolder resource stored
         under the given account address. The resource is created by the hello_blockchain
         Move module when a user calls set_message for the first time.
-        
+
         Args:
             contract_address: The address where the hello_blockchain module is published.
             account_address: The account address to query for the MessageHolder resource.
-            
+
         Returns:
             Dictionary containing the MessageHolder resource data if it exists,
             including the 'message' field and any event handles. Returns None
             if the account has never called set_message.
-            
+
         Examples:
             Query existing message::
-            
+
                 message_data = await client.get_message(contract_addr, alice.address())
                 if message_data:
                     print(f"Alice's message: {message_data['message']}")
                 else:
                     print("Alice hasn't set a message yet")
-                    
+
         Note:
             This method handles the ResourceNotFound exception gracefully by
             returning None, making it safe to call even for accounts that haven't
@@ -254,44 +254,44 @@ class HelloBlockchainClient(RestClient):
         self, contract_address: AccountAddress, sender: Account, message: str
     ) -> str:
         """Set or update the message in the sender's MessageHolder resource.
-        
+
         This method constructs and submits a transaction that calls the set_message
         entry function in the hello_blockchain Move module. The function will either
         create a new MessageHolder resource (if this is the first call) or update
         the existing message.
-        
+
         Args:
             contract_address: The address where the hello_blockchain module is published.
             sender: The account that will sign and send the transaction.
             message: The string message to store in the MessageHolder resource.
-            
+
         Returns:
             The transaction hash as a string. Use wait_for_transaction() to
             confirm the transaction was processed successfully.
-            
+
         Raises:
             ApiError: If the transaction submission fails due to network issues,
                 insufficient funds, or other blockchain-related errors.
-                
+
         Examples:
             Set a new message::
-            
+
                 # Send transaction
                 txn_hash = await client.set_message(
-                    contract_addr, 
-                    alice, 
+                    contract_addr,
+                    alice,
                     "Hello, Aptos blockchain!"
                 )
-                
+
                 # Wait for confirmation
                 result = await client.wait_for_transaction(txn_hash)
                 print(f"Transaction successful: {result['success']}")
-                
+
             Update existing message::
-            
+
                 # This will update the existing MessageHolder resource
                 await client.set_message(contract_addr, alice, "Updated message!")
-                
+
         Note:
             The Move smart contract automatically handles whether to create a new
             MessageHolder resource or update an existing one. The gas cost is
@@ -312,50 +312,50 @@ class HelloBlockchainClient(RestClient):
 
 async def publish_contract(package_dir: str) -> AccountAddress:
     """Deploy the hello_blockchain Move package to the Aptos blockchain.
-    
+
     This function demonstrates the complete smart contract deployment workflow:
     1. Generate a new publisher account
     2. Fund the account from the faucet
     3. Compile the Move package using Aptos CLI
     4. Extract compiled bytecode and metadata
     5. Publish the package to the blockchain
-    
+
     The deployment process creates a new account specifically for publishing
     the contract, which becomes the address where the hello_blockchain module
     is permanently stored on the blockchain.
-    
+
     Args:
         package_dir: Path to the Move package directory containing Move.toml
             and the source files. Should contain the hello_blockchain module.
-            
+
     Returns:
         AccountAddress of the deployed contract (same as publisher address).
         This address is used to interact with the contract functions.
-        
+
     Raises:
         Exception: If Move compilation fails due to syntax errors or missing files.
         ApiError: If blockchain operations fail (funding, publishing, etc.).
         FileNotFoundError: If compiled bytecode files are not found after compilation.
-        
+
     Examples:
         Deploy from local package::
-        
+
             contract_address = await publish_contract(
                 "./aptos-move/move-examples/hello_blockchain"
             )
             print(f"Contract deployed at: {contract_address}")
-            
+
         Deploy and interact::
-        
+
             # Deploy the contract
             contract_addr = await publish_contract("./hello_blockchain")
-            
+
             # Use the returned address for interactions
             client = HelloBlockchainClient(NODE_URL)
             txn = await client.set_message(contract_addr, account, "Hello!")
-            
+
     Directory Structure Expected::
-    
+
         package_dir/
         ├── Move.toml              # Package configuration
         ├── sources/
@@ -365,19 +365,19 @@ async def publish_contract(package_dir: str) -> AccountAddress:
                 ├── package-metadata.bcs
                 └── bytecode_modules/
                     └── message.mv
-                    
+
     Move.toml Configuration::
-    
+
         [package]
         name = "Examples"
         version = "1.0.0"
-        
+
         [addresses]
         hello_blockchain = "_"
-        
+
         [dependencies]
         AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", ... }
-        
+
     Note:
         - The function generates a fresh account for each deployment
         - Named addresses are automatically resolved during compilation
@@ -388,7 +388,7 @@ async def publish_contract(package_dir: str) -> AccountAddress:
     contract_publisher = Account.generate()
     rest_client = HelloBlockchainClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
-    
+
     # Fund the publisher account with enough APT for deployment
     await faucet_client.fund_account(contract_publisher.address(), 10_000_000)
 
@@ -416,7 +416,7 @@ async def publish_contract(package_dir: str) -> AccountAddress:
     txn_hash = await package_publisher.publish_package(
         contract_publisher, metadata, [module]
     )
-    
+
     # Wait for deployment transaction to be confirmed
     await rest_client.wait_for_transaction(txn_hash)
 
@@ -428,11 +428,11 @@ async def publish_contract(package_dir: str) -> AccountAddress:
 
 async def main(contract_address: AccountAddress):
     """Execute the hello_blockchain smart contract interaction demo.
-    
+
     This function demonstrates a complete smart contract interaction workflow
     by creating test accounts, funding them, and showing how multiple users
     can interact with the deployed hello_blockchain contract independently.
-    
+
     The demo showcases:
     1. **Account Generation**: Create Alice and Bob accounts programmatically
     2. **Faucet Funding**: Fund both accounts with test APT tokens
@@ -440,12 +440,12 @@ async def main(contract_address: AccountAddress):
     4. **Contract Interaction**: Each account sets their own message
     5. **State Queries**: Read back the stored messages to verify success
     6. **Resource Management**: Properly close network connections
-    
+
     Args:
         contract_address: The address where the hello_blockchain module is deployed.
             This should be the address returned from publish_contract() or obtained
             from a previous deployment.
-            
+
     Workflow:
         1. Generate two test accounts (Alice and Bob)
         2. Fund both accounts with 10 APT each from the faucet
@@ -455,33 +455,33 @@ async def main(contract_address: AccountAddress):
            - Set a message using the smart contract
            - Query the updated state to verify the message was stored
         5. Clean up network connections
-        
+
     Examples:
         Run with deployed contract::
-        
+
             from aptos_sdk.account_address import AccountAddress
-            
+
             contract_addr = AccountAddress.from_str("******bc123...***")
             await main(contract_addr)
-            
+
         End-to-end deployment and interaction::
-        
+
             # Deploy first, then interact
             contract_addr = await publish_contract("./hello_blockchain")
             await main(contract_addr)
-            
+
     Expected Behavior:
         - Alice and Bob can each store independent messages
         - Messages are persistent on the blockchain
         - Each account's MessageHolder resource is separate
         - All transactions should complete successfully
-        
+
     Error Scenarios:
         - Contract not deployed at the given address
         - Faucet funding failures (network issues, rate limits)
         - Transaction failures (insufficient gas, network problems)
         - Resource query failures (node connectivity issues)
-        
+
     Note:
         This function uses the extended HelloBlockchainClient which provides
         convenient methods for interacting with the specific smart contract.

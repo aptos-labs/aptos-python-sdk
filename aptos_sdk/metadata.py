@@ -20,36 +20,36 @@ Use Cases:
 
 Examples:
     Get SDK version header::
-    
+
         from aptos_sdk.metadata import Metadata
-        
+
         # Get the header value for HTTP requests
         header_value = Metadata.get_aptos_header_val()
         print(f"Client identifier: {header_value}")
         # Output: "aptos-python-sdk/1.2.3"
-        
+
     Use in HTTP requests::
-    
+
         import httpx
         from aptos_sdk.metadata import Metadata
-        
+
         # Add SDK identification to HTTP headers
         headers = {
             Metadata.APTOS_HEADER: Metadata.get_aptos_header_val(),
             "Content-Type": "application/json"
         }
-        
+
         # Make request with proper identification
         response = httpx.get(
             "https://fullnode.devnet.aptoslabs.com/v1",
             headers=headers
         )
-        
+
     Integration with REST clients::
-    
+
         # The RestClient automatically includes this header
         from aptos_sdk.async_client import RestClient
-        
+
         client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
         # Automatically includes x-aptos-client header
 
@@ -67,49 +67,49 @@ PACKAGE_NAME = "aptos-sdk"
 
 class Metadata:
     """Utility class for managing Aptos SDK metadata and HTTP headers.
-    
+
     This class provides static methods and constants for SDK identification
     in HTTP requests to Aptos services. It ensures proper client identification
     for analytics, debugging, and API compliance purposes.
-    
+
     Constants:
         APTOS_HEADER: The standard HTTP header name for Aptos client identification
-        
+
     Examples:
         Access header constants::
-        
+
             from aptos_sdk.metadata import Metadata
-            
+
             # Get the header name
             header_name = Metadata.APTOS_HEADER
             print(f"Header name: {header_name}")
             # Output: "x-aptos-client"
-            
+
         Generate header values::
-        
+
             # Get the full header value with version
             header_value = Metadata.get_aptos_header_val()
             print(f"Header value: {header_value}")
             # Output: "aptos-python-sdk/1.2.3"
-            
+
         Use in custom HTTP clients::
-        
+
             import requests
-            
+
             headers = {
                 Metadata.APTOS_HEADER: Metadata.get_aptos_header_val()
             }
-            
+
             response = requests.get(
                 "https://fullnode.mainnet.aptoslabs.com/v1",
                 headers=headers
             )
-    
+
     Note:
         The metadata class is designed to be used statically and does not
         require instantiation.
     """
-    
+
     # HTTP header name for Aptos client identification
     APTOS_HEADER = "x-aptos-client"
 
@@ -120,40 +120,40 @@ class Metadata:
         This method constructs a standardized client identification string
         that includes the SDK name and version. This header is automatically
         included in requests made by the Aptos REST clients.
-        
+
         The header format follows the pattern: "aptos-python-sdk/{version}"
         where version is automatically detected from the installed package.
 
         Returns:
             str: Header value in the format "aptos-python-sdk/{version}"
-            
+
         Examples:
             Get version header::
-            
+
                 >>> from aptos_sdk.metadata import Metadata
                 >>> header = Metadata.get_aptos_header_val()
                 >>> print(header)
                 'aptos-python-sdk/1.2.3'
-                
+
             Use in HTTP request::
-            
+
                 import httpx
-                
+
                 headers = {
                     "x-aptos-client": Metadata.get_aptos_header_val(),
                     "Content-Type": "application/json"
                 }
-                
+
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
                         "https://fullnode.devnet.aptoslabs.com/v1",
                         headers=headers
                     )
-                    
+
         Raises:
             PackageNotFoundError: If the aptos-sdk package is not properly installed
                 or metadata cannot be accessed.
-                
+
         Note:
             - Version is automatically detected from package installation
             - Development installations may show version as "0.0.0" or similar

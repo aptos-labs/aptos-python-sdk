@@ -38,67 +38,67 @@ Comparison with Ed25519:
 
 Examples:
     Basic key generation and signing::
-    
+
         from aptos_sdk.secp256k1_ecdsa import PrivateKey
-        
+
         # Generate a new private key
         private_key = PrivateKey.random()
         public_key = private_key.public_key()
-        
+
         # Sign a message
         message = b"Hello, Aptos!"
         signature = private_key.sign(message)
-        
+
         # Verify the signature
         is_valid = public_key.verify(message, signature)
         print(f"Signature valid: {is_valid}")
-        
+
     Working with hex strings::
-    
+
         # Create from hex string
         hex_key = "***234abcd..."
         private_key = PrivateKey.from_hex(hex_key)
-        
+
         # Get hex representation
         print(f"Private key: {private_key.hex()}")
         print(f"Public key: {public_key.hex()}")
         print(f"Signature: {signature.hex()}")
-        
+
     AIP-80 compliant formatting::
-    
+
         # AIP-80 formatted private key
         aip80_key = "secp256k1-priv-***234abcd..."
         private_key = PrivateKey.from_str(aip80_key, strict=True)
-        
+
         # Convert to AIP-80 format
         formatted = private_key.aip80()
         print(f"AIP-80 format: {formatted}")
-        
+
     Serialization for storage/transmission::
-    
+
         from aptos_sdk.bcs import Serializer, Deserializer
-        
+
         # Serialize private key
         serializer = Serializer()
         private_key.serialize(serializer)
         key_bytes = serializer.output()
-        
+
         # Deserialize private key
         deserializer = Deserializer(key_bytes)
         restored_key = PrivateKey.deserialize(deserializer)
-        
+
         assert private_key == restored_key
-        
+
     Cross-chain compatibility::
-    
+
         # Import Ethereum private key
         ethereum_key = "***456789abcdef..."
         aptos_key = PrivateKey.from_hex(ethereum_key)
-        
+
         # Same key can be used on both chains
         # (though with different address derivation)
         eth_style_pubkey = aptos_key.public_key().hex()
-        
+
 Security Considerations:
     - Always use secure random number generation for key creation
     - Store private keys securely (encrypted, hardware wallets)
@@ -126,60 +126,61 @@ from .bcs import Deserializer, Serializer
 
 class PrivateKey(asymmetric_crypto.PrivateKey):
     """secp256k1 ECDSA private key implementation.
-    
+
     This class implements secp256k1 private keys with deterministic signing,
     signature normalization, and full compatibility with the Aptos asymmetric
     cryptography interfaces.
-    
+
     Key Properties:
     - **Curve**: secp256k1 elliptic curve (same as Bitcoin/Ethereum)
     - **Hash Function**: Keccak-256 for all cryptographic operations
     - **Key Length**: 32 bytes (256 bits)
     - **Deterministic**: Uses RFC 6979 for deterministic signing
     - **Normalized**: Ensures canonical signatures with s < n/2
-    
+
     Attributes:
         LENGTH: The byte length of secp256k1 private keys (32)
         key: The underlying ECDSA signing key object
-        
+
     Examples:
         Generate a new private key::
-        
+
             private_key = PrivateKey.random()
             print(f"New key: {private_key.hex()}")
-            
+
         Create from existing key material::
-        
+
             hex_key = "***234567890abcdef..."
             private_key = PrivateKey.from_hex(hex_key)
-            
+
         Create from AIP-80 format::
-        
+
             aip80_key = "secp256k1-priv-***234567890abcdef..."
             private_key = PrivateKey.from_str(aip80_key, strict=True)
-            
+
         Sign and verify::
-        
+
             message = b"Important transaction data"
             signature = private_key.sign(message)
             public_key = private_key.public_key()
-            
+
             assert public_key.verify(message, signature)
-    
+
     Note:
         Private keys should be generated using cryptographically secure
         random number generators and stored securely.
     """
+
     LENGTH: int = 32
 
     key: SigningKey
 
     def __init__(self, key: SigningKey):
         """Initialize a private key with the given ECDSA signing key.
-        
+
         Args:
             key: The ECDSA SigningKey object for secp256k1 operations.
-            
+
         Example:
             This is typically not called directly. Use the factory methods:
             >>> private_key = PrivateKey.random()
@@ -189,13 +190,13 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def __eq__(self, other: object):
         """Check equality with another PrivateKey.
-        
+
         Args:
             other: Object to compare with.
-            
+
         Returns:
             True if both private keys are cryptographically equivalent.
-            
+
         Example:
             >>> key1 = PrivateKey.from_hex("***abc123...")
             >>> key2 = PrivateKey.from_hex("***abc123...")
@@ -208,10 +209,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def __str__(self):
         """Return the AIP-80 formatted string representation.
-        
+
         Returns:
             AIP-80 compliant private key string with secp256k1-priv- prefix.
-            
+
         Example:
             >>> str(private_key)
             'secp256k1-priv-***234567890abcdef...'
@@ -221,10 +222,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     @staticmethod
     def from_hex(value: str | bytes, strict: bool | None = None) -> PrivateKey:
         """Create a private key from hex string, bytes, or AIP-80 format.
-        
+
         This method parses various input formats and creates a secp256k1 private
         key. It handles legacy hex formats and AIP-80 compliant strings.
-        
+
         Args:
             value: Private key in various formats:
                 - Raw hex string: "***234567890abcdef..."
@@ -235,31 +236,31 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
                 - True: Only accept AIP-80 compliant strings
                 - False: Accept legacy formats without warning
                 - None: Accept legacy formats with warning
-                
+
         Returns:
             A new secp256k1 PrivateKey instance.
-            
+
         Raises:
             Exception: If the key length is invalid (not 32 bytes).
             ValueError: If strict=True and format is not AIP-80 compliant.
-            
+
         Examples:
             From raw hex::
-            
+
                 key = PrivateKey.from_hex("***234567890abcdef...")
-                
+
             From AIP-80 format::
-            
+
                 key = PrivateKey.from_hex(
                     "secp256k1-priv-***234567890abcdef...",
                     strict=True
                 )
-                
+
             From bytes::
-            
+
                 key_bytes = bytes.fromhex("234567890abcdef...")
                 key = PrivateKey.from_hex(key_bytes)
-        
+
         Note:
             The private key must be exactly 32 bytes (64 hex characters).
         """
@@ -275,16 +276,16 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     @staticmethod
     def from_str(value: str, strict: bool | None = None) -> PrivateKey:
         """Create a private key from a hex or AIP-80 compliant string.
-        
+
         Convenience method that delegates to from_hex() for string inputs.
-        
+
         Args:
             value: Hex string or AIP-80 compliant string.
             strict: AIP-80 compliance mode (see from_hex() for details).
-            
+
         Returns:
             A new secp256k1 PrivateKey instance.
-            
+
         Example:
             >>> key = PrivateKey.from_str("secp256k1-priv-***abc123...")
             >>> key = PrivateKey.from_str("***abc123...", strict=False)
@@ -293,10 +294,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def hex(self) -> str:
         """Get the hexadecimal representation of the private key.
-        
+
         Returns:
             Hex string with '0x' prefix representing the 32-byte private key.
-            
+
         Example:
             >>> private_key.hex()
             '***abc123456789def...'
@@ -305,10 +306,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def aip80(self) -> str:
         """Get the AIP-80 compliant string representation.
-        
+
         Returns:
             AIP-80 formatted string with secp256k1-priv- prefix.
-            
+
         Example:
             >>> private_key.aip80()
             'secp256k1-priv-***abc123456789def...'
@@ -319,10 +320,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def public_key(self) -> PublicKey:
         """Derive the corresponding public key.
-        
+
         Returns:
             The public key derived from this private key.
-            
+
         Example:
             >>> private_key = PrivateKey.random()
             >>> public_key = private_key.public_key()
@@ -334,18 +335,18 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     @staticmethod
     def random() -> PrivateKey:
         """Generate a new random secp256k1 private key.
-        
+
         Uses cryptographically secure random number generation to create
         a new private key suitable for production use.
-        
+
         Returns:
             A new randomly generated PrivateKey instance.
-            
+
         Example:
             >>> private_key = PrivateKey.random()
             >>> len(private_key.key.to_string())
             32
-            
+
         Note:
             This method uses the system's secure random number generator.
             The generated key is suitable for production cryptographic use.
@@ -356,23 +357,23 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def sign(self, data: bytes) -> Signature:
         """Sign data using this private key with deterministic ECDSA.
-        
+
         Creates a deterministic signature using RFC 6979, ensuring the same
         input always produces the same signature. The signature is normalized
         to ensure canonical form (s < n/2) to prevent malleability.
-        
+
         Args:
             data: The data to sign (typically a hash of the actual message).
-            
+
         Returns:
             A normalized secp256k1 signature.
-            
+
         Example:
             >>> message = b"Hello, Aptos!"
             >>> signature = private_key.sign(message)
             >>> public_key.verify(message, signature)
             True
-            
+
         Note:
             - Uses Keccak-256 as the hash function
             - Implements RFC 6979 deterministic signing
@@ -391,16 +392,16 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> PrivateKey:
         """Deserialize a private key from BCS-encoded bytes.
-        
+
         Args:
             deserializer: BCS deserializer containing the private key bytes.
-            
+
         Returns:
             A new PrivateKey instance from the deserialized data.
-            
+
         Raises:
             Exception: If the key length is not 32 bytes.
-            
+
         Example:
             >>> serializer = Serializer()
             >>> original_key.serialize(serializer)
@@ -418,10 +419,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def serialize(self, serializer: Serializer):
         """Serialize the private key to BCS format.
-        
+
         Args:
             serializer: BCS serializer to write the private key bytes to.
-            
+
         Example:
             >>> serializer = Serializer()
             >>> private_key.serialize(serializer)
@@ -434,46 +435,47 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
 class PublicKey(asymmetric_crypto.PublicKey):
     """secp256k1 ECDSA public key implementation.
-    
+
     This class implements secp256k1 public keys for verification of signatures
     and address derivation. It follows the common format for secp256k1 public keys
     with support for both compressed and uncompressed formats.
-    
+
     Key Properties:
     - **Curve**: secp256k1 elliptic curve (same as Bitcoin/Ethereum)
     - **Format**: Uncompressed format with 0x04 prefix
     - **Key Length**: 64 bytes (uncompressed without prefix)
     - **Serialized Length**: 65 bytes (with prefix)
-    
+
     Attributes:
         LENGTH: The byte length of uncompressed secp256k1 public keys (64)
         LENGTH_WITH_PREFIX_LENGTH: Length including 0x04 prefix byte (65)
         key: The underlying ECDSA verification key object
-        
+
     Examples:
         Derive from private key::
-        
+
             private_key = PrivateKey.random()
             public_key = private_key.public_key()
-            
+
         Create from hex string::
-        
+
             # With or without 0x04 prefix
             hex_key = "***4..." # 65 bytes with prefix
             public_key = PublicKey.from_str(hex_key)
-            
+
         Verify a signature::
-        
+
             message = b"Important message"
             signature = private_key.sign(message)
-            
+
             is_valid = public_key.verify(message, signature)
             assert is_valid == True
-    
+
     Note:
         This implementation uses the uncompressed format (65 bytes) for
         compatibility with common Ethereum and Bitcoin libraries.
     """
+
     LENGTH: int = 64
     LENGTH_WITH_PREFIX_LENGTH: int = 65
 
@@ -481,10 +483,10 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
     def __init__(self, key: VerifyingKey):
         """Initialize a public key with the given ECDSA verifying key.
-        
+
         Args:
             key: The ECDSA VerifyingKey object for secp256k1 operations.
-            
+
         Example:
             This is typically not called directly. Use factory methods
             or derive from a private key:
@@ -495,13 +497,13 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
     def __eq__(self, other: object):
         """Check equality with another PublicKey.
-        
+
         Args:
             other: Object to compare with.
-            
+
         Returns:
             True if both public keys are cryptographically equivalent.
-            
+
         Example:
             >>> pk1 = private_key1.public_key()
             >>> pk2 = private_key2.public_key()  # Different key
@@ -514,10 +516,10 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
     def __str__(self) -> str:
         """Return the hexadecimal string representation.
-        
+
         Returns:
             Hex string representing the public key.
-            
+
         Example:
             >>> str(public_key)
             '***4...'  # 65 bytes with 0x04 prefix
@@ -527,26 +529,26 @@ class PublicKey(asymmetric_crypto.PublicKey):
     @staticmethod
     def from_str(value: str) -> PublicKey:
         """Create a public key from a hex string.
-        
+
         Args:
             value: Hex string representing the public key.
                 Can be with or without '0x' prefix.
                 Can be 64 bytes (raw key) or 65 bytes (with 0x04 prefix).
-                
+
         Returns:
             A new PublicKey instance.
-            
+
         Raises:
             Exception: If the key length is invalid.
-            
+
         Examples:
             From uncompressed format with prefix::
-            
+
                 # 130 hex chars (65 bytes) with 0x04 prefix
                 key = PublicKey.from_str("***4210c9129e...")
-                
+
             From raw format::
-            
+
                 # 128 hex chars (64 bytes) without prefix
                 key = PublicKey.from_str("210c9129e...")
         """
@@ -564,14 +566,14 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
     def hex(self) -> str:
         """Get the hexadecimal representation of the public key.
-        
+
         Returns:
             Hex string with '0x04' prefix (uncompressed format).
-            
+
         Example:
             >>> public_key.hex()
             '***4210c9129e35337ff5d6488f90f18d842cf...'  # 65 bytes with prefix
-            
+
         Note:
             The '0x04' prefix indicates an uncompressed public key format.
         """
@@ -579,17 +581,17 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         """Verify a signature against this public key.
-        
+
         Verifies that the signature was created by the private key
         corresponding to this public key when signing the provided data.
-        
+
         Args:
             data: The original data that was signed.
             signature: The signature to verify.
-            
+
         Returns:
             True if the signature is valid, False otherwise.
-            
+
         Example:
             >>> message = b"Hello, world!"
             >>> signature = private_key.sign(message)
@@ -597,7 +599,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             True
             >>> public_key.verify(b"Different message", signature)
             False
-            
+
         Note:
             Catches all exceptions during verification and returns False
             for any failure, making it safe to use in validation code.
@@ -611,17 +613,17 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
     def to_crypto_bytes(self) -> bytes:
         """Get the raw byte representation with prefix for cryptographic use.
-        
+
         Returns:
             65-byte representation with 0x04 prefix followed by the 64-byte key.
-            
+
         Example:
             >>> key_bytes = public_key.to_crypto_bytes()
             >>> len(key_bytes)
             65
             >>> key_bytes[0] == 0x04
             True
-            
+
         Note:
             The 0x04 prefix indicates an uncompressed secp256k1 public key.
         """
@@ -630,18 +632,18 @@ class PublicKey(asymmetric_crypto.PublicKey):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> PublicKey:
         """Deserialize a public key from BCS-encoded bytes.
-        
+
         Handles both raw 64-byte keys and 65-byte keys with prefix.
-        
+
         Args:
             deserializer: BCS deserializer containing the public key bytes.
-            
+
         Returns:
             A new PublicKey instance from the deserialized data.
-            
+
         Raises:
             Exception: If the key length is invalid (not 64 or 65 bytes).
-            
+
         Example:
             >>> serializer = Serializer()
             >>> original_key.serialize(serializer)
@@ -663,12 +665,12 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
     def serialize(self, serializer: Serializer):
         """Serialize the public key to BCS format with prefix.
-        
+
         Writes the 65-byte representation (0x04 prefix + 64-byte key).
-        
+
         Args:
             serializer: BCS serializer to write the public key bytes to.
-            
+
         Example:
             >>> serializer = Serializer()
             >>> public_key.serialize(serializer)
@@ -681,51 +683,52 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
 class Signature(asymmetric_crypto.Signature):
     """secp256k1 ECDSA signature implementation.
-    
+
     This class represents secp256k1 signatures in canonical form (s < n/2)
     and provides methods for serialization, deserialization, and comparison.
-    
+
     Key Properties:
     - **Format**: Raw r, s values concatenated (64 bytes total)
     - **Normalized**: Uses canonical form with s < n/2
     - **Length**: 64 bytes (32 bytes for r + 32 bytes for s)
-    
+
     Attributes:
         LENGTH: The byte length of secp256k1 signatures (64)
         signature: The raw signature bytes
-        
+
     Examples:
         Create from signing::
-        
+
             private_key = PrivateKey.random()
             message = b"Hello, Aptos!"
             signature = private_key.sign(message)
-            
+
         Create from hex string::
-        
+
             sig_hex = "***1234abcd..."
             signature = Signature.from_str(sig_hex)
-            
+
         Verify with public key::
-        
+
             public_key = private_key.public_key()
             is_valid = public_key.verify(message, signature)
             assert is_valid == True
-    
+
     Note:
         Unlike some other secp256k1 implementations, this class uses the
         raw r,s format (64 bytes) rather than DER encoding.
     """
+
     LENGTH: int = 64
 
     signature: bytes
 
     def __init__(self, signature: bytes):
         """Initialize a signature with the given raw bytes.
-        
+
         Args:
             signature: The 64-byte signature data (r, s values concatenated).
-            
+
         Example:
             This is typically not called directly. Signatures are usually
             created by signing with a private key:
@@ -735,13 +738,13 @@ class Signature(asymmetric_crypto.Signature):
 
     def __eq__(self, other: object):
         """Check equality with another Signature.
-        
+
         Args:
             other: Object to compare with.
-            
+
         Returns:
             True if both signatures contain the same bytes.
-            
+
         Example:
             >>> sig1 = private_key.sign(message)
             >>> sig2 = Signature(sig1.data())  # Same data
@@ -754,10 +757,10 @@ class Signature(asymmetric_crypto.Signature):
 
     def __str__(self) -> str:
         """Return the hexadecimal string representation.
-        
+
         Returns:
             Hex string with '0x' prefix representing the signature.
-            
+
         Example:
             >>> str(signature)
             '***c9a34d6...'  # 64 bytes
@@ -766,10 +769,10 @@ class Signature(asymmetric_crypto.Signature):
 
     def hex(self) -> str:
         """Get the hexadecimal representation of the signature.
-        
+
         Returns:
             Hex string with '0x' prefix representing the 64-byte signature.
-            
+
         Example:
             >>> signature.hex()
             '***a1b2c3d4...'  # 64 bytes as hex
@@ -779,18 +782,18 @@ class Signature(asymmetric_crypto.Signature):
     @staticmethod
     def from_str(value: str) -> Signature:
         """Create a signature from a hex string.
-        
+
         Args:
             value: Hex string representing the signature.
                 Can be with or without '0x' prefix.
                 Must be exactly 64 bytes (128 hex characters).
-                
+
         Returns:
             A new Signature instance.
-            
+
         Raises:
             Exception: If the signature length is invalid.
-            
+
         Example:
             >>> sig = Signature.from_str("***a1b2c3d4...")
             >>> len(sig.data())
@@ -804,10 +807,10 @@ class Signature(asymmetric_crypto.Signature):
 
     def data(self) -> bytes:
         """Get the raw signature bytes.
-        
+
         Returns:
             The 64-byte raw signature data.
-            
+
         Example:
             >>> raw_bytes = signature.data()
             >>> len(raw_bytes)
@@ -818,16 +821,16 @@ class Signature(asymmetric_crypto.Signature):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> Signature:
         """Deserialize a signature from BCS-encoded bytes.
-        
+
         Args:
             deserializer: BCS deserializer containing the signature bytes.
-            
+
         Returns:
             A new Signature instance from the deserialized data.
-            
+
         Raises:
             Exception: If the signature length is not 64 bytes.
-            
+
         Example:
             >>> serializer = Serializer()
             >>> original_sig.serialize(serializer)
@@ -845,10 +848,10 @@ class Signature(asymmetric_crypto.Signature):
 
     def serialize(self, serializer: Serializer):
         """Serialize the signature to BCS format.
-        
+
         Args:
             serializer: BCS serializer to write the signature bytes to.
-            
+
         Example:
             >>> serializer = Serializer()
             >>> signature.serialize(serializer)

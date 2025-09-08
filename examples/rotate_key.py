@@ -33,7 +33,7 @@ Security Model:
     The rotation process requires signatures from both:
     1. **Current Key**: Proves current control of the account
     2. **New Key**: Proves possession of the new private key
-    
+
     This dual-signature requirement prevents unauthorized key rotations even
     if an attacker knows the new private key but not the current one.
 
@@ -42,14 +42,14 @@ Workflow Overview:
        - Generate accounts (Alice as primary, Bob's key as rotation target)
        - Fund Alice's account for transaction fees
        - Display initial account states
-    
+
     2. **Single Key Rotation**:
        - Create rotation proof challenge with sequence number and addresses
        - Sign the challenge with both current (Alice) and new (Bob) keys
        - Submit rotation transaction to the blockchain
        - Verify authentication key change on-chain
        - Reconstruct Alice's account object with new private key
-    
+
     3. **Multi-Key Migration**:
        - Create multi-key setup combining multiple Ed25519 keys
        - Generate rotation proof for single-to-multi transition
@@ -144,17 +144,17 @@ WIDTH = 19
 def truncate(address: str) -> str:
     """
     Truncate a long address string for display purposes.
-    
+
     Takes a long address string and returns a shortened version showing
     only the first 6 and last 6 characters, with "..." in between.
     This is useful for displaying addresses in formatted tables.
-    
+
     Args:
         address: The full address string to truncate.
-        
+
     Returns:
         A shortened string in the format "123abc...def456".
-        
+
     Example:
         >>> truncate("***23456789abcdef")
         "***23...def"
@@ -165,24 +165,24 @@ def truncate(address: str) -> str:
 def format_account_info(account: Account) -> str:
     """
     Format account information for tabular display.
-    
+
     Extracts key information from an Account object and formats it
     into a fixed-width string suitable for table display. Each field
     is truncated and left-justified to maintain consistent formatting.
-    
+
     Args:
         account: The Account object to format.
-        
+
     Returns:
         A formatted string containing truncated account information
         with consistent spacing for table display.
-        
+
     The formatted string contains:
         - Account address (truncated)
         - Authentication key (truncated)
         - Private key hex representation (truncated)
         - Public key string representation (truncated)
-    
+
     Example Output:
         "***bcd...456    ***def...789    abc123...xyz    ed25519..."
     """

@@ -16,15 +16,15 @@ The module includes:
 
 Examples:
     Creating and using primitive type tags::
-    
+
         # Create a u64 type tag
         u64_tag = TypeTag(U64Tag(1234567890))
-        
+
         # Create a boolean type tag
         bool_tag = TypeTag(BoolTag(True))
-        
+
     Creating struct type tags::
-    
+
         # Create a simple struct tag
         struct_tag = StructTag(
             AccountAddress.from_str("0x1"),
@@ -32,12 +32,12 @@ Examples:
             "Coin",
             [TypeTag(U64Tag(0))]  # Generic type parameter
         )
-        
+
         # Parse from string format
         parsed = StructTag.from_str("0x1::coin::Coin<u64>")
-        
+
     Serialization::
-    
+
         # All type tags support BCS serialization
         serialized = struct_tag.to_bytes()
         deserialized = StructTag.from_bytes(serialized)
@@ -55,17 +55,17 @@ from .bcs import Deserializable, Deserializer, Serializable, Serializer
 
 class TypeTag(Deserializable, Serializable):
     """Root class representing Move language types in Aptos.
-    
+
     TypeTag is a discriminated union that can contain any Move type, including
     primitive types (bool, integers, addresses) and complex types (structs, vectors).
     Each TypeTag wraps a specific type tag implementation and provides a unified
     interface for type operations.
-    
+
     The discriminator values correspond to Move's type system:
-    
+
     Attributes:
         BOOL: Discriminator for boolean types (0)
-        U8: Discriminator for 8-bit unsigned integers (1) 
+        U8: Discriminator for 8-bit unsigned integers (1)
         U64: Discriminator for 64-bit unsigned integers (2)
         U128: Discriminator for 128-bit unsigned integers (3)
         ACCOUNT_ADDRESS: Discriminator for account addresses (4)
@@ -73,21 +73,21 @@ class TypeTag(Deserializable, Serializable):
         VECTOR: Discriminator for vector types (6) - not implemented
         STRUCT: Discriminator for custom struct types (7)
         U16: Discriminator for 16-bit unsigned integers (8)
-        U32: Discriminator for 32-bit unsigned integers (9) 
+        U32: Discriminator for 32-bit unsigned integers (9)
         U256: Discriminator for 256-bit unsigned integers (10)
         value: The wrapped type tag implementation
-        
+
     Examples:
         Creating type tags for primitives::
-        
+
             bool_type = TypeTag(BoolTag(True))
             u64_type = TypeTag(U64Tag(12345))
             address_type = TypeTag(AccountAddressTag(
                 AccountAddress.from_str("0x1")
             ))
-            
+
         Creating struct type tags::
-        
+
             struct_type = TypeTag(StructTag(
                 AccountAddress.from_str("0x1"),
                 "coin", "Coin", []
@@ -110,7 +110,7 @@ class TypeTag(Deserializable, Serializable):
 
     def __init__(self, value: typing.Any):
         """Initialize a TypeTag with a specific type implementation.
-        
+
         Args:
             value: The type tag implementation (e.g., BoolTag, U64Tag, StructTag)
         """
@@ -118,10 +118,10 @@ class TypeTag(Deserializable, Serializable):
 
     def __eq__(self, other: object) -> bool:
         """Check equality with another TypeTag.
-        
+
         Args:
             other: The object to compare with.
-            
+
         Returns:
             True if both TypeTags represent the same type and value.
         """
@@ -133,7 +133,7 @@ class TypeTag(Deserializable, Serializable):
 
     def __str__(self):
         """Get string representation of the type tag.
-        
+
         Returns:
             String representation of the underlying type.
         """
@@ -141,7 +141,7 @@ class TypeTag(Deserializable, Serializable):
 
     def __repr__(self):
         """Get detailed string representation for debugging.
-        
+
         Returns:
             String representation of the type tag.
         """
@@ -150,13 +150,13 @@ class TypeTag(Deserializable, Serializable):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> TypeTag:
         """Deserialize a TypeTag from a BCS byte stream.
-        
+
         Args:
             deserializer: The BCS deserializer to read from.
-            
+
         Returns:
             The deserialized TypeTag instance.
-            
+
         Raises:
             NotImplementedError: If the type variant is not supported
                 (SIGNER, VECTOR) or unknown.
@@ -188,7 +188,7 @@ class TypeTag(Deserializable, Serializable):
 
     def serialize(self, serializer: Serializer):
         """Serialize this TypeTag to a BCS byte stream.
-        
+
         Args:
             serializer: The BCS serializer to write to.
         """
@@ -198,27 +198,28 @@ class TypeTag(Deserializable, Serializable):
 
 class BoolTag(Deserializable, Serializable):
     """Type tag for Move boolean values.
-    
+
     Represents the Move `bool` primitive type, which can hold true or false values.
-    
+
     Attributes:
         value: The boolean value this tag represents.
-        
+
     Examples:
         Creating and using BoolTag::
-        
+
             true_tag = BoolTag(True)
             false_tag = BoolTag(False)
-            
+
             # Serialize/deserialize
             serialized = true_tag.to_bytes()
             deserialized = BoolTag.from_bytes(serialized)
     """
+
     value: bool
 
     def __init__(self, value: bool):
         """Initialize a BoolTag with a boolean value.
-        
+
         Args:
             value: The boolean value to wrap.
         """
@@ -226,10 +227,10 @@ class BoolTag(Deserializable, Serializable):
 
     def __eq__(self, other: object) -> bool:
         """Check equality with another BoolTag.
-        
+
         Args:
             other: The object to compare with.
-            
+
         Returns:
             True if both tags represent the same boolean value.
         """
@@ -239,7 +240,7 @@ class BoolTag(Deserializable, Serializable):
 
     def __str__(self):
         """Get string representation of the boolean value.
-        
+
         Returns:
             String representation ("True" or "False").
         """
@@ -247,7 +248,7 @@ class BoolTag(Deserializable, Serializable):
 
     def variant(self):
         """Get the type discriminator for this tag.
-        
+
         Returns:
             The BOOL type discriminator.
         """
@@ -256,10 +257,10 @@ class BoolTag(Deserializable, Serializable):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> BoolTag:
         """Deserialize a BoolTag from a BCS byte stream.
-        
+
         Args:
             deserializer: The BCS deserializer to read from.
-            
+
         Returns:
             The deserialized BoolTag instance.
         """
@@ -267,7 +268,7 @@ class BoolTag(Deserializable, Serializable):
 
     def serialize(self, serializer: Serializer):
         """Serialize this BoolTag to a BCS byte stream.
-        
+
         Args:
             serializer: The BCS serializer to write to.
         """
@@ -276,27 +277,28 @@ class BoolTag(Deserializable, Serializable):
 
 class U8Tag(Deserializable, Serializable):
     """Type tag for Move 8-bit unsigned integer values.
-    
+
     Represents the Move `u8` primitive type, which holds unsigned 8-bit integers
     in the range 0-255.
-    
+
     Attributes:
         value: The u8 integer value this tag represents.
-        
+
     Examples:
         Creating and using U8Tag::
-        
+
             tag = U8Tag(255)  # Maximum u8 value
-            
+
             # Serialize/deserialize
             serialized = tag.to_bytes()
             deserialized = U8Tag.from_bytes(serialized)
     """
+
     value: int
 
     def __init__(self, value: int):
         """Initialize a U8Tag with an 8-bit unsigned integer.
-        
+
         Args:
             value: The u8 value to wrap (0-255).
         """
@@ -304,10 +306,10 @@ class U8Tag(Deserializable, Serializable):
 
     def __eq__(self, other: object) -> bool:
         """Check equality with another U8Tag.
-        
+
         Args:
             other: The object to compare with.
-            
+
         Returns:
             True if both tags represent the same u8 value.
         """
@@ -317,7 +319,7 @@ class U8Tag(Deserializable, Serializable):
 
     def __str__(self):
         """Get string representation of the u8 value.
-        
+
         Returns:
             String representation of the integer value.
         """
@@ -325,7 +327,7 @@ class U8Tag(Deserializable, Serializable):
 
     def variant(self):
         """Get the type discriminator for this tag.
-        
+
         Returns:
             The U8 type discriminator.
         """
@@ -334,10 +336,10 @@ class U8Tag(Deserializable, Serializable):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> U8Tag:
         """Deserialize a U8Tag from a BCS byte stream.
-        
+
         Args:
             deserializer: The BCS deserializer to read from.
-            
+
         Returns:
             The deserialized U8Tag instance.
         """
@@ -345,7 +347,7 @@ class U8Tag(Deserializable, Serializable):
 
     def serialize(self, serializer: Serializer):
         """Serialize this U8Tag to a BCS byte stream.
-        
+
         Args:
             serializer: The BCS serializer to write to.
         """
@@ -354,18 +356,19 @@ class U8Tag(Deserializable, Serializable):
 
 class U16Tag(Deserializable, Serializable):
     """Type tag for Move 16-bit unsigned integer values.
-    
+
     Represents the Move `u16` primitive type, which holds unsigned 16-bit integers
     in the range 0-65535.
-    
+
     Attributes:
         value: The u16 integer value this tag represents.
     """
+
     value: int
 
     def __init__(self, value: int):
         """Initialize a U16Tag with a 16-bit unsigned integer.
-        
+
         Args:
             value: The u16 value to wrap (0-65535).
         """
@@ -397,18 +400,19 @@ class U16Tag(Deserializable, Serializable):
 
 class U32Tag(Deserializable, Serializable):
     """Type tag for Move 32-bit unsigned integer values.
-    
+
     Represents the Move `u32` primitive type, which holds unsigned 32-bit integers
     in the range 0-4294967295.
-    
+
     Attributes:
         value: The u32 integer value this tag represents.
     """
+
     value: int
 
     def __init__(self, value: int):
         """Initialize a U32Tag with a 32-bit unsigned integer.
-        
+
         Args:
             value: The u32 value to wrap (0-4294967295).
         """
@@ -440,18 +444,19 @@ class U32Tag(Deserializable, Serializable):
 
 class U64Tag(Deserializable, Serializable):
     """Type tag for Move 64-bit unsigned integer values.
-    
+
     Represents the Move `u64` primitive type, which holds unsigned 64-bit integers
     in the range 0-18446744073709551615.
-    
+
     Attributes:
         value: The u64 integer value this tag represents.
     """
+
     value: int
 
     def __init__(self, value: int):
         """Initialize a U64Tag with a 64-bit unsigned integer.
-        
+
         Args:
             value: The u64 value to wrap (0-18446744073709551615).
         """
@@ -483,18 +488,19 @@ class U64Tag(Deserializable, Serializable):
 
 class U128Tag(Deserializable, Serializable):
     """Type tag for Move 128-bit unsigned integer values.
-    
+
     Represents the Move `u128` primitive type, which holds unsigned 128-bit integers
     in the range 0-340282366920938463463374607431768211455.
-    
+
     Attributes:
         value: The u128 integer value this tag represents.
     """
+
     value: int
 
     def __init__(self, value: int):
         """Initialize a U128Tag with a 128-bit unsigned integer.
-        
+
         Args:
             value: The u128 value to wrap.
         """
@@ -526,17 +532,18 @@ class U128Tag(Deserializable, Serializable):
 
 class U256Tag(Deserializable, Serializable):
     """Type tag for Move 256-bit unsigned integer values.
-    
+
     Represents the Move `u256` primitive type, which holds unsigned 256-bit integers.
-    
+
     Attributes:
         value: The u256 integer value this tag represents.
     """
+
     value: int
 
     def __init__(self, value: int):
         """Initialize a U256Tag with a 256-bit unsigned integer.
-        
+
         Args:
             value: The u256 value to wrap.
         """
@@ -568,28 +575,29 @@ class U256Tag(Deserializable, Serializable):
 
 class AccountAddressTag(Deserializable, Serializable):
     """Type tag for Move address values.
-    
+
     Represents the Move `address` primitive type, which holds account addresses
     used to identify accounts and resources on the Aptos blockchain.
-    
+
     Attributes:
         value: The AccountAddress value this tag represents.
-        
+
     Examples:
         Creating and using AccountAddressTag::
-        
+
             addr = AccountAddress.from_str("0x1")
             tag = AccountAddressTag(addr)
-            
+
             # Serialize/deserialize
             serialized = tag.to_bytes()
             deserialized = AccountAddressTag.from_bytes(serialized)
     """
+
     value: AccountAddress
 
     def __init__(self, value: AccountAddress):
         """Initialize an AccountAddressTag with an account address.
-        
+
         Args:
             value: The AccountAddress to wrap.
         """
@@ -621,41 +629,42 @@ class AccountAddressTag(Deserializable, Serializable):
 
 class StructTag(Deserializable, Serializable):
     """Type tag for Move struct types.
-    
+
     Represents custom Move struct types, which are user-defined composite types
     that can have generic type parameters. StructTags fully specify a struct
     type including its location (address and module), name, and type arguments.
-    
+
     Attributes:
         address: The account address where the module is published.
         module: The name of the module containing the struct.
         name: The name of the struct.
         type_args: List of type arguments for generic structs.
-        
+
     Examples:
         Creating struct tags::
-        
+
             # Simple struct without generics
             struct_tag = StructTag(
                 AccountAddress.from_str("0x1"),
                 "account", "Account", []
             )
-            
+
             # Generic struct with type parameters
             coin_tag = StructTag(
                 AccountAddress.from_str("0x1"),
                 "coin", "Coin",
                 [TypeTag(StructTag(
-                    AccountAddress.from_str("0x1"), 
+                    AccountAddress.from_str("0x1"),
                     "aptos_coin", "AptosCoin", []
                 ))]
             )
-            
+
         Parsing from string::
-        
+
             tag = StructTag.from_str("0x1::coin::Coin<0x1::aptos_coin::AptosCoin>")
             print(tag)  # "0x1::coin::Coin<0x1::aptos_coin::AptosCoin>"
     """
+
     address: AccountAddress
     module: str
     name: str
@@ -663,7 +672,7 @@ class StructTag(Deserializable, Serializable):
 
     def __init__(self, address, module, name, type_args):
         """Initialize a StructTag.
-        
+
         Args:
             address: The account address where the struct's module is published.
             module: The name of the module containing the struct.
@@ -677,10 +686,10 @@ class StructTag(Deserializable, Serializable):
 
     def __eq__(self, other: object) -> bool:
         """Check equality with another StructTag.
-        
+
         Args:
             other: The object to compare with.
-            
+
         Returns:
             True if both StructTags represent the same struct type.
         """
@@ -695,9 +704,9 @@ class StructTag(Deserializable, Serializable):
 
     def __str__(self) -> str:
         """Get the canonical string representation of this struct type.
-        
+
         The format is: address::module::name<type_arg1, type_arg2, ...>
-        
+
         Returns:
             String representation of the struct type.
         """
@@ -712,19 +721,19 @@ class StructTag(Deserializable, Serializable):
     @staticmethod
     def from_str(type_tag: str) -> StructTag:
         """Parse a StructTag from its string representation.
-        
+
         Args:
             type_tag: String representation of a struct type, e.g.,
                 "0x1::coin::Coin<0x1::aptos_coin::AptosCoin>"
-                
+
         Returns:
             The parsed StructTag instance.
-            
+
         Examples:
             Parsing simple and complex struct types::
-            
+
                 simple = StructTag.from_str("0x1::account::Account")
-                
+
                 nested = StructTag.from_str(
                     "0x1::coin::Coin<0x1::aptos_coin::AptosCoin>"
                 )
@@ -734,14 +743,14 @@ class StructTag(Deserializable, Serializable):
     @staticmethod
     def _from_str_internal(type_tag: str, index: int) -> Tuple[List[TypeTag], int]:
         """Internal recursive parser for struct type strings.
-        
+
         This method handles the complex parsing of nested generic types,
         including proper handling of angle brackets and comma separators.
-        
+
         Args:
             type_tag: The string to parse.
             index: Current parsing position.
-            
+
         Returns:
             Tuple of (parsed type tags list, new index position).
         """
@@ -790,7 +799,7 @@ class StructTag(Deserializable, Serializable):
 
     def variant(self):
         """Get the type discriminator for this tag.
-        
+
         Returns:
             The STRUCT type discriminator.
         """
@@ -799,10 +808,10 @@ class StructTag(Deserializable, Serializable):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> StructTag:
         """Deserialize a StructTag from a BCS byte stream.
-        
+
         Args:
             deserializer: The BCS deserializer to read from.
-            
+
         Returns:
             The deserialized StructTag instance.
         """
@@ -814,7 +823,7 @@ class StructTag(Deserializable, Serializable):
 
     def serialize(self, serializer: Serializer):
         """Serialize this StructTag to a BCS byte stream.
-        
+
         Args:
             serializer: The BCS serializer to write to.
         """
@@ -826,10 +835,11 @@ class StructTag(Deserializable, Serializable):
 
 class Test(unittest.TestCase):
     """Test suite for type tag functionality.
-    
+
     Tests parsing, serialization, and string representation of complex
     nested struct types with multiple levels of generic type parameters.
     """
+
     def test_nested_structs(self):
         l0 = "0x0::l0::L0"
         l10 = "0x1::l10::L10"

@@ -21,7 +21,7 @@ Key Features:
 
 Client Types:
     RestClient: Primary interface to Aptos full nodes via REST API
-    IndexerClient: GraphQL interface to Aptos indexer services  
+    IndexerClient: GraphQL interface to Aptos indexer services
     FaucetClient: Test network funding and account creation
 
 Transaction Types:
@@ -40,68 +40,68 @@ Query Capabilities:
 
 Examples:
     Basic client setup and account query::
-    
+
         from aptos_sdk.async_client import RestClient, ClientConfig
         from aptos_sdk.account_address import AccountAddress
-        
+
         # Create client with custom configuration
         config = ClientConfig(
             max_gas_amount=200_000,
             gas_unit_price=150,
             transaction_wait_in_seconds=30
         )
-        
+
         client = RestClient("https://fullnode.devnet.aptoslabs.com/v1", config)
-        
+
         # Query account information
         address = AccountAddress.from_str("***123...")
         account_info = await client.account(address)
         balance = await client.account_balance(address)
-        
+
         print(f"Sequence number: {account_info['sequence_number']}")
         print(f"Balance: {balance} octas")
-        
+
         await client.close()
-        
+
     Transaction submission::
-    
+
         from aptos_sdk.account import Account
-        
+
         # Create sender account
         sender = Account.generate()
         recipient = AccountAddress.from_str("***456...")
-        
+
         # Transfer 1 APT (1 * 10^8 octas)
         txn_hash = await client.bcs_transfer(
             sender=sender,
             recipient=recipient,
             amount=100_000_000  # 1 APT in octas
         )
-        
+
         # Wait for transaction completion
         await client.wait_for_transaction(txn_hash)
         txn_info = await client.transaction_by_hash(txn_hash)
-        
+
     Multi-agent transaction::
-    
+
         # Create multi-agent transaction requiring multiple signatures
         signed_txn = await client.create_multi_agent_bcs_transaction(
             sender=primary_account,
             secondary_accounts=[account2, account3],
             payload=transaction_payload
         )
-        
+
         txn_hash = await client.submit_bcs_transaction(signed_txn)
-        
+
     IndexerClient usage::
-    
+
         indexer = IndexerClient(
             "https://indexer.devnet.aptoslabs.com/v1/graphql",
             bearer_token="optional_token"
         )
-        
+
         # GraphQL query example
-        query = """
+        query = \"\"\"
         query GetTransactions($address: String!) {
             account_transactions(where: {account_address: {_eq: $address}}) {
                 transaction_version
@@ -109,33 +109,33 @@ Examples:
                 success
             }
         }
-        """
-        
+        \"\"\"
+
         result = await indexer.query(query, {"address": str(address)})
-        
+
     Faucet usage for testnet::
-    
+
         faucet = FaucetClient(
             "https://faucet.devnet.aptoslabs.com",
             rest_client=client
         )
-        
+
         # Fund account with test coins
         account = Account.generate()
         txn_hash = await faucet.fund_account(
             address=account.address(),
             amount=500_000_000  # 5 APT
         )
-        
+
         await faucet.close()
 
 Error Handling:
     The module provides specific exception types for different error scenarios:
-    
+
     - ApiError: General API request failures (HTTP 4xx/5xx)
     - AccountNotFound: Requested account doesn't exist
     - ResourceNotFound: Requested resource not found in account
-    
+
 Best Practices:
     - Always call client.close() when done to clean up connections
     - Use context managers or try/finally blocks for resource cleanup
@@ -180,51 +180,51 @@ U64_MAX = 18446744073709551615
 @dataclass
 class ClientConfig:
     """Configuration parameters for Aptos REST API clients.
-    
+
     This class encapsulates common settings used by REST clients for transaction
     submission, gas management, and network communication. These parameters affect
     transaction costs, execution timeouts, and API authentication.
-    
+
     Transaction Parameters:
         expiration_ttl: Time-to-live for transactions in seconds (default: 600)
         gas_unit_price: Price per unit of gas in octas (default: 100)
         max_gas_amount: Maximum gas units allowed per transaction (default: 100,000)
         transaction_wait_in_seconds: Timeout for transaction confirmation (default: 20)
-        
+
     Network Parameters:
         http2: Enable HTTP/2 for better performance (default: True)
         api_key: Optional API key for authenticated requests (default: None)
-        
+
     Examples:
         Default configuration::
-        
+
             config = ClientConfig()
             client = RestClient(node_url, config)
-            
+
         High-throughput configuration::
-        
+
             config = ClientConfig(
                 gas_unit_price=150,       # Higher gas price for faster processing
                 max_gas_amount=200_000,   # Higher gas limit for complex transactions
                 transaction_wait_in_seconds=60,  # Longer wait for busy networks
                 expiration_ttl=300        # Shorter expiration for high-frequency ops
             )
-            
+
         Authenticated requests::
-        
+
             config = ClientConfig(
                 api_key="your-api-key-here",
                 http2=True  # Recommended for API services
             )
-            
+
         Conservative settings::
-        
+
             config = ClientConfig(
                 gas_unit_price=100,       # Standard gas price
                 max_gas_amount=50_000,    # Lower gas limit to prevent runaway
                 expiration_ttl=1200       # Longer expiration for manual workflows
             )
-    
+
     Notes:
         - Gas prices may need adjustment based on network congestion
         - Higher gas limits allow more complex transactions but cost more
@@ -243,19 +243,19 @@ class ClientConfig:
 
 class IndexerClient:
     """GraphQL client for querying indexed Aptos blockchain data.
-    
+
     This client provides access to the Aptos Indexer Service, which indexes
     blockchain data into a PostgreSQL database exposed via Hasura GraphQL API.
     The indexer provides rich querying capabilities for transactions, accounts,
     events, and other blockchain data.
-    
+
     Key Features:
     - **Rich Queries**: Complex filtering, sorting, and aggregation of blockchain data
     - **Real-time Data**: Access to up-to-date indexed blockchain information
     - **Flexible API**: GraphQL interface supporting custom query structures
     - **Authentication**: Optional bearer token authentication for premium access
     - **High Performance**: Optimized database queries for fast data retrieval
-    
+
     Use Cases:
     - Analytics and reporting on blockchain activity
     - Transaction history and account analysis
@@ -263,20 +263,20 @@ class IndexerClient:
     - DeFi protocol data aggregation
     - NFT marketplace data queries
     - Portfolio tracking applications
-    
+
     Attributes:
         client: The underlying GraphQL client for executing queries
-        
+
     Examples:
         Basic setup and query::
-        
+
             indexer = IndexerClient(
                 "https://indexer.mainnet.aptoslabs.com/v1/graphql",
                 bearer_token="optional-auth-token"
             )
-            
+
             # Query account transactions
-            query = """
+            query = \"\"\"
             query GetAccountTransactions($address: String!, $limit: Int!) {
                 account_transactions(
                     where: {account_address: {_eq: $address}},
@@ -289,16 +289,16 @@ class IndexerClient:
                     transaction_timestamp
                 }
             }
-            """
-            
+            \"\"\"
+
             result = await indexer.query(query, {
                 "address": "0x1",
                 "limit": 100
             })
-            
+
         Token transfer queries::
-        
-            query = """
+
+            query = \"\"\"
             query GetTokenTransfers($token_address: String!) {
                 token_activities(
                     where: {
@@ -315,15 +315,15 @@ class IndexerClient:
                     transaction_timestamp
                 }
             }
-            """
-            
+            \"\"\"
+
             transfers = await indexer.query(query, {
                 "token_address": "0xabc123..."
             })
-            
+
         Account resource tracking::
-        
-            query = """
+
+            query = \"\"\"
             query GetAccountResources($address: String!) {
                 account_resources(
                     where: {account_address: {_eq: $address}}
@@ -334,10 +334,10 @@ class IndexerClient:
                     transaction_version
                 }
             }
-            """
-            
+            \"\"\"
+
             resources = await indexer.query(query, {"address": address})
-    
+
     Note:
         The indexer service may have query limits and rate limiting. Some
         advanced features may require authentication tokens. Check the specific
@@ -348,20 +348,20 @@ class IndexerClient:
 
     def __init__(self, indexer_url: str, bearer_token: Optional[str] = None):
         """Initialize the IndexerClient with connection parameters.
-        
+
         Args:
             indexer_url: The GraphQL endpoint URL for the Aptos indexer service.
             bearer_token: Optional authentication token for premium access.
-            
+
         Examples:
             Public access::
-            
+
                 client = IndexerClient(
                     "https://indexer.devnet.aptoslabs.com/v1/graphql"
                 )
-                
+
             Authenticated access::
-            
+
                 client = IndexerClient(
                     "https://indexer.mainnet.aptoslabs.com/v1/graphql",
                     bearer_token="your-token-here"
@@ -383,17 +383,17 @@ class IndexerClient:
         Args:
             query: GraphQL query string with proper syntax and structure.
             variables: Dictionary of variables to substitute in the query.
-            
+
         Returns:
             Dictionary containing the GraphQL response data and metadata.
-            
+
         Raises:
             Exception: On GraphQL syntax errors, network issues, or server errors.
-            
+
         Examples:
             Simple account query::
-            
-                query = """
+
+                query = \"\"\"
                 query GetAccount($address: String!) {
                     account_transactions(
                         where: {account_address: {_eq: $address}}
@@ -403,14 +403,14 @@ class IndexerClient:
                         success
                     }
                 }
-                """
-                
+                \"\"\"
+
                 result = await indexer.query(query, {"address": "0x1"})
                 transactions = result["data"]["account_transactions"]
-                
+
             Complex aggregation query::
-            
-                query = """
+
+                query = \"\"\"
                 query GetDailyStats($date: timestamptz!) {
                     transactions_aggregate(
                         where: {
@@ -425,12 +425,12 @@ class IndexerClient:
                         }
                     }
                 }
-                """
-                
+                \"\"\"
+
                 stats = await indexer.query(query, {
                     "date": "2024-01-01T00:00:00Z"
                 })
-        
+
         Note:
             The query must follow GraphQL syntax. Use the indexer's schema
             documentation to understand available fields and relationships.
@@ -440,45 +440,45 @@ class IndexerClient:
 
 class RestClient:
     """Comprehensive async client for the Aptos blockchain REST API.
-    
+
     This client provides complete access to Aptos full node functionality through
     the REST API, supporting all blockchain operations including account management,
     transaction submission, resource queries, event monitoring, and more.
-    
+
     Core Capabilities:
     - **Account Operations**: Balance queries, resource access, transaction history
     - **Transaction Management**: Submission, simulation, status tracking, waiting
     - **Blockchain Queries**: Block data, ledger info, event streams
     - **Move Integration**: View functions, resource inspection, module access
     - **Advanced Features**: Multi-agent transactions, BCS encoding, gas estimation
-    
+
     Performance Features:
     - **HTTP/2 Support**: Efficient connection reuse and multiplexing
-    - **Connection Pooling**: Optimized for high-throughput applications  
+    - **Connection Pooling**: Optimized for high-throughput applications
     - **Async/Await**: Non-blocking operations for better concurrency
     - **Configurable Timeouts**: Flexible timeout management for different use cases
     - **Automatic Retries**: Built-in resilience for transient network issues
-    
+
     Transaction Types:
     - Single-signature transactions (most common)
     - Multi-signature transactions (shared accounts, DAOs)
     - Script transactions (custom Move code execution)
     - Entry function calls (smart contract interactions)
-    
+
     Attributes:
         _chain_id: Cached network chain ID (mainnet=1, testnet=2, etc.)
         client: Underlying HTTP client with connection pooling
         client_config: Configuration for gas, timeouts, and other parameters
         base_url: Base URL of the Aptos full node REST API
-        
+
     Examples:
         Basic client setup::
-        
+
             from aptos_sdk.async_client import RestClient, ClientConfig
-            
+
             # Use default configuration
             client = RestClient("https://fullnode.mainnet.aptoslabs.com/v1")
-            
+
             # Custom configuration for high-throughput apps
             config = ClientConfig(
                 max_gas_amount=200_000,
@@ -486,79 +486,79 @@ class RestClient:
                 transaction_wait_in_seconds=60
             )
             client = RestClient("https://fullnode.devnet.aptoslabs.com/v1", config)
-            
+
         Account operations::
-        
+
             from aptos_sdk.account_address import AccountAddress
-            
+
             address = AccountAddress.from_str("0x1")
-            
+
             # Get account information
             account_data = await client.account(address)
             sequence_number = account_data["sequence_number"]
-            
+
             # Check balance
             balance = await client.account_balance(address)
             print(f"Balance: {balance / 10**8} APT")
-            
+
             # Get all resources
             resources = await client.account_resources(address)
             for resource in resources:
                 print(f"Resource: {resource['type']}")
-                
+
         Transaction submission::
-        
+
             from aptos_sdk.account import Account
-            
+
             # Create accounts
             sender = Account.generate()
             recipient = AccountAddress.from_str("0x456...")
-            
+
             # Simple transfer
             txn_hash = await client.bcs_transfer(
                 sender=sender,
-                recipient=recipient, 
+                recipient=recipient,
                 amount=100_000_000  # 1 APT in octas
             )
-            
+
             # Wait for confirmation
             await client.wait_for_transaction(txn_hash)
             txn_data = await client.transaction_by_hash(txn_hash)
-            
+
             if txn_data["success"]:
                 print(f"Transfer successful! Gas used: {txn_data['gas_used']}")
-                
+
         Transaction simulation::
-        
+
             # Create transaction without submitting
             raw_txn = await client.create_bcs_transaction(
                 sender=sender_account,
                 payload=transaction_payload
             )
-            
+
             # Simulate to estimate gas
             simulation = await client.simulate_transaction(
                 transaction=raw_txn,
                 sender=sender_account,
                 estimate_gas_usage=True
             )
-            
+
             print(f"Estimated gas: {simulation[0]['gas_used']}")
             print(f"Success: {simulation[0]['success']}")
-            
+
         Multi-agent transactions::
-        
+
             # Transactions requiring multiple signatures
             signed_txn = await client.create_multi_agent_bcs_transaction(
                 sender=primary_account,
                 secondary_accounts=[account2, account3],
                 payload=shared_transaction_payload
             )
-            
+
             txn_hash = await client.submit_bcs_transaction(signed_txn)
-            
+
         View function calls::
-        
+
             # Read-only function calls (no gas cost)
             result = await client.view(
                 function="0x1::coin::balance",
@@ -566,25 +566,25 @@ class RestClient:
                 arguments=[str(address)]
             )
             balance = int(result[0])
-            
+
         Event monitoring::
-        
+
             # Get events by creation number
             events = await client.event_by_creation_number(
                 account_address=contract_address,
                 creation_number=0,  # First event stream
                 limit=100
             )
-            
+
             for event in events:
                 print(f"Event: {event['type']}, Data: {event['data']}")
-    
+
     Error Handling:
         The client raises specific exceptions for different failure modes:
         - ApiError: HTTP errors (4xx, 5xx status codes)
         - AccountNotFound: Account doesn't exist on-chain
         - ResourceNotFound: Requested resource not found in account
-        
+
     Best Practices:
         - Always call await client.close() when done
         - Use try/finally or async context managers for cleanup
@@ -593,7 +593,7 @@ class RestClient:
         - Implement exponential backoff for retries on failures
         - Use BCS transactions for better performance and fees
         - Monitor gas usage and adjust pricing as needed
-        
+
     Note:
         This client is designed for production use with proper connection
         management, timeout handling, and error recovery. It supports both
@@ -607,21 +607,21 @@ class RestClient:
 
     def __init__(self, base_url: str, client_config: ClientConfig = ClientConfig()):
         """Initialize the REST client with configuration parameters.
-        
+
         Args:
             base_url: Base URL of the Aptos full node REST API.
                 Examples: "https://fullnode.mainnet.aptoslabs.com/v1",
                          "https://fullnode.devnet.aptoslabs.com/v1"
             client_config: Configuration for gas, timeouts, and networking.
                 Defaults to standard settings if not provided.
-                
+
         Examples:
             Mainnet client::
-            
+
                 client = RestClient("https://fullnode.mainnet.aptoslabs.com/v1")
-                
+
             Testnet with custom config::
-            
+
                 config = ClientConfig(
                     gas_unit_price=200,
                     max_gas_amount=150_000,
@@ -631,11 +631,11 @@ class RestClient:
                     "https://fullnode.testnet.aptoslabs.com/v1",
                     config
                 )
-                
+
             Local development node::
-            
+
                 client = RestClient("http://localhost:8080/v1")
-        
+
         Note:
             The client automatically configures HTTP/2, connection pooling,
             proper headers, and timeouts for optimal performance.

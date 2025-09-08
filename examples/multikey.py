@@ -17,20 +17,20 @@ Features Demonstrated:
 
 Key Concepts:
     - **Multi-Key Account**: An account controlled by multiple cryptographic keys
-    - **Threshold Signatures**: Requires a minimum number of signatures (threshold) 
+    - **Threshold Signatures**: Requires a minimum number of signatures (threshold)
       out of the total available keys to authorize transactions
-    - **Mixed Key Types**: Supports both secp256k1 (ECDSA) and Ed25519 keys in 
+    - **Mixed Key Types**: Supports both secp256k1 (ECDSA) and Ed25519 keys in
       the same multi-key setup
-    - **Account Address Derivation**: Multi-key accounts have addresses derived 
+    - **Account Address Derivation**: Multi-key accounts have addresses derived
       from the combined public keys and threshold
 
 Security Benefits:
     - **Distributed Control**: No single key can authorize transactions alone
-    - **Reduced Single Points of Failure**: Even if one key is compromised, 
+    - **Reduced Single Points of Failure**: Even if one key is compromised,
       the account remains secure
-    - **Flexible Access Patterns**: Different combinations of signers can 
+    - **Flexible Access Patterns**: Different combinations of signers can
       authorize transactions
-    - **Key Type Diversity**: Mixing different signature schemes provides 
+    - **Key Type Diversity**: Mixing different signature schemes provides
       cryptographic diversity
 
 Workflow:
@@ -111,71 +111,71 @@ from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, NODE_URL
 async def main():
     """
     Demonstrate multi-key authentication and transaction signing on Aptos.
-    
+
     This function showcases the complete workflow for creating a multi-signature
     account, funding it, and executing a transfer transaction that requires
     multiple signatures to authorize.
-    
+
     The example creates a 2-of-3 multi-key account using mixed cryptographic
     key types (secp256k1 and Ed25519) and demonstrates how to:
-    
+
     1. **Setup Phase**:
        - Initialize REST and Faucet clients for network interaction
        - Generate 3 private keys of different types (2 secp256k1, 1 Ed25519)
        - Create a MultiPublicKey with threshold=2 (requires 2 signatures)
        - Derive the multi-key account address
        - Create a regular single-key account for Bob
-    
+
     2. **Funding Phase**:
        - Fund both Alice's multi-key account and Bob's account using faucet
        - Display initial balances for verification
-    
+
     3. **Transaction Phase**:
        - Construct an APT transfer transaction from Alice to Bob
        - Sign the transaction with 2 out of 3 available keys
        - Combine individual signatures into a MultiSignature
        - Create an AccountAuthenticator with MultiKeyAuthenticator
-    
+
     4. **Verification Phase**:
        - Verify each individual signature against its corresponding key
        - Verify the combined multi-signature against the multi-key
        - Verify the complete authenticator
-    
+
     5. **Submission Phase**:
        - Submit the signed transaction to the network
        - Wait for transaction confirmation
        - Display final balances to confirm the transfer
-    
+
     Key Security Features:
     - **Threshold Security**: Requires 2 signatures out of 3 possible
     - **Cryptographic Diversity**: Uses both secp256k1 and Ed25519 keys
     - **Signature Verification**: Validates all signatures before submission
     - **Address Derivation**: Deterministically derives address from multi-key
-    
+
     Network Requirements:
     - Active Aptos devnet/testnet connection
     - Faucet service availability for account funding
     - Sufficient network tokens for transaction fees
-    
+
     Error Scenarios Handled:
     - Network connectivity issues during client operations
     - Transaction failures during submission or confirmation
     - Signature verification failures before submission
     - Account balance insufficiency for transfers
-    
+
     Raises:
         Exception: If network operations fail, signature verification fails,
             or transaction submission encounters errors.
-    
+
     Example Output:
         === Addresses ===
         Multikey Alice: ***bcd123...
         Bob: ***456def...
-        
+
         === Initial Balances ===
         Alice: 100000000
         Bob: 1
-        
+
         === Final Balances ===
         Alice: 99999000  # Reduced by transfer amount + fees
         Bob: 1001        # Increased by transfer amount
