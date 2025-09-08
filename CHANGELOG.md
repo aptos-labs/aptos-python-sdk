@@ -3,6 +3,7 @@
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
 ## Unreleased
+- Update dependencies for vulnerability fixes
 
 ## 0.11.0
 
