@@ -18,7 +18,7 @@ import sys
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
-from aptos_sdk.async_client import FaucetClient, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.package_publisher import PackagePublisher
 from aptos_sdk.transactions import (
@@ -28,7 +28,7 @@ from aptos_sdk.transactions import (
 )
 from aptos_sdk.type_tag import StructTag, TypeTag
 
-from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 class CoinClient(RestClient):
@@ -87,7 +87,7 @@ async def main(moon_coin_path: str):
     print(f"Alice: {alice.address()}")
     print(f"Bob: {bob.address()}")
 
-    rest_client = CoinClient(NODE_URL)
+    rest_client = CoinClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice_fund = faucet_client.fund_account(alice.address(), 20_000_000)
