@@ -6,13 +6,13 @@ import asyncio
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.aptos_token_client import AptosTokenClient, Object, Property, PropertyMap
-from aptos_sdk.async_client import FaucetClient, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
 
-from .common import FAUCET_URL, NODE_URL
+from .common import API_KEY, FAUCET_URL, NODE_URL
 
 
 async def main():
-    rest_client = RestClient(NODE_URL)
+    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
     token_client = AptosTokenClient(rest_client)
     alice = Account.generate()

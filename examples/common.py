@@ -19,4 +19,6 @@ INDEXER_URL = os.getenv(
     "https://api.devnet.aptoslabs.com/v1/graphql",
 )
 NODE_URL = os.getenv("APTOS_NODE_URL", "https://api.devnet.aptoslabs.com/v1")
+
+API_KEY = os.getenv("API_KEY")
 # <:!:section_1

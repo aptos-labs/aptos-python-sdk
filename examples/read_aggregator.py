@@ -4,13 +4,13 @@
 import asyncio
 
 from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.async_client import RestClient
+from aptos_sdk.async_client import ClientConfig, RestClient
 
-from .common import NODE_URL
+from .common import API_KEY, NODE_URL
 
 
 async def main():
-    rest_client = RestClient(NODE_URL)
+    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     total_apt = await rest_client.aggregator_value(
         AccountAddress.from_str("0x1"),
         "0x1::coin::CoinInfo<0x1::aptos_coin::AptosCoin>",

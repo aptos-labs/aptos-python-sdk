@@ -7,7 +7,7 @@ import time
 
 from aptos_sdk.account import Account, RotationProofChallenge
 from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.async_client import FaucetClient, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
 from aptos_sdk.authenticator import Authenticator, MultiEd25519Authenticator
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.ed25519 import MultiPublicKey, MultiSignature
@@ -22,7 +22,7 @@ from aptos_sdk.transactions import (
 )
 from aptos_sdk.type_tag import StructTag, TypeTag
 
-from .common import APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import API_KEY, APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 should_wait = True
 
@@ -37,7 +37,7 @@ async def main(should_wait_input=True):
     global should_wait
     should_wait = should_wait_input
 
-    rest_client = RestClient(NODE_URL)
+    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     # :!:>section_1
