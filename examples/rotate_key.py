@@ -127,7 +127,7 @@ import aptos_sdk.asymmetric_crypto as asymmetric_crypto
 import aptos_sdk.ed25519 as ed25519
 from aptos_sdk.account import Account, RotationProofChallenge
 from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.async_client import FaucetClient, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
 from aptos_sdk.authenticator import Authenticator
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
@@ -136,7 +136,7 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 WIDTH = 19
 
@@ -286,7 +286,7 @@ def rotation_payload(
 
 async def main():
     # Initialize the clients used to interact with the blockchain
-    rest_client = RestClient(NODE_URL)
+    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     # Generate random accounts Alice and Bob

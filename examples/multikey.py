@@ -95,7 +95,7 @@ from aptos_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.asymmetric_crypto_wrapper import MultiSignature, Signature
-from aptos_sdk.async_client import FaucetClient, IndexerClient, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, IndexerClient, RestClient
 from aptos_sdk.authenticator import AccountAuthenticator, MultiKeyAuthenticator
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
@@ -105,7 +105,7 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, NODE_URL
+from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, NODE_URL
 
 
 async def main():
@@ -181,7 +181,7 @@ async def main():
         Bob: 1001        # Increased by transfer amount
     """
     # :!:>section_1
-    rest_client = RestClient(NODE_URL)
+    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(
         FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
     )  # <:!:section_1

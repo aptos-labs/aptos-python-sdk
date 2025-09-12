@@ -117,4 +117,6 @@ INDEXER_URL = os.getenv(
 # Aptos REST API node endpoint URL
 # Primary interface for blockchain interactions (transactions, queries, etc.)
 NODE_URL = os.getenv("APTOS_NODE_URL", "https://api.devnet.aptoslabs.com/v1")
+
+API_KEY = os.getenv("API_KEY")
 # <:!:section_1
