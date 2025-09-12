@@ -7,14 +7,14 @@ import sys
 
 from aptos_sdk.account import Account
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
-from aptos_sdk.async_client import FaucetClient, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
 from aptos_sdk.package_publisher import MODULE_ADDRESS, PackagePublisher, PublishMode
 
-from .common import APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import API_KEY, APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 async def main(package_dir):
-    rest_client = RestClient(NODE_URL)
+    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
     package_publisher = PackagePublisher(rest_client)
     alice = Account.generate()

@@ -24,7 +24,7 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 def generate_rest_client(node_url: str) -> RestClient:
@@ -32,7 +32,8 @@ def generate_rest_client(node_url: str) -> RestClient:
     client_config.http2 = True
     client_config.max_gas_amount = 100
     client_config.transaction_wait_in_seconds = 60
-    return RestClient(NODE_URL, client_config)
+    client_config.api_key = API_KEY
+    return RestClient(node_url, client_config)
 
 
 class TransactionGenerator:

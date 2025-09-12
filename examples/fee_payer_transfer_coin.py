@@ -4,7 +4,7 @@
 import asyncio
 
 from aptos_sdk.account import Account
-from aptos_sdk.async_client import FaucetClient, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
 from aptos_sdk.authenticator import Authenticator, FeePayerAuthenticator
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
@@ -15,12 +15,12 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 async def main():
     # :!:>section_1
-    rest_client = RestClient(NODE_URL)
+    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(
         FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
     )  # <:!:section_1

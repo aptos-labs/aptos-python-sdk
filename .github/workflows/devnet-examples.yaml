@@ -13,6 +13,7 @@ jobs:
       APTOS_FAUCET_URL: https://faucet.devnet.aptoslabs.com
       APTOS_INDEXER_URL: https://api.devnet.aptoslabs.com/v1/graphql
       APTOS_NODE_URL: https://fullnode.devnet.aptoslabs.com/v1
+      API_KEY: ${{ secrets.DEVNET_API_KEY }}
       FAUCET_AUTH_TOKEN: ${{ secrets.DEVNET_FAUCET_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
