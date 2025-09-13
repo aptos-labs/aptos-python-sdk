@@ -2,7 +2,193 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This translates Aptos transactions to and from BCS for signing and submitting to the REST API.
+Aptos blockchain transaction construction, signing, and serialization.
+
+This module provides comprehensive functionality for creating, signing, and serializing
+transactions on the Aptos blockchain. It handles the complete transaction lifecycle
+from creation to submission-ready format with Binary Canonical Serialization (BCS).
+
+Key Features:
+- **Transaction Construction**: Build raw transactions with various payload types
+- **Multi-Signature Support**: Handle single-signer, multi-agent, and fee-payer transactions
+- **Cryptographic Signing**: Support for Ed25519 and Secp256k1 ECDSA signatures
+- **BCS Serialization**: Efficient binary encoding for network transmission
+- **Payload Types**: Scripts, entry functions, and multi-signature operations
+- **Transaction Validation**: Built-in verification and integrity checking
+- **Gas Management**: Comprehensive gas pricing and limit handling
+
+Transaction Types:
+- **RawTransaction**: Basic unsigned transaction with sender, payload, and gas parameters
+- **SignedTransaction**: Fully signed transaction ready for blockchain submission
+- **MultiAgentRawTransaction**: Transactions requiring multiple signers
+- **FeePayerRawTransaction**: Transactions where a different account pays fees
+- **Transaction Payloads**: Various execution types (scripts, entry functions)
+
+Architecture:
+    Transaction Flow::
+
+        1. Create RawTransaction with payload and parameters
+        2. Sign with appropriate private key(s) → SignedTransaction
+        3. Serialize to BCS format for network transmission
+        4. Submit to Aptos REST API
+        5. Monitor execution and results
+
+Examples:
+    Basic transfer transaction::
+
+        from aptos_sdk.transactions import RawTransaction, EntryFunction
+        from aptos_sdk.account import Account
+        from aptos_sdk.account_address import AccountAddress
+
+        # Create accounts
+        sender = Account.generate()
+        recipient = Account.generate().address()
+
+        # Create transfer payload
+        transfer_payload = EntryFunction.natural(
+            "0x1::aptos_account",
+            "transfer",
+            [],
+            [recipient, 1_000_000]  # 1 APT in octas
+        )
+
+        # Build raw transaction
+        raw_txn = RawTransaction(
+            sender=sender.address(),
+            sequence_number=0,
+            payload=transfer_payload,
+            max_gas_amount=100_000,
+            gas_unit_price=100,
+            expiration_timestamps_secs=int(time.time()) + 600,  # 10 minutes
+            chain_id=1  # Mainnet
+        )
+
+        # Sign transaction
+        signed_txn = SignedTransaction(raw_txn, sender.sign_transaction(raw_txn))
+
+    Multi-agent transaction::
+
+        from aptos_sdk.transactions import MultiAgentRawTransaction
+
+        # Create multi-agent transaction
+        multi_agent_txn = MultiAgentRawTransaction(
+            raw_transaction=raw_txn,
+            secondary_signer_addresses=[
+                account2.address(),
+                account3.address()
+            ]
+        )
+
+        # Collect signatures from all signers
+        signatures = [
+            account1.sign_transaction(multi_agent_txn),
+            account2.sign_transaction(multi_agent_txn),
+            account3.sign_transaction(multi_agent_txn)
+        ]
+
+        # Create multi-agent signed transaction
+        signed_txn = SignedTransaction(
+            multi_agent_txn,
+            MultiAgentAuthenticator(signatures[0], signatures[1:])
+        )
+
+    Fee-payer transaction::
+
+        from aptos_sdk.transactions import FeePayerRawTransaction
+
+        # Transaction where fee_payer pays gas instead of sender
+        fee_payer_txn = FeePayerRawTransaction(
+            raw_transaction=raw_txn,
+            secondary_signer_addresses=[],
+            fee_payer_address=fee_payer.address()
+        )
+
+        # Both sender and fee payer must sign
+        sender_sig = sender.sign_transaction(fee_payer_txn)
+        fee_payer_sig = fee_payer.sign_transaction(fee_payer_txn)
+
+        signed_txn = SignedTransaction(
+            fee_payer_txn,
+            FeePayerAuthenticator(sender_sig, [], fee_payer_sig)
+        )
+
+    Script execution::
+
+        from aptos_sdk.transactions import Script, TransactionArgument
+
+        # Execute Move script with arguments
+        script_payload = Script(
+            code=compiled_script_bytes,
+            type_arguments=[],
+            arguments=[
+                TransactionArgument(recipient, Serializer.struct),
+                TransactionArgument(amount, Serializer.u64)
+            ]
+        )
+
+        raw_txn = RawTransaction(
+            sender.address(), sequence_num, script_payload,
+            max_gas, gas_price, expiration, chain_id
+        )
+
+Payload Types:
+    Entry Functions:
+        - Most common transaction type
+        - Call public functions in published Move modules
+        - Type-safe with automatic argument serialization
+
+    Scripts:
+        - Execute arbitrary Move bytecode
+        - More flexible but requires compilation
+        - Deprecated in favor of entry functions
+
+    Module Publishing:
+        - Deploy Move modules to the blockchain
+        - Requires compilation and metadata
+
+Gas Economics:
+    Transaction gas consists of:
+    - **Execution Cost**: Computation and storage operations
+    - **IO Cost**: Reading/writing blockchain state
+    - **Storage Cost**: Persistent data storage fees
+
+    Gas Parameters:
+    - **max_gas_amount**: Maximum gas units willing to pay
+    - **gas_unit_price**: Price per gas unit in octas (1 APT = 10^8 octas)
+    - **Total Cost**: max_gas_amount × gas_unit_price (maximum)
+
+Security Considerations:
+    - **Sequence Numbers**: Must match account sequence to prevent replay
+    - **Expiration Times**: Prevent indefinite transaction validity
+    - **Chain ID**: Prevents cross-chain replay attacks
+    - **Signature Verification**: Cryptographic proof of authorization
+    - **Gas Limits**: Prevent infinite execution loops
+
+BCS Serialization:
+    Binary Canonical Serialization ensures:
+    - **Deterministic Encoding**: Same data always produces same bytes
+    - **Compact Format**: Efficient network transmission
+    - **Cross-Language**: Compatible across different SDK implementations
+    - **Integrity**: Hash-based verification of serialized data
+
+Error Handling:
+    Common transaction errors:
+    - **SEQUENCE_NUMBER_TOO_OLD**: Transaction sequence is behind account sequence
+    - **SEQUENCE_NUMBER_TOO_NEW**: Gap in sequence numbers
+    - **TRANSACTION_EXPIRED**: Past expiration timestamp
+    - **INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE**: Not enough funds for gas
+    - **INVALID_SIGNATURE**: Cryptographic signature verification failed
+
+Performance:
+    - **Batch Operations**: Use TransactionWorker for high throughput
+    - **Gas Optimization**: Right-size gas parameters to avoid overpayment
+    - **Payload Efficiency**: Prefer entry functions over scripts
+    - **Signature Schemes**: Ed25519 is faster than Secp256k1 for verification
+
+Note:
+    This module handles the low-level transaction mechanics. For higher-level
+    operations, consider using RestClient.transfer() or other convenience methods
+    that handle transaction construction automatically.
 """
 
 from __future__ import annotations
@@ -89,6 +275,136 @@ class RawTransactionWithData(RawTransactionInternal, Protocol):
 
 
 class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
+    """Represents a raw (unsigned) transaction on the Aptos blockchain.
+
+    A RawTransaction contains all the essential information needed to execute a transaction
+    on the Aptos blockchain, except for cryptographic signatures. It serves as the foundation
+    for all transaction types and must be signed to become a valid SignedTransaction.
+
+    Components:
+    - **Sender**: Account address initiating the transaction
+    - **Sequence Number**: Prevents replay attacks and ensures ordering
+    - **Payload**: The actual operation to execute (entry function, script, etc.)
+    - **Gas Parameters**: Maximum gas amount and price per unit
+    - **Expiration**: Timestamp after which transaction becomes invalid
+    - **Chain ID**: Network identifier preventing cross-chain attacks
+
+    Transaction Lifecycle:
+    1. **Construction**: Create RawTransaction with all parameters
+    2. **Validation**: Verify parameters are valid and consistent
+    3. **Signing**: Apply cryptographic signatures to create SignedTransaction
+    4. **Serialization**: Convert to BCS format for network transmission
+    5. **Submission**: Send to Aptos REST API for execution
+
+    Examples:
+        Basic token transfer::
+
+            from aptos_sdk.transactions import RawTransaction, EntryFunction
+            from aptos_sdk.account import Account
+            import time
+
+            # Setup
+            sender = Account.generate()
+            recipient = Account.generate().address()
+
+            # Create transfer payload
+            payload = EntryFunction.natural(
+                "0x1::aptos_account",
+                "transfer",
+                [],
+                [recipient, 1_000_000]  # 1 APT
+            )
+
+            # Build transaction
+            raw_txn = RawTransaction(
+                sender=sender.address(),
+                sequence_number=5,  # Next sequence for sender account
+                payload=payload,
+                max_gas_amount=100_000,  # Maximum gas units
+                gas_unit_price=100,      # 100 octas per gas unit
+                expiration_timestamps_secs=int(time.time() + 600),  # 10 min
+                chain_id=1  # Mainnet
+            )
+
+            # Sign and create final transaction
+            authenticator = sender.sign_transaction(raw_txn)
+            signed_txn = SignedTransaction(raw_txn, authenticator)
+
+        Smart contract interaction::
+
+            # Call custom module function
+            contract_payload = EntryFunction.natural(
+                "0xabc123::my_module",
+                "custom_function",
+                ["0x1::aptos_coin::AptosCoin"],  # Type arguments
+                [1000, "hello world", True]      # Function arguments
+            )
+
+            raw_txn = RawTransaction(
+                sender.address(), seq_num, contract_payload,
+                200_000, 150, expiration, chain_id
+            )
+
+        Script execution (legacy)::
+
+            from aptos_sdk.transactions import Script, TransactionArgument
+
+            script_payload = Script(
+                code=compiled_move_bytecode,
+                type_arguments=[],
+                arguments=[
+                    TransactionArgument(recipient, Serializer.struct),
+                    TransactionArgument(amount, Serializer.u64)
+                ]
+            )
+
+            raw_txn = RawTransaction(
+                sender.address(), seq_num, script_payload,
+                gas_limit, gas_price, expiration, chain_id
+            )
+
+    Gas Economics:
+        Gas calculation::
+
+            # Total maximum cost in octas
+            max_cost = max_gas_amount * gas_unit_price
+
+            # Example: 100,000 gas units at 100 octas/unit = 10,000,000 octas
+            # That's 0.1 APT maximum (since 1 APT = 100,000,000 octas)
+
+        Gas recommendations:
+        - **Simple transfers**: 100,000 gas units
+        - **Smart contracts**: 200,000-500,000 gas units
+        - **Complex operations**: 1,000,000+ gas units
+        - **Gas price**: 100-150 octas per unit (check network conditions)
+
+    Security Considerations:
+    - **Sequence Number**: Must exactly match next expected sequence for sender
+    - **Expiration Time**: Should be reasonable (10-60 minutes) to prevent stale transactions
+    - **Chain ID**: Must match target network (1=mainnet, 2=testnet, etc.)
+    - **Gas Limits**: Set appropriately to avoid failed transactions or overpayment
+    - **Payload Validation**: Ensure payload parameters are correct and safe
+
+    Validation Rules:
+    - Sender address must be valid and exist on-chain
+    - Sequence number must be >= current account sequence
+    - Gas parameters must be positive and reasonable
+    - Expiration must be in the future
+    - Chain ID must match target network
+    - Payload must be properly constructed and valid
+
+    Performance Notes:
+    - Transaction size affects gas cost
+    - Complex payloads require more gas
+    - Ed25519 signatures are faster to verify than Secp256k1
+    - BCS serialization is optimized for minimal size
+
+    Note:
+        RawTransaction is immutable once created. Any modifications require
+        creating a new instance. This ensures transaction integrity and
+        prevents accidental modifications after signing.
+    """
+
     # Sender's address
     sender: AccountAddress
     # Sequence number of this transaction. This must match the sequence number in the sender's
@@ -115,6 +431,123 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
         expiration_timestamps_secs: int,
         chain_id: int,
     ):
+        """Initialize a RawTransaction with all required parameters.
+
+        Creates a new raw transaction that can be signed and submitted to the Aptos
+        blockchain. All parameters are validated for basic correctness but full
+        validation occurs during signing and submission.
+
+        Args:
+            sender: Account address that will sign and send this transaction.
+                Must be a valid 32-byte Aptos address.
+            sequence_number: Transaction sequence number for the sender account.
+                Must match the next expected sequence number for replay protection.
+            payload: The transaction payload defining what operation to execute.
+                Can be EntryFunction, Script, or ModuleBundle.
+            max_gas_amount: Maximum gas units willing to spend for execution.
+                Must be positive and sufficient for the operation.
+            gas_unit_price: Price to pay per gas unit in octas.
+                Current network rates typically range from 100-150 octas.
+            expiration_timestamps_secs: Unix timestamp when transaction expires.
+                Should be reasonable future time (10-60 minutes from now).
+            chain_id: Identifier for the target Aptos network.
+                1=mainnet, 2=testnet, varies for custom networks.
+
+        Raises:
+            ValueError: If any parameters are invalid or inconsistent.
+            TypeError: If parameters are not the expected types.
+
+        Examples:
+            Simple transfer transaction::
+
+                import time
+                from aptos_sdk.transactions import RawTransaction, EntryFunction
+
+                # Create transfer payload
+                payload = EntryFunction.natural(
+                    "0x1::aptos_account", "transfer", [],
+                    [recipient_address, 1_000_000]
+                )
+
+                # Build raw transaction
+                raw_txn = RawTransaction(
+                    sender=alice.address(),
+                    sequence_number=42,
+                    payload=payload,
+                    max_gas_amount=100_000,
+                    gas_unit_price=100,
+                    expiration_timestamps_secs=int(time.time()) + 600,
+                    chain_id=1
+                )
+
+            Smart contract call::
+
+                # Contract interaction with type arguments
+                contract_call = EntryFunction.natural(
+                    "0xdeadbeef::defi_module",
+                    "swap_tokens",
+                    ["0x1::aptos_coin::AptosCoin", "0x12345::test_coin::TestCoin"],
+                    [input_amount, min_output_amount, slippage_tolerance]
+                )
+
+                raw_txn = RawTransaction(
+                    sender=trader.address(),
+                    sequence_number=get_next_sequence(trader),
+                    payload=contract_call,
+                    max_gas_amount=500_000,  # Higher gas for complex operations
+                    gas_unit_price=150,      # Higher price for faster execution
+                    expiration_timestamps_secs=int(time.time()) + 300,  # 5 minutes
+                    chain_id=1
+                )
+
+            Batch operation setup::
+
+                # Create multiple transactions with sequential sequence numbers
+                base_sequence = await client.account_sequence_number(sender.address())
+
+                transactions = []
+                for i, recipient in enumerate(recipients):
+                    payload = create_transfer_payload(recipient, amounts[i])
+
+                    raw_txn = RawTransaction(
+                        sender=sender.address(),
+                        sequence_number=base_sequence + i,
+                        payload=payload,
+                        max_gas_amount=100_000,
+                        gas_unit_price=100,
+                        expiration_timestamps_secs=int(time.time()) + 1800,  # 30 min
+                        chain_id=chain_id
+                    )
+                    transactions.append(raw_txn)
+
+        Parameter Guidelines:
+            Sequence Numbers:
+            - Must be exactly next expected sequence for sender
+            - Get current sequence from: client.account_sequence_number(sender)
+            - Increment by 1 for each subsequent transaction
+
+            Gas Parameters:
+            - max_gas_amount: Start with 100,000 for simple operations
+            - Increase for complex smart contract interactions
+            - Monitor actual gas usage and adjust accordingly
+            - gas_unit_price: Check network congestion and adjust
+
+            Expiration Times:
+            - Not too short: Allow time for network processing
+            - Not too long: Prevent stale transactions
+            - Typical range: 5-60 minutes from creation
+            - Consider network conditions and urgency
+
+            Chain IDs:
+            - Mainnet: 1
+            - Testnet: 2
+            - Devnet: Varies
+            - Custom networks: Check with network operator
+
+        Note:
+            Once created, RawTransaction instances are immutable. This prevents
+            accidental modification after creation and ensures signature validity.
+        """
         self.sender = sender
         self.sequence_number = sequence_number
         self.payload = payload
@@ -124,6 +557,12 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
         self.chain_id = chain_id
 
     def __eq__(self, other: object) -> bool:
+        """
+        Check equality between two RawTransaction instances.
+
+        :param other: The other object to compare with
+        :return: True if transactions are equal, False otherwise
+        """
         if not isinstance(other, RawTransaction):
             return NotImplemented
         return (
@@ -148,6 +587,11 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 """
 
     def prehash(self) -> bytes:
+        """
+        Generate the prehash for this transaction type.
+
+        :return: SHA3-256 hash of the transaction type identifier
+        """
         hasher = hashlib.sha3_256()
         hasher.update(b"APTOS::RawTransaction")
         return hasher.digest()
@@ -175,11 +619,24 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 
 
 class MultiAgentRawTransaction(RawTransactionWithData):
+    """
+    A multi-agent transaction that requires signatures from multiple accounts.
+
+    This is used when a transaction needs to be authorized by more than just
+    the sender account.
+    """
+
     secondary_signers: List[AccountAddress]
 
     def __init__(
         self, raw_transaction: RawTransaction, secondary_signers: List[AccountAddress]
     ):
+        """
+        Initialize a multi-agent transaction.
+
+        :param raw_transaction: The underlying raw transaction
+        :param secondary_signers: Additional accounts that must sign this transaction
+        """
         self.raw_transaction = raw_transaction
         self.secondary_signers = secondary_signers
 
@@ -206,6 +663,12 @@ class MultiAgentRawTransaction(RawTransactionWithData):
 
 
 class FeePayerRawTransaction(RawTransactionWithData):
+    """
+    A transaction where fees can be paid by a different account than the sender.
+
+    This allows for sponsored transactions where a third party pays the gas fees.
+    """
+
     secondary_signers: List[AccountAddress]
     fee_payer: Optional[AccountAddress]
 
@@ -215,6 +678,13 @@ class FeePayerRawTransaction(RawTransactionWithData):
         secondary_signers: List[AccountAddress],
         fee_payer: Optional[AccountAddress],
     ):
+        """
+        Initialize a fee payer transaction.
+
+        :param raw_transaction: The underlying raw transaction
+        :param secondary_signers: Additional accounts that must sign this transaction
+        :param fee_payer: The account that will pay the transaction fees (optional)
+        """
         self.raw_transaction = raw_transaction
         self.secondary_signers = secondary_signers
         self.fee_payer = fee_payer
@@ -250,6 +720,12 @@ class FeePayerRawTransaction(RawTransactionWithData):
 
 
 class TransactionPayload:
+    """
+    Represents the payload of a transaction - what the transaction will execute.
+
+    Can be a Script, ModuleBundle, or EntryFunction (most common).
+    """
+
     SCRIPT: int = 0
     MODULE_BUNDLE: int = 1
     SCRIPT_FUNCTION: int = 2
@@ -258,6 +734,12 @@ class TransactionPayload:
     value: Any
 
     def __init__(self, payload: Any):
+        """
+        Initialize a transaction payload.
+
+        :param payload: The payload object (Script, ModuleBundle, or EntryFunction)
+        :raises Exception: If payload type is not supported
+        """
         if isinstance(payload, Script):
             self.variant = TransactionPayload.SCRIPT
         elif isinstance(payload, ModuleBundle):
@@ -422,6 +904,12 @@ class ScriptArgument:
 
 
 class EntryFunction:
+    """
+    Represents a call to an entry function in a Move module.
+
+    Entry functions are the most common way to execute code on Aptos.
+    """
+
     module: ModuleId
     function: str
     ty_args: List[TypeTag]
@@ -430,6 +918,14 @@ class EntryFunction:
     def __init__(
         self, module: ModuleId, function: str, ty_args: List[TypeTag], args: List[bytes]
     ):
+        """
+        Initialize an entry function.
+
+        :param module: The module identifier containing the function
+        :param function: The name of the function to call
+        :param ty_args: Type arguments for the function call
+        :param args: Encoded arguments to pass to the function
+        """
         self.module = module
         self.function = function
         self.ty_args = ty_args
@@ -456,6 +952,15 @@ class EntryFunction:
         ty_args: List[TypeTag],
         args: List[TransactionArgument],
     ) -> EntryFunction:
+        """
+        Create an EntryFunction from natural string representation.
+
+        :param module: Module name in string format (e.g., "0x1::coin")
+        :param function: Function name
+        :param ty_args: Type arguments for the function
+        :param args: Transaction arguments to be encoded
+        :return: A new EntryFunction instance
+        """
         module_id = ModuleId.from_str(module)
 
         byte_args = []
@@ -479,10 +984,22 @@ class EntryFunction:
 
 
 class ModuleId:
+    """
+    Identifies a Move module by its address and name.
+
+    Modules are the fundamental units of code organization in Move.
+    """
+
     address: AccountAddress
     name: str
 
     def __init__(self, address: AccountAddress, name: str):
+        """
+        Initialize a ModuleId.
+
+        :param address: The account address where the module is deployed
+        :param name: The name of the module
+        """
         self.address = address
         self.name = name
 
@@ -496,6 +1013,12 @@ class ModuleId:
 
     @staticmethod
     def from_str(module_id: str) -> ModuleId:
+        """
+        Parse a ModuleId from a string representation.
+
+        :param module_id: String in format "address::module_name"
+        :return: A new ModuleId instance
+        """
         split = module_id.split("::")
         return ModuleId(AccountAddress.from_str(split[0]), split[1])
 
@@ -511,6 +1034,12 @@ class ModuleId:
 
 
 class TransactionArgument:
+    """
+    Represents an argument to pass to a transaction function.
+
+    Encapsulates a value and its encoding function for BCS serialization.
+    """
+
     value: Any
     encoder: Callable[[Serializer, Any], None]
 
@@ -519,16 +1048,33 @@ class TransactionArgument:
         value: Any,
         encoder: Callable[[Serializer, Any], None],
     ):
+        """
+        Initialize a transaction argument.
+
+        :param value: The value to be passed as an argument
+        :param encoder: Function to encode the value for BCS serialization
+        """
         self.value = value
         self.encoder = encoder
 
     def encode(self) -> bytes:
+        """
+        Encode this argument using BCS serialization.
+
+        :return: The BCS-encoded bytes representation of the argument
+        """
         ser = Serializer()
         self.encoder(ser, self.value)
         return ser.output()
 
 
 class SignedTransaction:
+    """
+    A transaction that has been signed and is ready for submission to the blockchain.
+
+    Contains both the raw transaction data and the cryptographic proof of authorization.
+    """
+
     transaction: RawTransaction
     authenticator: Authenticator
 
@@ -537,6 +1083,12 @@ class SignedTransaction:
         transaction: RawTransaction,
         authenticator: Union[AccountAuthenticator, Authenticator],
     ):
+        """
+        Initialize a signed transaction.
+
+        :param transaction: The raw transaction to be signed
+        :param authenticator: The authenticator containing the signature(s)
+        """
         self.transaction = transaction
         if isinstance(authenticator, AccountAuthenticator):
             if (
@@ -561,11 +1113,21 @@ class SignedTransaction:
         return f"Transaction: {self.transaction}Authenticator: {self.authenticator}"
 
     def bytes(self) -> bytes:
+        """
+        Get the BCS serialized bytes of this signed transaction.
+
+        :return: The serialized transaction bytes
+        """
         ser = Serializer()
         ser.struct(self)
         return ser.output()
 
     def verify(self) -> bool:
+        """
+        Verify that this transaction's signatures are valid.
+
+        :return: True if all signatures are valid, False otherwise
+        """
         auth = self.authenticator.authenticator
         if isinstance(auth, MultiAgentAuthenticator):
             transaction: RawTransactionInternal = MultiAgentRawTransaction(

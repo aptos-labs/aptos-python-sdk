@@ -1,6 +1,94 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+Multi-Key Authentication Example for Aptos Python SDK.
+
+This example demonstrates how to create and use multi-signature (multi-key) accounts
+on the Aptos blockchain. Multi-signature accounts require multiple cryptographic keys
+to sign transactions, providing enhanced security for high-value operations.
+
+Features Demonstrated:
+    - Creating a multi-key account with mixed key types (secp256k1 and Ed25519)
+    - Setting up a threshold signature scheme (2-of-3 in this example)
+    - Signing transactions with multiple keys
+    - Verifying multi-signatures before submission
+    - Transferring funds from a multi-key account
+
+Key Concepts:
+    - **Multi-Key Account**: An account controlled by multiple cryptographic keys
+    - **Threshold Signatures**: Requires a minimum number of signatures (threshold)
+      out of the total available keys to authorize transactions
+    - **Mixed Key Types**: Supports both secp256k1 (ECDSA) and Ed25519 keys in
+      the same multi-key setup
+    - **Account Address Derivation**: Multi-key accounts have addresses derived
+      from the combined public keys and threshold
+
+Security Benefits:
+    - **Distributed Control**: No single key can authorize transactions alone
+    - **Reduced Single Points of Failure**: Even if one key is compromised,
+      the account remains secure
+    - **Flexible Access Patterns**: Different combinations of signers can
+      authorize transactions
+    - **Key Type Diversity**: Mixing different signature schemes provides
+      cryptographic diversity
+
+Workflow:
+    1. Generate multiple private keys of different types (secp256k1, Ed25519)
+    2. Create a MultiPublicKey with a 2-of-3 threshold
+    3. Derive the account address from the multi-key setup
+    4. Fund the multi-key account using the faucet
+    5. Create a transaction payload (APT transfer)
+    6. Sign the transaction with 2 out of 3 keys (meeting the threshold)
+    7. Combine signatures into a MultiSignature
+    8. Verify all signatures before submission
+    9. Submit the signed transaction to the network
+    10. Wait for transaction confirmation
+
+Prerequisites:
+    - Access to an Aptos test network (devnet/testnet)
+    - Faucet access for funding accounts
+    - Network configuration in common.py
+
+Usage:
+    Run this script directly to see multi-key authentication in action:
+        python3 examples/multikey.py
+
+Expected Output:
+    - Display of Alice's multi-key address and Bob's single-key address
+    - Initial account balances after funding
+    - Transaction execution transferring 1,000 APT from Alice to Bob
+    - Final balances showing the transfer completion
+    - Verification of all signature operations
+
+Security Considerations:
+    - Store private keys securely in production environments
+    - Use hardware security modules (HSMs) for high-value multi-key setups
+    - Regularly audit key holder access and permissions
+    - Consider key rotation policies for long-term security
+    - Test signature verification thoroughly before mainnet deployment
+
+Error Handling:
+    - Network connectivity issues
+    - Insufficient account balances
+    - Invalid signature combinations
+    - Transaction simulation failures
+    - Faucet funding limitations
+
+Learning Objectives:
+    - Understand multi-signature account creation and management
+    - Learn threshold signature schemes and their security properties
+    - Practice mixed cryptographic key type usage
+    - Gain experience with complex transaction authorization patterns
+    - Explore advanced account security models on Aptos
+
+Related Examples:
+    - authenticate.py: Single-key authentication patterns
+    - hello_blockchain.py: Basic transaction patterns
+    - transfer_coin.py: Simple APT transfers
+    - multisig.py: Legacy multi-signature account patterns
+"""
+
 import asyncio
 
 from aptos_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
@@ -21,6 +109,77 @@ from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, NODE_UR
 
 
 async def main():
+    """
+    Demonstrate multi-key authentication and transaction signing on Aptos.
+
+    This function showcases the complete workflow for creating a multi-signature
+    account, funding it, and executing a transfer transaction that requires
+    multiple signatures to authorize.
+
+    The example creates a 2-of-3 multi-key account using mixed cryptographic
+    key types (secp256k1 and Ed25519) and demonstrates how to:
+
+    1. **Setup Phase**:
+       - Initialize REST and Faucet clients for network interaction
+       - Generate 3 private keys of different types (2 secp256k1, 1 Ed25519)
+       - Create a MultiPublicKey with threshold=2 (requires 2 signatures)
+       - Derive the multi-key account address
+       - Create a regular single-key account for Bob
+
+    2. **Funding Phase**:
+       - Fund both Alice's multi-key account and Bob's account using faucet
+       - Display initial balances for verification
+
+    3. **Transaction Phase**:
+       - Construct an APT transfer transaction from Alice to Bob
+       - Sign the transaction with 2 out of 3 available keys
+       - Combine individual signatures into a MultiSignature
+       - Create an AccountAuthenticator with MultiKeyAuthenticator
+
+    4. **Verification Phase**:
+       - Verify each individual signature against its corresponding key
+       - Verify the combined multi-signature against the multi-key
+       - Verify the complete authenticator
+
+    5. **Submission Phase**:
+       - Submit the signed transaction to the network
+       - Wait for transaction confirmation
+       - Display final balances to confirm the transfer
+
+    Key Security Features:
+    - **Threshold Security**: Requires 2 signatures out of 3 possible
+    - **Cryptographic Diversity**: Uses both secp256k1 and Ed25519 keys
+    - **Signature Verification**: Validates all signatures before submission
+    - **Address Derivation**: Deterministically derives address from multi-key
+
+    Network Requirements:
+    - Active Aptos devnet/testnet connection
+    - Faucet service availability for account funding
+    - Sufficient network tokens for transaction fees
+
+    Error Scenarios Handled:
+    - Network connectivity issues during client operations
+    - Transaction failures during submission or confirmation
+    - Signature verification failures before submission
+    - Account balance insufficiency for transfers
+
+    Raises:
+        Exception: If network operations fail, signature verification fails,
+            or transaction submission encounters errors.
+
+    Example Output:
+        === Addresses ===
+        Multikey Alice: 0xbcd123...
+        Bob: 0x456def...
+
+        === Initial Balances ===
+        Alice: 100000000
+        Bob: 1
+
+        === Final Balances ===
+        Alice: 99999000  # Reduced by transfer amount + fees
+        Bob: 1001        # Increased by transfer amount
+    """
     # :!:>section_1
     rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(
