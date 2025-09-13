@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 from .account import Account
 from .account_address import AccountAddress
@@ -298,6 +298,44 @@ class PropertyMap:
         return PropertyMap(properties)
 
 
+class FAConcurrentSupply:
+    value: int
+    max_value: int
+
+    struct_tag = "0x1::fungible_asset::ConcurrentSupply"
+
+    def __init__(self, value: int, max_value: int) -> None:
+        self.value = value
+        self.max_value = max_value
+
+    def __str__(self) -> str:
+        return f"FAConcurrentSupply[value: {self.value}, max_value: {self.max_value}]"
+
+    @staticmethod
+    def parse(resource: dict[str, Any]) -> FAConcurrentSupply:
+        return FAConcurrentSupply(
+            int(resource["current"]["value"]), int(resource["current"]["max_value"])
+        )
+
+
+class FungibleStore:
+    balance: int
+    frozen: bool
+
+    struct_tag = "0x1::fungible_asset::FungibleStore"
+
+    def __init__(self, balance: int, frozen: bool) -> None:
+        self.balance = balance
+        self.frozen = frozen
+
+    def __str__(self):
+        return f"FungibleStore[balance: {self.balance}, frozen: {self.frozen}]"
+
+    @staticmethod
+    def parse(resource: dict[str, Any]) -> FungibleStore:
+        return FungibleStore(int(resource["balance"]), resource["frozen"])
+
+
 class ReadObject:
     resource_map: dict[str, Any] = {
         Collection.struct_tag: Collection,
@@ -305,6 +343,8 @@ class ReadObject:
         PropertyMap.struct_tag: PropertyMap,
         Royalty.struct_tag: Royalty,
         Token.struct_tag: Token,
+        FAConcurrentSupply.struct_tag: FAConcurrentSupply,
+        FungibleStore.struct_tag: FungibleStore,
     }
 
     resources: dict[Any, Any]
@@ -631,3 +671,222 @@ class AptosTokenClient:
                 continue
             mints.append(AccountAddress.from_str_relaxed(event["data"]["token"]))
         return mints
+
+
+class FungibleAssetClient:
+    """A wrapper around reading and mutating Fungible Assets"""
+
+    def __init__(self, rest_client: RestClient):
+        self.client = rest_client
+
+    async def __primary_store_view(
+        self,
+        function: str,
+        args: List[TransactionArgument],
+        ledger_version: Optional[int] = None,
+    ) -> Any:
+        module = "0x1::primary_fungible_store"
+        ty_args = [TypeTag(StructTag.from_str("0x1::fungible_asset::Metadata"))]
+        return await self.client.view_bcs_payload(
+            module, function, ty_args, args, ledger_version
+        )
+
+    async def __metadata_view(
+        self,
+        function: str,
+        args: List[TransactionArgument],
+        ledger_version: Optional[int] = None,
+    ) -> Any:
+        module = "0x1::fungible_asset"
+        ty_args = [TypeTag(StructTag.from_str("0x1::fungible_asset::Metadata"))]
+        return await self.client.view_bcs_payload(
+            module, function, ty_args, args, ledger_version
+        )
+
+    async def read_object(self, address: AccountAddress) -> ReadObject:
+        resources = {}
+        read_resources = await self.client.account_resources(address)
+        for resource in read_resources:
+            if resource["type"] in ReadObject.resource_map:
+                resource_obj = ReadObject.resource_map[resource["type"]]
+                resources[resource_obj] = resource_obj.parse(resource["data"])
+        return ReadObject(resources)
+
+    async def supply(
+        self, metadata_address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> int:
+        """Get the current supply from the metadata object."""
+        resp = await self.__metadata_view(
+            "supply",
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return int(resp[0]["vec"][0])
+
+    async def maximum(
+        self, metadata_address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> int:
+        """Get the maximum supply from the metadata object. If supply is unlimited (or set explicitly to MAX_U128), none is returned."""
+        resp = await self.__metadata_view(
+            "maximum",
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return int(resp[0]["vec"][0])
+
+    async def name(
+        self, metadata_address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> str:
+        """Get the name of the fungible asset from the metadata object."""
+        resp = await self.__metadata_view(
+            "name",
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return resp[0]
+
+    async def symbol(
+        self, metadata_address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> str:
+        """Get the symbol of the fungible asset from the metadata object."""
+        resp = await self.__metadata_view(
+            "symbol",
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return resp[0]
+
+    async def decimals(
+        self, metadata_address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> int:
+        """Get the decimals from the metadata object."""
+        resp = await self.__metadata_view(
+            "decimals",
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return int(resp[0])
+
+    async def icon_uri(
+        self, metadata_address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> str:
+        """Get the icon uri from the metadata object."""
+        resp = await self.__metadata_view(
+            "icon_uri",
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return resp[0]
+
+    async def project_uri(
+        self, metadata_address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> str:
+        """Get the project uri from the metadata object."""
+        resp = await self.__metadata_view(
+            "project_uri",
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return resp[0]
+
+    async def store_metadata(
+        self, address: AccountAddress, ledger_version: Optional[int] = None
+    ) -> str:
+        """Return the underlying metadata object."""
+        resp = await self.client.view_bcs_payload(
+            "0x1::fungible_asset",
+            "store_metadata",
+            [TypeTag(StructTag.from_str("0x1::fungible_asset::FungibleStore"))],
+            [TransactionArgument(address, Serializer.struct)],
+            ledger_version,
+        )
+        return resp[0]
+
+    async def transfer(
+        self,
+        sender: Account,
+        metadata_address: AccountAddress,
+        receiver_address: AccountAddress,
+        amount: int,
+        sequence_number: Optional[int] = None,
+    ) -> str:
+        """Transfer amount of fungible asset from sender's primary store to receiver's primary store."""
+        payload = EntryFunction.natural(
+            "0x1::primary_fungible_store",
+            "transfer",
+            [TypeTag(StructTag.from_str("0x1::fungible_asset::Metadata"))],
+            [
+                TransactionArgument(metadata_address, Serializer.struct),
+                TransactionArgument(receiver_address, Serializer.struct),
+                TransactionArgument(amount, Serializer.u64),
+            ],
+        )
+        signed_transaction = await self.client.create_bcs_signed_transaction(
+            sender, TransactionPayload(payload), sequence_number=sequence_number
+        )
+        return await self.client.submit_bcs_transaction(signed_transaction)
+
+    async def balance(
+        self,
+        metadata_address: AccountAddress,
+        address: AccountAddress,
+        ledger_version: Optional[int] = None,
+    ) -> int:
+        """Get the balance of account's primary store."""
+        resp = await self.__primary_store_view(
+            "balance",
+            [
+                TransactionArgument(address, Serializer.struct),
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return int(resp[0])
+
+    async def is_frozen(
+        self,
+        metadata_address: AccountAddress,
+        address: AccountAddress,
+        ledger_version: Optional[int] = None,
+    ) -> bool:
+        """Return whether the given account's primary store is frozen."""
+        resp = await self.__primary_store_view(
+            "is_frozen",
+            [
+                TransactionArgument(address, Serializer.struct),
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return resp[0]
+
+    async def primary_store_address(
+        self,
+        metadata_address,
+        address: AccountAddress,
+        ledger_version: Optional[int] = None,
+    ) -> str:
+        """Get the address of the primary store for the given account."""
+        resp = await self.__primary_store_view(
+            "primary_store_address",
+            [
+                TransactionArgument(address, Serializer.struct),
+                TransactionArgument(metadata_address, Serializer.struct),
+            ],
+            ledger_version,
+        )
+        return resp[0]
