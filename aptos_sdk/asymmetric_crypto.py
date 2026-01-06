@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+import logging
 from enum import Enum
 
 from typing_extensions import Protocol
 
 from .bcs import Deserializable, Serializable
+
+logger = logging.getLogger(__name__)
 
 
 class PrivateKeyVariant(Enum):
@@ -81,17 +84,16 @@ class PrivateKey(Deserializable, Serializable, Protocol):
             if not strict and not value.startswith(aip80_prefix):
                 # Non-AIP-80 compliant hex string
                 if strict is None:
-                    print(
-                        "It is recommended that private keys are AIP-80 compliant (https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-80.md)."
+                    logger.warning(
+                        "It is recommended that private keys are AIP-80 compliant "
+                        "(https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-80.md)."
                     )
-                if value[0:2] == "0x":
-                    value = value[2:]
+                value = value.removeprefix("0x")
                 return bytes.fromhex(value)
             elif value.startswith(aip80_prefix):
                 # AIP-80 compliant string
                 value = value.split("-")[2]
-                if value[0:2] == "0x":
-                    value = value[2:]
+                value = value.removeprefix("0x")
                 return bytes.fromhex(value)
             else:
                 if strict:

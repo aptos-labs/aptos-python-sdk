@@ -58,12 +58,29 @@ class IndexerClient:
 
 
 class RestClient:
-    """A wrapper around the Aptos-core Rest API"""
+    """
+    A wrapper around the Aptos-core REST API.
+
+    This is the main entry point for interacting with an Aptos fullnode.
+    It provides methods for querying accounts, submitting transactions,
+    and reading on-chain data.
+
+    Supports async context manager for automatic resource cleanup:
+
+        async with RestClient("https://fullnode.testnet.aptoslabs.com/v1") as client:
+            balance = await client.account_balance(address)
+
+    Attributes:
+        base_url: The fullnode REST API URL.
+        client_config: Configuration options for the client.
+        client: The underlying httpx AsyncClient.
+    """
 
     _chain_id: Optional[int]
     client: httpx.AsyncClient
     client_config: ClientConfig
     base_url: str
+    _used_context_manager: bool
 
     def __init__(self, base_url: str, client_config: ClientConfig = ClientConfig()):
         self.base_url = base_url
@@ -82,10 +99,27 @@ class RestClient:
         )
         self.client_config = client_config
         self._chain_id = None
+        self._used_context_manager = False
         if client_config.api_key:
             self.client.headers["Authorization"] = f"Bearer {client_config.api_key}"
 
+    async def __aenter__(self) -> "RestClient":
+        """Enter async context manager."""
+        self._used_context_manager = True
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit async context manager and close the client."""
+        await self.close()
+        return None
+
     async def close(self):
+        """
+        Close the underlying HTTP client.
+
+        This should be called when you're done using the client to release
+        resources. Using the async context manager handles this automatically.
+        """
         await self.client.aclose()
 
     async def chain_id(self):
@@ -541,22 +575,34 @@ class RestClient:
 
     async def wait_for_transaction(self, txn_hash: str) -> None:
         """
-        Waits up to the duration specified in client_config for a transaction to move past pending
-        state.
+        Wait for a transaction to be confirmed on chain.
+
+        Waits up to the duration specified in client_config for a transaction
+        to move past pending state.
+
+        Args:
+            txn_hash: The transaction hash to wait for.
+
+        Raises:
+            TransactionTimeout: If the transaction is not confirmed within the timeout.
+            TransactionFailed: If the transaction was executed but failed.
         """
+        from .errors import TransactionFailed, TransactionTimeout
 
         count = 0
         while await self.transaction_pending(txn_hash):
-            assert (
-                count < self.client_config.transaction_wait_in_seconds
-            ), f"transaction {txn_hash} timed out"
+            if count >= self.client_config.transaction_wait_in_seconds:
+                raise TransactionTimeout(
+                    txn_hash, self.client_config.transaction_wait_in_seconds
+                )
             await asyncio.sleep(1)
             count += 1
 
         response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
-        assert (
-            "success" in response.json() and response.json()["success"]
-        ), f"{response.text} - {txn_hash}"
+        result = response.json()
+        if "success" not in result or not result["success"]:
+            vm_status = result.get("vm_status", "unknown")
+            raise TransactionFailed(txn_hash, vm_status)
 
     async def account_transaction_sequence_number_status(
         self, address: AccountAddress, sequence_number: int
@@ -903,7 +949,23 @@ class RestClient:
 
 
 class FaucetClient:
-    """Faucet creates and funds accounts. This is a thin wrapper around that."""
+    """
+    Client for the Aptos Faucet service.
+
+    The faucet creates and funds accounts on devnet/testnet. This is useful
+    for testing and development.
+
+    Supports async context manager for automatic resource cleanup:
+
+        async with RestClient(NODE_URL) as rest_client:
+            faucet = FaucetClient(FAUCET_URL, rest_client)
+            await faucet.fund_account(address, 100_000_000)
+
+    Attributes:
+        base_url: The faucet service URL.
+        rest_client: The underlying REST client for transaction waiting.
+        headers: HTTP headers including auth token if provided.
+    """
 
     base_url: str
     rest_client: RestClient
@@ -918,7 +980,21 @@ class FaucetClient:
         if auth_token:
             self.headers["Authorization"] = f"Bearer {auth_token}"
 
+    async def __aenter__(self) -> "FaucetClient":
+        """Enter async context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit async context manager (does not close rest_client - that should be managed separately)."""
+        return None
+
     async def close(self):
+        """
+        Close the underlying REST client.
+
+        Note: This closes the rest_client passed to the constructor.
+        If you want to continue using the rest_client, don't call this method.
+        """
         await self.rest_client.close()
 
     async def fund_account(

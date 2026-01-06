@@ -1,14 +1,25 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+# Run all tests (pytest + behave)
 test:
-	poetry run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
+	poetry run pytest tests/ -v
 	poetry run behave
 
-test-coverage:
-	poetry run python -m coverage run -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
-	poetry run python -m coverage report
+# Run pytest only
+test-pytest:
+	poetry run pytest tests/ -v
 
+# Run legacy unittest tests (deprecated)
+test-legacy:
+	poetry run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
+
+# Run tests with coverage
+test-coverage:
+	poetry run pytest tests/ --cov=aptos_sdk --cov-report=html --cov-report=term
+	poetry run behave
+
+# Run BDD tests
 test-spec:
 	poetry run behave
 

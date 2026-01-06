@@ -2,8 +2,33 @@
 
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
-## Unreleased
-- Update dependencies for vulnerability fixes
+## 0.12.0
+
+### New Features
+- **Network Presets**: Added `Network` enum with preconfigured endpoints for mainnet, testnet, devnet, and local
+- **ANS Support**: Added `ans` module for Aptos Names Service resolution (`ans.get_address()`, `ans.get_primary_name()`)
+- **Fungible Asset Helpers**: Added `fungible_asset` module with helpers for FA balance, metadata, and formatting
+- **Async Context Managers**: `RestClient` and `FaucetClient` now support `async with` for automatic cleanup
+- **Exception Hierarchy**: New comprehensive `errors` module with typed exceptions (`TransactionTimeout`, `TransactionFailed`, etc.)
+- **Proper `__all__` Exports**: All public APIs now properly exported from `aptos_sdk` package
+
+### Improvements
+- **Better Docstrings**: Added comprehensive docstrings to `Account`, `RestClient`, and other public classes
+- **Logging**: Replaced `print()` statements with proper `logging` module usage
+- **Modern Python**: Using `str.removeprefix()` and other Python 3.9+ features
+- **Type Safety**: Improved type hints throughout the codebase
+- **Test Infrastructure**: Added pytest configuration with async support, coverage reporting
+
+### Developer Experience
+- **pytest Support**: Added pytest configuration alongside existing unittest
+- **Better README**: Comprehensive quickstart guide with examples
+- **pyproject.toml**: Added tool configurations for black, isort, mypy, pytest
+
+### Internal Changes
+- Extracted tests to separate `tests/` directory
+- Added `enums.py` for type discriminant constants
+- Created `network.py` for network configuration
+- Version bump to 0.12.0
 
 ## 0.11.0
 

@@ -15,7 +15,28 @@ from .transactions import RawTransactionInternal
 
 
 class Account:
-    """Represents an account as well as the private, public key-pair for the Aptos blockchain."""
+    """
+    Represents an Aptos account with its address and private key.
+
+    An Account encapsulates the private key and derived address needed to
+    sign transactions on the Aptos blockchain. Accounts can use either
+    Ed25519 or Secp256k1-ECDSA cryptography.
+
+    Attributes:
+        account_address: The on-chain address derived from the public key.
+        private_key: The private key used for signing transactions.
+
+    Example:
+        >>> # Generate a new random account
+        >>> account = Account.generate()
+        >>> print(f"Address: {account.address()}")
+        >>>
+        >>> # Load from a private key
+        >>> account = Account.load_key("0x...")
+        >>>
+        >>> # Sign a message
+        >>> signature = account.sign(b"hello")
+    """
 
     account_address: AccountAddress
     private_key: asymmetric_crypto.PrivateKey
@@ -23,6 +44,13 @@ class Account:
     def __init__(
         self, account_address: AccountAddress, private_key: asymmetric_crypto.PrivateKey
     ):
+        """
+        Create an Account from an address and private key.
+
+        Args:
+            account_address: The account's on-chain address.
+            private_key: The private key for signing.
+        """
         self.account_address = account_address
         self.private_key = private_key
 
@@ -36,12 +64,32 @@ class Account:
 
     @staticmethod
     def generate() -> Account:
+        """
+        Generate a new random Ed25519 account.
+
+        Returns:
+            A new Account with a randomly generated Ed25519 private key.
+
+        Example:
+            >>> account = Account.generate()
+            >>> print(account.address())
+        """
         private_key = ed25519.PrivateKey.random()
         account_address = AccountAddress.from_key(private_key.public_key())
         return Account(account_address, private_key)
 
     @staticmethod
     def generate_secp256k1_ecdsa() -> Account:
+        """
+        Generate a new random Secp256k1-ECDSA account.
+
+        Returns:
+            A new Account with a randomly generated Secp256k1 private key.
+
+        Example:
+            >>> account = Account.generate_secp256k1_ecdsa()
+            >>> print(account.address())
+        """
         private_key = secp256k1_ecdsa.PrivateKey.random()
         public_key = asymmetric_crypto_wrapper.PublicKey(private_key.public_key())
         account_address = AccountAddress.from_key(public_key)
@@ -49,12 +97,42 @@ class Account:
 
     @staticmethod
     def load_key(key: str) -> Account:
+        """
+        Load an Ed25519 account from a private key string.
+
+        Args:
+            key: The private key as a hex string (with or without 0x prefix)
+                 or AIP-80 compliant string (e.g., "ed25519-priv-0x...").
+
+        Returns:
+            An Account derived from the given private key.
+
+        Example:
+            >>> account = Account.load_key("0x4e5e3be60f...")
+            >>> # Or with AIP-80 format:
+            >>> account = Account.load_key("ed25519-priv-0x4e5e3be60f...")
+        """
         private_key = ed25519.PrivateKey.from_str(key)
         account_address = AccountAddress.from_key(private_key.public_key())
         return Account(account_address, private_key)
 
     @staticmethod
     def load(path: str) -> Account:
+        """
+        Load an account from a JSON file.
+
+        The file should contain a JSON object with "account_address" and
+        "private_key" fields.
+
+        Args:
+            path: Path to the JSON file containing account data.
+
+        Returns:
+            The loaded Account.
+
+        Example:
+            >>> account = Account.load("~/.aptos/my_account.json")
+        """
         with open(path) as file:
             data = json.load(file)
         return Account(
@@ -62,7 +140,20 @@ class Account:
             ed25519.PrivateKey.from_str(data["private_key"]),
         )
 
-    def store(self, path: str):
+    def store(self, path: str) -> None:
+        """
+        Save the account to a JSON file.
+
+        Stores the account address and private key in JSON format.
+        WARNING: The private key is stored in plaintext.
+
+        Args:
+            path: Path where the account file will be written.
+
+        Example:
+            >>> account = Account.generate()
+            >>> account.store("my_account.json")
+        """
         data = {
             "account_address": str(self.account_address),
             "private_key": str(self.private_key),
@@ -71,7 +162,12 @@ class Account:
             json.dump(data, file)
 
     def address(self) -> AccountAddress:
-        """Returns the address associated with the given account"""
+        """
+        Get the account's on-chain address.
+
+        Returns:
+            The AccountAddress for this account.
+        """
 
         return self.account_address
 
