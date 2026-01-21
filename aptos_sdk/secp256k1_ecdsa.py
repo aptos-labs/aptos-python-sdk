@@ -3,12 +3,11 @@
 
 from __future__ import annotations
 
-import hashlib
 import unittest
 from typing import cast
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.utils import (
     decode_dss_signature,
     encode_dss_signature,
@@ -38,7 +37,9 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def _to_bytes(self) -> bytes:
         """Convert private key to raw 32-byte representation."""
         private_numbers = self.key.private_numbers()
-        return private_numbers.private_value.to_bytes(PrivateKey.LENGTH, byteorder="big")
+        return private_numbers.private_value.to_bytes(
+            PrivateKey.LENGTH, byteorder="big"
+        )
 
     @staticmethod
     def _from_bytes(key_bytes: bytes) -> ec.EllipticCurvePrivateKey:
@@ -92,9 +93,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
 
     def sign(self, data: bytes) -> Signature:
         # Use deterministic ECDSA (RFC 6979) with SHA3-256
-        signature_der = self.key.sign(
-            data, ec.ECDSA(hashes.SHA3_256())
-        )
+        signature_der = self.key.sign(data, ec.ECDSA(hashes.SHA3_256()))
         # Decode DER signature to get r and s
         r, s = decode_dss_signature(signature_der)
 
