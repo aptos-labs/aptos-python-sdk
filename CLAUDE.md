@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the official Aptos Python SDK for interacting with the Aptos blockchain. It's an async-first SDK supporting Python 3.9+, using Poetry for package management.
+This is the official Aptos Python SDK for interacting with the Aptos blockchain. It's an async-first SDK supporting Python 3.10+, using Poetry for package management.
 
 ## Common Commands
 
@@ -12,11 +12,11 @@ This is the official Aptos Python SDK for interacting with the Aptos blockchain.
 # Install dependencies
 poetry install
 
-# Run all tests (pytest + BDD)
+# Run unit tests (excludes integration tests)
 make test
 
-# Run only pytest
-poetry run pytest tests/ -v
+# Run integration tests (requires live network)
+make integration_test
 
 # Run a single test file
 poetry run pytest tests/test_account.py -v
@@ -33,36 +33,36 @@ make fmt
 # Lint and type check (mypy, flake8)
 make lint
 
-# Run examples (requires local node or testnet)
+# Run examples (requires devnet or localnet)
 make examples
-
-# Generate docs
-make docs
 ```
 
 ## Architecture
 
 ### Core Modules
 
-- **`async_client.py`** - Main entry point: `RestClient`, `FaucetClient`, `IndexerClient`. All I/O is async.
+- **`async_client.py`** - Main entry point: `RestClient`, `FaucetClient`. All I/O is async via httpx HTTP/2.
 - **`transactions.py`** - Transaction building: `RawTransaction`, `EntryFunction`, `Script`, `SignedTransaction`
+- **`transaction_builder.py`** - High-level transaction construction helpers
 - **`account.py`** - Account management with address + private key
 - **`bcs.py`** - Binary Canonical Serialization (Serializer/Deserializer)
 - **`authenticator.py`** - Transaction authenticators (Ed25519, MultiAgent, FeePayer, SingleKey)
+- **`errors.py`** - Spec-aligned error hierarchy (all exceptions inherit from `AptosError`)
 
 ### Cryptography Stack
 
 - **`asymmetric_crypto.py`** - Abstract `PrivateKey`/`PublicKey`/`Signature` protocols
 - **`ed25519.py`** - Ed25519 implementation (default)
 - **`secp256k1_ecdsa.py`** - Secp256k1 ECDSA implementation
-- **`asymmetric_crypto_wrapper.py`** - Multi-key support
+- **`crypto_wrapper.py`** - AnyPublicKey/AnySignature and multi-key support
+- **`hashing.py`** - SHA3-256 hashing with domain-separation prefixes
 
-### Blockchain Features
+### Network & Configuration
 
-- **`aptos_token_client.py`** - Token v2 (NFTs)
-- **`package_publisher.py`** - Deploy Move packages
-- **`ans.py`** - Aptos Names Service resolution
-- **`fungible_asset.py`** - Fungible asset operations
+- **`network.py`** - Network enum and configuration (MAINNET, TESTNET, DEVNET, LOCAL)
+- **`chain_id.py`** - Chain ID type
+- **`retry.py`** - Retry configuration for REST client
+- **`mnemonic.py`** - BIP-39 mnemonic support (optional dependency)
 
 ### Network Configuration
 
@@ -99,13 +99,14 @@ await client.wait_for_transaction(txn_hash)
 
 ### Error Handling
 
-All SDK exceptions inherit from `AptosError`. Key exceptions: `ApiError`, `AccountNotFound`, `TransactionFailed`, `TransactionTimeout`.
+All SDK exceptions inherit from `AptosError`. Key exceptions: `ApiError`, `NotFoundError`, `BadRequestError`, `RateLimitedError`, `NetworkError`, `CryptoError`, `BcsError`.
 
 ## Testing
 
 - Tests use `pytest-asyncio` with `asyncio_mode = "auto"` (no need to mark async tests)
-- Shared fixtures in `tests/conftest.py` include `mock_httpx_client`, `mock_rest_client_response`
+- Integration test fixtures in `tests/integration/conftest.py` (env-var driven network config)
 - Integration tests marked with `@pytest.mark.integration`
+- `make test` excludes integration tests; `make integration_test` runs them
 - Coverage target: 50% minimum (enforced in CI)
 
 ## Code Style

@@ -1,24 +1,21 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-import os.path
+"""
+Shared configuration for examples.
 
-APTOS_CORE_PATH = os.getenv(
-    "APTOS_CORE_PATH",
-    os.path.abspath("./aptos-core"),
-)
+Network URLs and credentials are read from environment variables, falling
+back to devnet defaults.
+"""
+
+import os
+
 # :!:>section_1
 FAUCET_URL = os.getenv(
     "APTOS_FAUCET_URL",
     "https://faucet.devnet.aptoslabs.com",
 )
 FAUCET_AUTH_TOKEN = os.getenv("FAUCET_AUTH_TOKEN")
-INDEXER_URL = os.getenv(
-    "APTOS_INDEXER_URL",
-    "https://api.devnet.aptoslabs.com/v1/graphql",
-)
 NODE_URL = os.getenv("APTOS_NODE_URL", "https://api.devnet.aptoslabs.com/v1")
-
 API_KEY = os.getenv("API_KEY")
 # <:!:section_1

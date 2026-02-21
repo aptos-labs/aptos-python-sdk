@@ -9,9 +9,6 @@ repository = "https://github.com/aptos-labs/aptos-python-sdk"
 homepage = "https://aptos.dev/en/build/sdks/python-sdk"
 keywords = ["web3", "sdk", "aptos", "blockchain"]
 
-[tool.setuptools.package-data]
-"aptos-sdk" = ["py.typed"]
-
 [tool.poetry.dependencies]
 python = ">=3.10.0"
 httpx = {extras = ["http2"], version = "^0.28.0"}
@@ -38,6 +35,15 @@ mnemonic = "^0.21"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: marks tests that require a live Aptos network (deselect with '-m \"not integration\"')",
+]
+
+[tool.coverage.run]
+source = ["aptos_sdk"]
+
+[tool.coverage.report]
+fail_under = 50
 
 [tool.isort]
 profile = "black"

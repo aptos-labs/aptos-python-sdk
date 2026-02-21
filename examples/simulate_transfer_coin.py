@@ -5,7 +5,7 @@ import asyncio
 import json
 
 from aptos_sdk.account import Account
-from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
+from aptos_sdk.async_client import FaucetClient, RestClient
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
     EntryFunction,
@@ -18,26 +18,24 @@ from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 async def main():
-    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
-    faucet_client = FaucetClient(
-        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
-    )  # <:!:section_1
+    rest_client = RestClient(NODE_URL, api_key=API_KEY)
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, auth_token=FAUCET_AUTH_TOKEN)
 
     alice = Account.generate()
     bob = Account.generate()
 
     print("\n=== Addresses ===")
-    print(f"Alice: {alice.address()}")
-    print(f"Bob: {bob.address()}")
+    print(f"Alice: {alice.address}")
+    print(f"Bob: {bob.address}")
 
-    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.fund_account(alice.address, 100_000_000)
 
     payload = EntryFunction.natural(
         "0x1::coin",
         "transfer",
         [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
         [
-            TransactionArgument(bob.address(), Serializer.struct),
+            TransactionArgument(bob.address, Serializer.struct),
             TransactionArgument(100_000, Serializer.u64),
         ],
     )
@@ -46,9 +44,9 @@ async def main():
     )
 
     print("\n=== Simulate after creating Bob's Account ===")
-    await faucet_client.fund_account(bob.address(), 1)
+    await faucet_client.fund_account(bob.address, 1)
     output = await rest_client.simulate_transaction(transaction, alice)
-    assert output[0]["vm_status"] == "Executed successfully", "This should succeed"
+    assert output["vm_status"] == "Executed successfully", "This should succeed"
     print(json.dumps(output, indent=4, sort_keys=True))
 
     await rest_client.close()

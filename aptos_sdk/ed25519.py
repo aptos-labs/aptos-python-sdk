@@ -30,7 +30,7 @@ Private keys are serialized in AIP-80 format as::
 See https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-80.md
 """
 
-from typing import List, Tuple
+from __future__ import annotations
 
 import nacl.exceptions
 import nacl.signing
@@ -550,10 +550,10 @@ class MultiEd25519PublicKey:
     MAX_KEYS: int = 32
     MIN_THRESHOLD: int = 1
 
-    keys: List[Ed25519PublicKey]
+    keys: list[Ed25519PublicKey]
     threshold: int
 
-    def __init__(self, keys: List[Ed25519PublicKey], threshold: int) -> None:
+    def __init__(self, keys: list[Ed25519PublicKey], threshold: int) -> None:
         if not (
             MultiEd25519PublicKey.MIN_KEYS
             <= len(keys)
@@ -623,7 +623,7 @@ class MultiEd25519PublicKey:
                 f"MultiEd25519PublicKey crypto bytes length {len(data)} is not "
                 f"consistent with an integer number of 32-byte keys plus 1 threshold byte."
             )
-        keys: List[Ed25519PublicKey] = []
+        keys: list[Ed25519PublicKey] = []
         for i in range(num_keys):
             start = i * key_size
             keys.append(Ed25519PublicKey.from_bytes(data[start : start + key_size]))
@@ -709,9 +709,9 @@ class MultiEd25519Signature:
 
     BITMAP_NUM_OF_BYTES: int = 4
 
-    signatures: List[Tuple[int, Ed25519Signature]]
+    signatures: list[tuple[int, Ed25519Signature]]
 
-    def __init__(self, signatures: List[Tuple[int, Ed25519Signature]]) -> None:
+    def __init__(self, signatures: list[tuple[int, Ed25519Signature]]) -> None:
         max_index = MultiEd25519Signature.BITMAP_NUM_OF_BYTES * 8
         for idx, _sig in signatures:
             if idx >= max_index:
@@ -739,7 +739,7 @@ class MultiEd25519Signature:
     @staticmethod
     def from_key_map(
         public_key: MultiEd25519PublicKey,
-        signatures_map: List[Tuple[Ed25519PublicKey, Ed25519Signature]],
+        signatures_map: list[tuple[Ed25519PublicKey, Ed25519Signature]],
     ) -> "MultiEd25519Signature":
         """
         Build a :class:`MultiEd25519Signature` from a public-key-to-signature mapping.
@@ -758,7 +758,7 @@ class MultiEd25519Signature:
         ValueError
             If a public key in *signatures_map* is not found in *public_key.keys*.
         """
-        indexed: List[Tuple[int, Ed25519Signature]] = []
+        indexed: list[tuple[int, Ed25519Signature]] = []
         for pub, sig in signatures_map:
             try:
                 idx = public_key.keys.index(pub)
@@ -819,7 +819,7 @@ class MultiEd25519Signature:
         )
 
         sig_index = 0
-        signatures: List[Tuple[int, Ed25519Signature]] = []
+        signatures: list[tuple[int, Ed25519Signature]] = []
         for bit_pos in range(MultiEd25519Signature.BITMAP_NUM_OF_BYTES * 8):
             if bitmap & (1 << (31 - bit_pos)):
                 offset = sig_index * Ed25519Signature.LENGTH

@@ -49,7 +49,7 @@ def _make_entry_function() -> EntryFunction:
 
 
 def _make_raw_transaction(
-    sender: AccountAddress = None,
+    sender: AccountAddress | None = None,
     sequence_number: int = 0,
     chain_id: int = 4,
 ) -> RawTransaction:
