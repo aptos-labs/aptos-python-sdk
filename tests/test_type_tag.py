@@ -449,3 +449,258 @@ class TestMoveModuleId:
         der = Deserializer(ser.output())
         restored = MoveModuleId.deserialize(der)
         assert restored == original
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: __repr__ for primitive tag variants
+# ---------------------------------------------------------------------------
+
+
+class TestPrimitiveTagRepr:
+    """Verify that __repr__ delegates to __str__ for all primitive tags."""
+
+    def test_bool_tag_repr(self):
+        assert repr(BoolTag()) == "bool"
+
+    def test_u8_tag_repr(self):
+        assert repr(U8Tag()) == "u8"
+
+    def test_u16_tag_repr(self):
+        assert repr(U16Tag()) == "u16"
+
+    def test_u32_tag_repr(self):
+        assert repr(U32Tag()) == "u32"
+
+    def test_u64_tag_repr(self):
+        assert repr(U64Tag()) == "u64"
+
+    def test_u128_tag_repr(self):
+        assert repr(U128Tag()) == "u128"
+
+    def test_u256_tag_repr(self):
+        assert repr(U256Tag()) == "u256"
+
+    def test_address_tag_repr(self):
+        assert repr(AccountAddressTag()) == "address"
+
+    def test_signer_tag_repr(self):
+        assert repr(SignerTag()) == "signer"
+
+    def test_type_tag_repr_delegates(self):
+        # TypeTag.__repr__ must equal __str__
+        tag = TypeTag(U64Tag())
+        assert repr(tag) == str(tag) == "u64"
+
+    def test_vector_tag_repr(self):
+        tag = VectorTag(TypeTag(U8Tag()))
+        assert repr(tag) == "vector<u8>"
+
+    def test_struct_tag_repr(self):
+        tag = StructTag(AccountAddress.ONE, "coin", "CoinStore", [])
+        assert repr(tag) == str(tag)
+
+    def test_move_module_id_repr(self):
+        mid = MoveModuleId(AccountAddress.ONE, "coin")
+        assert repr(mid) == "0x1::coin"
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: primitive tag __eq__ with wrong types (NotImplemented)
+# ---------------------------------------------------------------------------
+
+
+class TestPrimitiveTagEqualityNonImplemented:
+    """Each tag's __eq__ must return NotImplemented for non-matching types."""
+
+    def test_bool_tag_eq_non_bool(self):
+        result = BoolTag().__eq__("bool")
+        assert result is NotImplemented
+
+    def test_u8_tag_eq_non_u8(self):
+        result = U8Tag().__eq__(BoolTag())
+        assert result is NotImplemented
+
+    def test_u16_tag_eq_non_u16(self):
+        result = U16Tag().__eq__(U8Tag())
+        assert result is NotImplemented
+
+    def test_u32_tag_eq_non_u32(self):
+        result = U32Tag().__eq__(U16Tag())
+        assert result is NotImplemented
+
+    def test_u64_tag_eq_non_u64(self):
+        result = U64Tag().__eq__(U32Tag())
+        assert result is NotImplemented
+
+    def test_u128_tag_eq_non_u128(self):
+        result = U128Tag().__eq__(U64Tag())
+        assert result is NotImplemented
+
+    def test_u256_tag_eq_non_u256(self):
+        result = U256Tag().__eq__(U128Tag())
+        assert result is NotImplemented
+
+    def test_address_tag_eq_non_address(self):
+        result = AccountAddressTag().__eq__(SignerTag())
+        assert result is NotImplemented
+
+    def test_signer_tag_eq_non_signer(self):
+        result = SignerTag().__eq__(AccountAddressTag())
+        assert result is NotImplemented
+
+    def test_vector_tag_eq_non_vector(self):
+        result = VectorTag(TypeTag(U8Tag())).__eq__(U8Tag())
+        assert result is NotImplemented
+
+    def test_struct_tag_eq_non_struct(self):
+        tag = StructTag(AccountAddress.ONE, "coin", "Coin", [])
+        result = tag.__eq__("not_a_struct")
+        assert result is NotImplemented
+
+    def test_move_module_id_eq_non_module(self):
+        mid = MoveModuleId(AccountAddress.ONE, "coin")
+        result = mid.__eq__("not_a_module")
+        assert result is NotImplemented
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: StructTag equality edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestStructTagEqualityEdgeCases:
+    def test_inequality_name(self):
+        a = StructTag(AccountAddress.ONE, "coin", "CoinStore", [])
+        b = StructTag(AccountAddress.ONE, "coin", "Other", [])
+        assert a != b
+
+    def test_inequality_address(self):
+        addr1 = AccountAddress.from_str_relaxed("0x1")
+        addr2 = AccountAddress.from_str_relaxed("0x2")
+        a = StructTag(addr1, "coin", "Coin", [])
+        b = StructTag(addr2, "coin", "Coin", [])
+        assert a != b
+
+    def test_inequality_type_args_length(self):
+        a = StructTag(AccountAddress.ONE, "coin", "Coin", [TypeTag(U8Tag())])
+        b = StructTag(AccountAddress.ONE, "coin", "Coin", [])
+        assert a != b
+
+    def test_inequality_type_args_content(self):
+        a = StructTag(AccountAddress.ONE, "coin", "Coin", [TypeTag(U8Tag())])
+        b = StructTag(AccountAddress.ONE, "coin", "Coin", [TypeTag(BoolTag())])
+        assert a != b
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: TypeTag deserialization of all remaining variants
+# ---------------------------------------------------------------------------
+
+
+class TestTypeTagDeserializeVariants:
+    """Explicitly exercise each TypeTag.deserialize branch for full coverage."""
+
+    def _round_trip(self, tag: TypeTag) -> TypeTag:
+        ser = Serializer()
+        tag.serialize(ser)
+        return TypeTag.deserialize(Deserializer(ser.output()))
+
+    def test_u32_deserialize(self):
+        original = TypeTag(U32Tag())
+        assert self._round_trip(original) == original
+
+    def test_u16_deserialize_explicit(self):
+        original = TypeTag(U16Tag())
+        assert self._round_trip(original) == original
+
+    def test_address_deserialize(self):
+        original = TypeTag(AccountAddressTag())
+        assert self._round_trip(original) == original
+
+    def test_signer_deserialize(self):
+        original = TypeTag(SignerTag())
+        assert self._round_trip(original) == original
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: StructTag.from_str edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestStructTagFromStrEdgeCases:
+    def test_missing_second_separator_raises(self):
+        # Has address and module but no struct name separator
+        with pytest.raises(InvalidStructTagError):
+            StructTag.from_str("0x1::coin")
+
+    def test_empty_struct_name_raises(self):
+        with pytest.raises(InvalidStructTagError):
+            StructTag.from_str("0x1::coin::")
+
+    def test_empty_type_arg_list_allowed(self):
+        # "<>" should be valid and produce zero type args
+        tag = StructTag.from_str("0x1::coin::Coin<>")
+        assert tag.type_args == []
+
+    def test_whitespace_around_generic_args(self):
+        tag = StructTag.from_str("0x1::foo::Bar< u64 , bool >")
+        assert len(tag.type_args) == 2
+        assert str(tag.type_args[0]) == "u64"
+        assert str(tag.type_args[1]) == "bool"
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: TypeTag.from_str error paths
+# ---------------------------------------------------------------------------
+
+
+class TestTypeTagFromStrErrorPaths:
+    def test_empty_string_raises(self):
+        with pytest.raises(InvalidTypeTagError):
+            TypeTag.from_str("")
+
+    def test_vector_missing_angle_bracket_raises(self):
+        with pytest.raises(InvalidTypeTagError):
+            TypeTag.from_str("vector u8")
+
+    def test_vector_unclosed_bracket_raises(self):
+        with pytest.raises(InvalidTypeTagError):
+            TypeTag.from_str("vector<u8")
+
+    def test_struct_without_module_separator_raises(self):
+        # Struct address parsed but no '::' follows
+        with pytest.raises((InvalidTypeTagError, InvalidStructTagError)):
+            TypeTag.from_str("0x1")
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: MoveModuleId.from_str edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestMoveModuleIdFromStrEdgeCases:
+    def test_empty_address_raises(self):
+        # "::module" — two parts but empty address
+        with pytest.raises(InvalidModuleIdError):
+            MoveModuleId.from_str("::coin")
+
+    def test_invalid_module_identifier_raises(self):
+        # module name contains an invalid character
+        with pytest.raises(InvalidModuleIdError):
+            MoveModuleId.from_str("0x1::coin-module")
+
+    def test_too_many_parts_raises(self):
+        # Three '::' separators → more than two parts
+        with pytest.raises(InvalidModuleIdError):
+            MoveModuleId.from_str("0x1::coin::extra")
+
+    def test_from_str_with_whitespace(self):
+        # Leading/trailing whitespace is stripped
+        mid = MoveModuleId.from_str("  0x1::coin  ")
+        assert mid.name == "coin"
+        assert mid.address == AccountAddress.ONE
+
+    def test_inequality(self):
+        a = MoveModuleId(AccountAddress.ONE, "coin")
+        b = MoveModuleId(AccountAddress.ONE, "token")
+        assert a != b

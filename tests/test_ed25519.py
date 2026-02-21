@@ -406,3 +406,186 @@ class TestLegacyAliases:
 
     def test_multi_signature_alias(self):
         assert MultiSignature is MultiEd25519Signature
+
+
+# ---------------------------------------------------------------------------
+# asymmetric_crypto: parse_hex_input edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestParseHexInput:
+    """
+    Tests for the module-level parse_hex_input() helper in asymmetric_crypto.
+    These are exercised here because Ed25519PrivateKey.from_hex() delegates to it.
+    """
+
+    def test_bytes_input_returned_as_is(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, parse_hex_input
+
+        raw = b"\x01" * 32
+        result = parse_hex_input(raw, PrivateKeyVariant.ED25519, strict=False)
+        assert result == raw
+
+    def test_aip80_prefixed_input_decoded(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, parse_hex_input
+
+        key = Ed25519PrivateKey.generate()
+        aip80 = key.to_aip80()  # "ed25519-priv-0x<hex>"
+        result = parse_hex_input(aip80, PrivateKeyVariant.ED25519, strict=True)
+        assert result == key.to_bytes()
+
+    def test_aip80_prefixed_without_0x_decoded(self):
+        from aptos_sdk.asymmetric_crypto import (
+            AIP80_PREFIXES,
+            PrivateKeyVariant,
+            parse_hex_input,
+        )
+
+        key = Ed25519PrivateKey.generate()
+        prefix = AIP80_PREFIXES[PrivateKeyVariant.ED25519]
+        # Build an AIP-80 string without "0x" after the prefix
+        aip80_no_0x = prefix + key.to_bytes().hex()
+        result = parse_hex_input(aip80_no_0x, PrivateKeyVariant.ED25519, strict=True)
+        assert result == key.to_bytes()
+
+    def test_strict_true_rejects_plain_hex(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, parse_hex_input
+        from aptos_sdk.errors import InvalidPrivateKeyError
+
+        raw_hex = "0x" + "ab" * 32
+        with pytest.raises(InvalidPrivateKeyError):
+            parse_hex_input(raw_hex, PrivateKeyVariant.ED25519, strict=True)
+
+    def test_strict_none_warns_on_plain_hex(self):
+        import warnings
+
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, parse_hex_input
+
+        raw_hex = "ab" * 32
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = parse_hex_input(raw_hex, PrivateKeyVariant.ED25519, strict=None)
+            assert any(
+                issubclass(warning.category, DeprecationWarning) for warning in w
+            )
+        assert result == bytes.fromhex(raw_hex)
+
+    def test_strict_false_silent_on_plain_hex(self):
+        import warnings
+
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, parse_hex_input
+
+        raw_hex = "0x" + "cd" * 32
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = parse_hex_input(raw_hex, PrivateKeyVariant.ED25519, strict=False)
+            # No DeprecationWarning expected
+            dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert dep_warnings == []
+        assert result == bytes.fromhex("cd" * 32)
+
+    def test_non_str_non_bytes_raises_type_error(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, parse_hex_input
+
+        with pytest.raises(TypeError):
+            parse_hex_input(12345, PrivateKeyVariant.ED25519)  # type: ignore[arg-type]
+
+    def test_aip80_with_invalid_hex_raises(self):
+        from aptos_sdk.asymmetric_crypto import (
+            AIP80_PREFIXES,
+            PrivateKeyVariant,
+            parse_hex_input,
+        )
+        from aptos_sdk.errors import InvalidPrivateKeyError
+
+        prefix = AIP80_PREFIXES[PrivateKeyVariant.ED25519]
+        bad = prefix + "0xZZZZ"
+        with pytest.raises(InvalidPrivateKeyError):
+            parse_hex_input(bad, PrivateKeyVariant.ED25519, strict=True)
+
+    def test_plain_hex_with_invalid_chars_raises(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, parse_hex_input
+        from aptos_sdk.errors import InvalidPrivateKeyError
+
+        with pytest.raises(InvalidPrivateKeyError):
+            parse_hex_input("ZZZZ", PrivateKeyVariant.ED25519, strict=False)
+
+
+# ---------------------------------------------------------------------------
+# asymmetric_crypto: format_private_key edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestFormatPrivateKey:
+    """
+    Tests for the module-level format_private_key() helper in asymmetric_crypto.
+    """
+
+    def test_plain_hex_without_0x_prefix(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, format_private_key
+
+        hex_str = "ab" * 32
+        result = format_private_key(hex_str, PrivateKeyVariant.ED25519)
+        assert result == f"ed25519-priv-0x{hex_str}"
+
+    def test_plain_hex_with_0x_prefix(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, format_private_key
+
+        hex_str = "0x" + "ab" * 32
+        result = format_private_key(hex_str, PrivateKeyVariant.ED25519)
+        assert result == f"ed25519-priv-{hex_str}"
+
+    def test_already_aip80_with_0x_returned_canonically(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, format_private_key
+
+        aip80 = "ed25519-priv-0x" + "ab" * 32
+        result = format_private_key(aip80, PrivateKeyVariant.ED25519)
+        assert result == aip80
+
+    def test_already_aip80_without_0x_gets_0x_added(self):
+        from aptos_sdk.asymmetric_crypto import (
+            AIP80_PREFIXES,
+            PrivateKeyVariant,
+            format_private_key,
+        )
+
+        prefix = AIP80_PREFIXES[PrivateKeyVariant.ED25519]
+        raw_part = "ab" * 32
+        aip80_no_0x = prefix + raw_part  # no "0x" after the prefix
+        result = format_private_key(aip80_no_0x, PrivateKeyVariant.ED25519)
+        assert result == prefix + "0x" + raw_part
+
+    def test_secp256k1_prefix_used(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant, format_private_key
+
+        hex_str = "0x" + "de" * 32
+        result = format_private_key(hex_str, PrivateKeyVariant.SECP256K1)
+        assert result.startswith("secp256k1-priv-")
+
+    def test_aip80_prefixes_dict_contents(self):
+        from aptos_sdk.asymmetric_crypto import AIP80_PREFIXES, PrivateKeyVariant
+
+        assert AIP80_PREFIXES[PrivateKeyVariant.ED25519] == "ed25519-priv-"
+        assert AIP80_PREFIXES[PrivateKeyVariant.SECP256K1] == "secp256k1-priv-"
+
+
+# ---------------------------------------------------------------------------
+# asymmetric_crypto: PrivateKeyVariant enum
+# ---------------------------------------------------------------------------
+
+
+class TestPrivateKeyVariant:
+    def test_ed25519_value(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant
+
+        assert PrivateKeyVariant.ED25519.value == 0
+
+    def test_secp256k1_value(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant
+
+        assert PrivateKeyVariant.SECP256K1.value == 1
+
+    def test_distinct_values(self):
+        from aptos_sdk.asymmetric_crypto import PrivateKeyVariant
+
+        assert PrivateKeyVariant.ED25519 != PrivateKeyVariant.SECP256K1
