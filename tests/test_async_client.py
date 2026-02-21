@@ -8,14 +8,12 @@ GasEstimate, Transaction dataclasses, RestClient, and FaucetClient.
 Uses httpx mock transport to avoid real network calls.
 """
 
-import json
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
-from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.async_client import (
     AccountInfo,

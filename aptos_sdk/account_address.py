@@ -256,10 +256,7 @@ class AccountAddress:
         """
         # Lazy imports to break the circular dependency chain:
         # account_address ← ed25519 ← account_address
-        from . import (  # noqa: PLC0415
-            crypto_wrapper,
-            ed25519,
-        )
+        from . import crypto_wrapper, ed25519  # noqa: PLC0415
 
         hasher = hashlib.sha3_256()
         hasher.update(public_key.to_crypto_bytes())  # type: ignore[attr-defined]
