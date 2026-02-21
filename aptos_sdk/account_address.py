@@ -1,17 +1,29 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
+"""
+AccountAddress — 32-byte Aptos account address with AIP-40 string formatting.
+
+Spec reference: Aptos SDK Specification v1.0.0, section 01 (Core Types).
+
+String representation follows AIP-40:
+  - Special addresses (first 31 bytes zero, last byte < 0x10) use SHORT form:
+      0x0  through  0xf
+  - All other addresses use LONG form:
+      0x + 64 lowercase hex characters (no trimming).
+  - All string representations are prefixed with 0x.
+"""
 
 import hashlib
-import unittest
-from dataclasses import dataclass
+from typing import ClassVar
 
-from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
 from .bcs import Deserializer, Serializer
+from .errors import InvalidAddressError, InvalidHexError, InvalidLengthError
 
 
 class AuthKeyScheme:
+    """Single-byte authentication key scheme tags used during address derivation."""
+
     Ed25519: bytes = b"\x00"
     MultiEd25519: bytes = b"\x01"
     SingleKey: bytes = b"\x02"
@@ -21,632 +33,363 @@ class AuthKeyScheme:
     DeriveResourceAccountAddress: bytes = b"\xFF"
 
 
-class ParseAddressError(Exception):
-    """
-    There was an error parsing an address.
-    """
-
-
 class AccountAddress:
-    address: bytes
-    LENGTH: int = 32
+    """
+    A 32-byte Aptos account address.
 
-    def __init__(self, address: bytes):
-        self.address = address
+    Instances are immutable: once created, ``data`` cannot be reassigned.
+    Use the ``from_*`` class-level factory methods for construction.
+    """
 
-        if len(address) != AccountAddress.LENGTH:
-            raise ParseAddressError("Expected address of length 32")
+    LENGTH: ClassVar[int] = 32
+
+    # Class-level constants — populated after the class body.
+    ZERO: ClassVar["AccountAddress"]
+    ONE: ClassVar["AccountAddress"]
+    THREE: ClassVar["AccountAddress"]
+    FOUR: ClassVar["AccountAddress"]
+
+    __slots__ = ("_data",)
+
+    def __init__(self, data: bytes) -> None:
+        if len(data) != AccountAddress.LENGTH:
+            raise InvalidLengthError(
+                f"AccountAddress must be exactly {AccountAddress.LENGTH} bytes, "
+                f"got {len(data)}."
+            )
+        # Store in a private slot; expose via the `data` property.
+        object.__setattr__(self, "_data", data)
+
+    # ------------------------------------------------------------------
+    # Immutability guard
+    # ------------------------------------------------------------------
+
+    def __setattr__(self, name: str, value: object) -> None:
+        raise AttributeError("AccountAddress is immutable.")
+
+    # ------------------------------------------------------------------
+    # Public data property
+    # ------------------------------------------------------------------
+
+    @property
+    def data(self) -> bytes:
+        """The raw 32-byte address data."""
+        return object.__getattribute__(self, "_data")
+
+    # ------------------------------------------------------------------
+    # Equality, hashing, display
+    # ------------------------------------------------------------------
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AccountAddress):
             return NotImplemented
-        return self.address == other.address
+        return self.data == other.data
 
-    def __str__(self):
+    def __hash__(self) -> int:
+        return hash(self.data)
+
+    def __str__(self) -> str:
         """
-        Represent an account address in a way that is compliant with the v1 address
-        standard. The standard is defined as part of AIP-40, read more here:
-        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md
+        AIP-40 canonical string representation.
 
-        In short, all special addresses SHOULD be represented in SHORT form, e.g.
-
-        0x1
-
-        All other addresses MUST be represented in LONG form, e.g.
-
-        0x002098630cfad4734812fa37dc18d9b8d59242feabe49259e26318d468a99584
-
-        For an explanation of what defines a "special" address, see `is_special`.
-
-        All string representations of addresses MUST be prefixed with 0x.
+        Special addresses (``is_special() == True``) are rendered in SHORT form,
+        e.g. ``0x1``.  All other addresses are rendered in LONG form,
+        e.g. ``0x002098630cfad4734812fa37dc18d9b8d59242feabe49259e26318d468a99584``.
         """
-        suffix = self.address.hex()
+        suffix = self.data.hex()
         if self.is_special():
             suffix = suffix.lstrip("0") or "0"
         return f"0x{suffix}"
 
-    def __repr__(self):
-        return self.__str__()
+    def __repr__(self) -> str:
+        return f"AccountAddress({str(self)})"
 
-    def is_special(self):
-        """
-        Returns whether the address is a "special" address. Addresses are considered
-        special if the first 63 characters of the hex string are zero. In other words,
-        an address is special if the first 31 bytes are zero and the last byte is
-        smaller than `0b10000` (16). In other words, special is defined as an address
-        that matches the following regex: `^0x0{63}[0-9a-f]$`. In short form this means
-        the addresses in the range from `0x0` to `0xf` (inclusive) are special.
+    # ------------------------------------------------------------------
+    # Predicates
+    # ------------------------------------------------------------------
 
-        For more details see the v1 address standard defined as part of AIP-40:
-        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md
+    def is_special(self) -> bool:
         """
-        return all(b == 0 for b in self.address[:-1]) and self.address[-1] < 0b10000
+        Return ``True`` when the address is *special*.
+
+        An address is special when the first 31 bytes are all zero and the
+        last byte is less than 16 (``0x10``).  In hex, that matches the
+        pattern ``^0x0{63}[0-9a-f]$``, i.e. addresses ``0x0`` through ``0xf``.
+        """
+        return all(b == 0 for b in self.data[:-1]) and self.data[-1] < 0x10
+
+    # ------------------------------------------------------------------
+    # Constructors
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def from_str(address: str) -> AccountAddress:
+    def from_hex(hex_str: str) -> "AccountAddress":
         """
-        NOTE: This function has strict parsing behavior. For relaxed behavior, please use
-        `from_string_relaxed` function.
+        Parse an AccountAddress from a hex string — relaxed, spec-compliant.
 
-        Creates an instance of AccountAddress from a hex string.
+        Accepted formats (all equivalent to the same address):
+        - With or without a ``0x`` / ``0X`` prefix.
+        - Case-insensitive hex digits.
+        - 1 to 64 hex characters (shorter strings are left-zero-padded to 64 chars).
 
-        This function allows only the strictest formats defined by AIP-40. In short this
-        means only the following formats are accepted:
-        - LONG
-        - SHORT for special addresses
-
-        Where:
-        - LONG is defined as 0x + 64 hex characters.
-        - SHORT for special addresses is 0x0 to 0xf inclusive without padding zeroes.
-
-        This means the following are not accepted:
-        - SHORT for non-special addresses.
-        - Any address without a leading 0x.
-
-        Learn more about the different address formats by reading AIP-40:
-        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md.
-
-        Parameters:
-        - address (str): A hex string representing an account address.
-
-        Returns:
-        - AccountAddress: An instance of AccountAddress.
+        Errors:
+        - Empty string (after stripping an optional ``0x`` prefix) →
+          :class:`~aptos_sdk.errors.InvalidHexError`.
+        - More than 64 hex characters →
+          :class:`~aptos_sdk.errors.InvalidHexError`.
+        - Non-hex characters →
+          :class:`~aptos_sdk.errors.InvalidHexError`.
         """
-        # Assert the string starts with 0x.
+        addr = hex_str
+
+        # Strip optional 0x / 0X prefix.
+        if addr.startswith(("0x", "0X")):
+            addr = addr[2:]
+
+        if len(addr) == 0:
+            raise InvalidHexError(
+                "Address hex string is empty (must be 1 to 64 hex characters, "
+                "excluding an optional leading '0x')."
+            )
+
+        if len(addr) > 64:
+            raise InvalidHexError(
+                f"Address hex string is too long ({len(addr)} chars); "
+                "must be at most 64 hex characters excluding an optional leading '0x'."
+            )
+
+        # Left-pad with zeros to reach exactly 64 hex characters.
+        addr = addr.zfill(64)
+
+        try:
+            raw = bytes.fromhex(addr)
+        except ValueError as exc:
+            raise InvalidHexError(
+                f"Address hex string contains non-hex characters: {hex_str!r}."
+            ) from exc
+
+        return AccountAddress(raw)
+
+    @staticmethod
+    def from_str(address: str) -> "AccountAddress":
+        """
+        Parse an AccountAddress using strict AIP-40 rules.
+
+        Only two forms are accepted:
+        - **LONG**: ``0x`` followed by exactly 64 lowercase hex characters.
+        - **SHORT** (special addresses only): ``0x0`` through ``0xf`` — exactly
+          one hex digit, no zero padding.
+
+        All other forms (missing ``0x``, padded short form, short form for
+        non-special addresses) raise :class:`~aptos_sdk.errors.InvalidAddressError`.
+        """
         if not address.startswith("0x"):
-            raise RuntimeError("Hex string must start with a leading 0x.")
+            raise InvalidAddressError(
+                "Address must start with '0x' in strict AIP-40 mode."
+            )
 
         out = AccountAddress.from_str_relaxed(address)
 
-        # Check if the address is in LONG form. If it is not, this is only allowed for
-        # special addresses, in which case we check it is in proper SHORT form.
-        if len(address) != AccountAddress.LENGTH * 2 + 2:
-            if not out.is_special():
-                raise RuntimeError(
-                    "The given hex string is not a special address, it must be represented "
-                    "as 0x + 64 chars."
-                )
-            else:
-                # 0x + one hex char is the only valid SHORT form for special addresses.
-                if len(address) != 3:
-                    raise RuntimeError(
-                        "The given hex string is a special address not in LONG form, "
-                        "it must be 0x0 to 0xf without padding zeroes."
-                    )
+        hex_body = address[2:]  # everything after "0x"
+        long_form_length = AccountAddress.LENGTH * 2  # 64
 
-        # Assert that only special addresses can use short form.
-        if len(address[2:]) != AccountAddress.LENGTH * 2 and not out.is_special():
-            raise RuntimeError(
-                "Padding zeroes are not allowed, the address must be represented as "
-                "0x0 to 0xf for special addresses or 0x + 64 chars for all other addresses."
+        if len(hex_body) == long_form_length:
+            # Long form — always valid once we pass from_str_relaxed.
+            return out
+
+        # Not long form: only valid for special addresses in single-char short form.
+        if not out.is_special():
+            raise InvalidAddressError(
+                f"Non-special address {address!r} must be in LONG form "
+                "(0x + 64 hex characters)."
+            )
+
+        # Special address short form: exactly one hex digit after "0x".
+        if len(hex_body) != 1:
+            raise InvalidAddressError(
+                f"Special address {address!r} must be in SHORT form (0x0 to 0xf) "
+                "or LONG form (0x + 64 hex characters); padding zeroes are not allowed."
             )
 
         return out
 
     @staticmethod
-    def from_str_relaxed(address: str) -> AccountAddress:
+    def from_str_relaxed(address: str) -> "AccountAddress":
         """
-        NOTE: This function has relaxed parsing behavior. For strict behavior, please use
-        the `from_string` function. Where possible, use `from_string` rather than this
-        function. `from_string_relaxed` is only provided for backwards compatibility.
+        Parse an AccountAddress with relaxed formatting rules.
 
-        Creates an instance of AccountAddress from a hex string.
+        Accepts all formats defined by AIP-40:
+        - LONG form, with or without ``0x``.
+        - SHORT form, with or without ``0x``.
+        - Padding zeroes are allowed (e.g. ``0x0f`` is valid).
 
-        This function allows all formats defined by AIP-40. In short, this means the
-        following formats are accepted:
-        - LONG, with or without leading 0x
-        - SHORT, with or without leading 0x
-
-        Where:
-        - LONG is 64 hex characters.
-        - SHORT is 1 to 63 hex characters inclusive.
-        - Padding zeroes are allowed, e.g., 0x0123 is valid.
-
-        Learn more about the different address formats by reading AIP-40:
-        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md.
-
-        Parameters:
-        - address (str): A hex string representing an account address.
-
-        Returns:
-        - AccountAddress: An instance of AccountAddress.
+        Delegates to :meth:`from_hex` for the actual parsing logic.
         """
-        addr = address
-
-        # Strip 0x prefix if present.
-        if address[0:2] == "0x":
-            addr = address[2:]
-
-        # Assert the address is at least one hex char long.
-        if len(addr) < 1:
-            raise RuntimeError(
-                "Hex string is too short, must be 1 to 64 chars long, excluding the "
-                "leading 0x."
-            )
-
-        # Assert the address is at most 64 hex chars long.
-        if len(addr) > 64:
-            raise RuntimeError(
-                "Hex string is too long, must be 1 to 64 chars long, excluding the "
-                "leading 0x."
-            )
-
-        if len(addr) < AccountAddress.LENGTH * 2:
-            pad = "0" * (AccountAddress.LENGTH * 2 - len(addr))
-            addr = pad + addr
-
-        return AccountAddress(bytes.fromhex(addr))
+        return AccountAddress.from_hex(address)
 
     @staticmethod
-    def from_key(key: asymmetric_crypto.PublicKey) -> AccountAddress:
-        hasher = hashlib.sha3_256()
-        hasher.update(key.to_crypto_bytes())
+    def from_bytes(data: bytes) -> "AccountAddress":
+        """
+        Construct an AccountAddress directly from 32 raw bytes.
 
-        if isinstance(key, ed25519.PublicKey):
+        Raises :class:`~aptos_sdk.errors.InvalidLengthError` if *data* is not
+        exactly 32 bytes.
+        """
+        return AccountAddress(data)
+
+    @staticmethod
+    def from_key(public_key: object) -> "AccountAddress":
+        """
+        Derive an AccountAddress from a public key's authentication key.
+
+        The authentication key is ``SHA3-256(key.to_crypto_bytes() || scheme_byte)``.
+        The scheme byte is determined by the concrete key type:
+
+        - :class:`~aptos_sdk.ed25519.PublicKey` → ``0x00`` (Ed25519)
+        - :class:`~aptos_sdk.ed25519.MultiPublicKey` → ``0x01`` (MultiEd25519)
+        - :class:`~aptos_sdk.asymmetric_crypto_wrapper.PublicKey` → ``0x02`` (SingleKey)
+        - :class:`~aptos_sdk.asymmetric_crypto_wrapper.MultiPublicKey` → ``0x03`` (MultiKey)
+
+        Imports are deferred to avoid circular dependencies.
+
+        The *public_key* argument must expose a ``to_crypto_bytes()`` method.
+        """
+        # Lazy imports to break the circular dependency chain:
+        # account_address ← ed25519 ← account_address
+        from . import crypto_wrapper, ed25519  # noqa: PLC0415
+
+        hasher = hashlib.sha3_256()
+        hasher.update(public_key.to_crypto_bytes())  # type: ignore[attr-defined]
+
+        if isinstance(public_key, ed25519.PublicKey):
             hasher.update(AuthKeyScheme.Ed25519)
-        elif isinstance(key, ed25519.MultiPublicKey):
+        elif isinstance(public_key, ed25519.MultiPublicKey):
             hasher.update(AuthKeyScheme.MultiEd25519)
-        elif isinstance(key, asymmetric_crypto_wrapper.PublicKey):
+        elif isinstance(public_key, crypto_wrapper.AnyPublicKey):
             hasher.update(AuthKeyScheme.SingleKey)
-        elif isinstance(key, asymmetric_crypto_wrapper.MultiPublicKey):
+        elif isinstance(public_key, crypto_wrapper.MultiKeyPublicKey):
             hasher.update(AuthKeyScheme.MultiKey)
         else:
-            raise Exception("Unsupported asymmetric_crypto.PublicKey key type.")
+            raise InvalidAddressError(
+                f"Unsupported public key type for address derivation: "
+                f"{type(public_key).__name__}."
+            )
 
         return AccountAddress(hasher.digest())
 
+    # ------------------------------------------------------------------
+    # Derived address constructors
+    # ------------------------------------------------------------------
+
     @staticmethod
-    def for_resource_account(creator: AccountAddress, seed: bytes) -> AccountAddress:
+    def for_resource_account(
+        creator: "AccountAddress", seed: bytes
+    ) -> "AccountAddress":
+        """
+        Derive the address of a resource account.
+
+        ``SHA3-256(creator.data || seed || 0xFF)``
+        """
         hasher = hashlib.sha3_256()
-        hasher.update(creator.address)
+        hasher.update(creator.data)
         hasher.update(seed)
         hasher.update(AuthKeyScheme.DeriveResourceAccountAddress)
         return AccountAddress(hasher.digest())
 
     @staticmethod
-    def for_guid_object(creator: AccountAddress, creation_num: int) -> AccountAddress:
-        hasher = hashlib.sha3_256()
-        serializer = Serializer()
-        serializer.u64(creation_num)
-        hasher.update(serializer.output())
-        hasher.update(creator.address)
-        hasher.update(AuthKeyScheme.DeriveObjectAddressFromGuid)
-        return AccountAddress(hasher.digest())
+    def for_named_object(creator: "AccountAddress", seed: bytes) -> "AccountAddress":
+        """
+        Derive the address of a named object.
 
-    @staticmethod
-    def for_named_object(creator: AccountAddress, seed: bytes) -> AccountAddress:
+        ``SHA3-256(creator.data || seed || 0xFE)``
+        """
         hasher = hashlib.sha3_256()
-        hasher.update(creator.address)
+        hasher.update(creator.data)
         hasher.update(seed)
         hasher.update(AuthKeyScheme.DeriveObjectAddressFromSeed)
         return AccountAddress(hasher.digest())
 
     @staticmethod
+    def for_guid_object(
+        creator: "AccountAddress", creation_num: int
+    ) -> "AccountAddress":
+        """
+        Derive the address of a GUID-based object.
+
+        ``SHA3-256(BCS(creation_num as u64) || creator.data || 0xFD)``
+        """
+        hasher = hashlib.sha3_256()
+        serializer = Serializer()
+        serializer.u64(creation_num)
+        hasher.update(serializer.output())
+        hasher.update(creator.data)
+        hasher.update(AuthKeyScheme.DeriveObjectAddressFromGuid)
+        return AccountAddress(hasher.digest())
+
+    @staticmethod
+    def for_named_collection(creator: "AccountAddress", name: str) -> "AccountAddress":
+        """
+        Derive the address of a named token collection.
+
+        Equivalent to :meth:`for_named_object` with ``seed = name.encode()``.
+        """
+        return AccountAddress.for_named_object(creator, name.encode())
+
+    @staticmethod
     def for_named_token(
-        creator: AccountAddress, collection_name: str, token_name: str
-    ) -> AccountAddress:
-        collection_bytes = collection_name.encode()
-        token_bytes = token_name.encode()
-        return AccountAddress.for_named_object(
-            creator, collection_bytes + b"::" + token_bytes
-        )
+        creator: "AccountAddress", collection: str, token: str
+    ) -> "AccountAddress":
+        """
+        Derive the address of a named token within a collection.
+
+        Equivalent to :meth:`for_named_object` with
+        ``seed = collection.encode() + b"::" + token.encode()``.
+        """
+        seed = collection.encode() + b"::" + token.encode()
+        return AccountAddress.for_named_object(creator, seed)
+
+    # ------------------------------------------------------------------
+    # Formatting helpers
+    # ------------------------------------------------------------------
+
+    def to_hex(self) -> str:
+        """
+        Return the full canonical hex representation: ``0x`` + 64 lowercase hex chars.
+
+        Unlike ``str()``, this never uses the short form even for special addresses.
+        """
+        return f"0x{self.data.hex()}"
+
+    def to_short_string(self) -> str:
+        """
+        Return a trimmed hex string with ``0x`` prefix and leading zeros removed.
+
+        This is the SHORT form defined by AIP-40 and is only canonical for
+        special addresses.  For non-special addresses callers should prefer
+        :meth:`to_hex` or ``str()``.
+        """
+        trimmed = self.data.hex().lstrip("0") or "0"
+        return f"0x{trimmed}"
+
+    # ------------------------------------------------------------------
+    # BCS serialization
+    # ------------------------------------------------------------------
+
+    def serialize(self, serializer: Serializer) -> None:
+        """Serialize the address as 32 raw bytes (no length prefix)."""
+        serializer.fixed_bytes(self.data)
 
     @staticmethod
-    def for_named_collection(
-        creator: AccountAddress, collection_name: str
-    ) -> AccountAddress:
-        return AccountAddress.for_named_object(creator, collection_name.encode())
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AccountAddress:
+    def deserialize(deserializer: Deserializer) -> "AccountAddress":
+        """Deserialize an AccountAddress from 32 raw bytes."""
         return AccountAddress(deserializer.fixed_bytes(AccountAddress.LENGTH))
 
-    def serialize(self, serializer: Serializer):
-        serializer.fixed_bytes(self.address)
 
+# ---------------------------------------------------------------------------
+# Class-level address constants (set after the class body to avoid forward refs)
+# ---------------------------------------------------------------------------
 
-"""
-Tests
-"""
-
-
-@dataclass(init=True, frozen=True)
-class TestAddresses:
-    shortWith0x: str
-    shortWithout0x: str
-    longWith0x: str
-    longWithout0x: str
-    bytes: bytes
-
-
-ADDRESS_ZERO = TestAddresses(
-    shortWith0x="0x0",
-    shortWithout0x="0",
-    longWith0x="0x0000000000000000000000000000000000000000000000000000000000000000",
-    longWithout0x="0000000000000000000000000000000000000000000000000000000000000000",
-    bytes=bytes([0] * 32),
-)
-
-ADDRESS_F = TestAddresses(
-    shortWith0x="0xf",
-    shortWithout0x="f",
-    longWith0x="0x000000000000000000000000000000000000000000000000000000000000000f",
-    longWithout0x="000000000000000000000000000000000000000000000000000000000000000f",
-    bytes=bytes([0] * 31 + [15]),
-)
-
-ADDRESS_F_PADDED_SHORT_FORM = TestAddresses(
-    shortWith0x="0x0f",
-    shortWithout0x="0f",
-    # The rest of these below are the same as for ADDRESS_F.
-    longWith0x="0x000000000000000000000000000000000000000000000000000000000000000f",
-    longWithout0x="000000000000000000000000000000000000000000000000000000000000000f",
-    bytes=bytes([0] * 31 + [15]),
-)
-
-ADDRESS_TEN = TestAddresses(
-    shortWith0x="0x10",
-    shortWithout0x="10",
-    longWith0x="0x0000000000000000000000000000000000000000000000000000000000000010",
-    longWithout0x="0000000000000000000000000000000000000000000000000000000000000010",
-    bytes=bytes([0] * 31 + [16]),
-)
-
-ADDRESS_OTHER = TestAddresses(
-    shortWith0x="0xca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
-    shortWithout0x="ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
-    longWith0x="0xca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
-    longWithout0x="ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
-    bytes=bytes(
-        [
-            202,
-            132,
-            50,
-            121,
-            227,
-            66,
-            113,
-            68,
-            206,
-            173,
-            94,
-            77,
-            89,
-            153,
-            163,
-            208,
-            202,
-            132,
-            50,
-            121,
-            227,
-            66,
-            113,
-            68,
-            206,
-            173,
-            94,
-            77,
-            89,
-            153,
-            163,
-            208,
-        ]
-    ),
-)
-
-
-class Test(unittest.TestCase):
-    def test_multi_ed25519(self):
-        private_key_1 = ed25519.PrivateKey.from_str(
-            "4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
-        )
-        private_key_2 = ed25519.PrivateKey.from_str(
-            "1e70e49b78f976644e2c51754a2f049d3ff041869c669523ba95b172c7329901"
-        )
-        multisig_public_key = ed25519.MultiPublicKey(
-            [private_key_1.public_key(), private_key_2.public_key()], 1
-        )
-
-        expected = AccountAddress.from_str_relaxed(
-            "835bb8c5ee481062946b18bbb3b42a40b998d6bf5316ca63834c959dc739acf0"
-        )
-        actual = AccountAddress.from_key(multisig_public_key)
-        self.assertEqual(actual, expected)
-
-    def test_resource_account(self):
-        base_address = AccountAddress.from_str_relaxed("b0b")
-        expected = AccountAddress.from_str_relaxed(
-            "ee89f8c763c27f9d942d496c1a0dcf32d5eacfe78416f9486b8db66155b163b0"
-        )
-        actual = AccountAddress.for_resource_account(base_address, b"\x0b\x00\x0b")
-        self.assertEqual(actual, expected)
-
-    def test_named_object(self):
-        base_address = AccountAddress.from_str_relaxed("b0b")
-        expected = AccountAddress.from_str_relaxed(
-            "f417184602a828a3819edf5e36285ebef5e4db1ba36270be580d6fd2d7bcc321"
-        )
-        actual = AccountAddress.for_named_object(base_address, b"bob's collection")
-        self.assertEqual(actual, expected)
-
-    def test_collection(self):
-        base_address = AccountAddress.from_str_relaxed("b0b")
-        expected = AccountAddress.from_str_relaxed(
-            "f417184602a828a3819edf5e36285ebef5e4db1ba36270be580d6fd2d7bcc321"
-        )
-        actual = AccountAddress.for_named_collection(base_address, "bob's collection")
-        self.assertEqual(actual, expected)
-
-    def test_token(self):
-        base_address = AccountAddress.from_str_relaxed("b0b")
-        expected = AccountAddress.from_str_relaxed(
-            "e20d1f22a5400ba7be0f515b7cbd00edc42dbcc31acc01e31128b2b5ddb3c56e"
-        )
-        actual = AccountAddress.for_named_token(
-            base_address, "bob's collection", "bob's token"
-        )
-        self.assertEqual(actual, expected)
-
-    def test_to_standard_string(self):
-        # Test special address: 0x0
-        self.assertEqual(
-            str(
-                AccountAddress.from_str_relaxed(
-                    "0x0000000000000000000000000000000000000000000000000000000000000000"
-                )
-            ),
-            "0x0",
-        )
-
-        # Test special address: 0x1
-        self.assertEqual(
-            str(
-                AccountAddress.from_str_relaxed(
-                    "0x0000000000000000000000000000000000000000000000000000000000000001"
-                )
-            ),
-            "0x1",
-        )
-
-        # Test special address: 0x4
-        self.assertEqual(
-            str(
-                AccountAddress.from_str_relaxed(
-                    "0x0000000000000000000000000000000000000000000000000000000000000004"
-                )
-            ),
-            "0x4",
-        )
-
-        # Test special address: 0xf
-        self.assertEqual(
-            str(
-                AccountAddress.from_str_relaxed(
-                    "0x000000000000000000000000000000000000000000000000000000000000000f"
-                )
-            ),
-            "0xf",
-        )
-
-        # Test special address from short no 0x: d
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed("d")),
-            "0xd",
-        )
-
-        # Test non-special address from long:
-        # 0x0000000000000000000000000000000000000000000000000000000000000010
-        value = "0x0000000000000000000000000000000000000000000000000000000000000010"
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(value)),
-            value,
-        )
-
-        # Test non-special address from long:
-        # 0x000000000000000000000000000000000000000000000000000000000000001f
-        value = "0x000000000000000000000000000000000000000000000000000000000000001f"
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(value)),
-            value,
-        )
-
-        # Test non-special address from long:
-        # 0x00000000000000000000000000000000000000000000000000000000000000a0
-        value = "0x00000000000000000000000000000000000000000000000000000000000000a0"
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(value)),
-            value,
-        )
-
-        # Test non-special address from long no 0x:
-        # ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0
-        value = "ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0"
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(value)),
-            f"0x{value}",
-        )
-
-        # Test non-special address from long no 0x:
-        # 1000000000000000000000000000000000000000000000000000000000000000
-        value = "1000000000000000000000000000000000000000000000000000000000000000"
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(value)),
-            f"0x{value}",
-        )
-
-        # Demonstrate that neither leading nor trailing zeroes get trimmed for
-        # non-special addresses:
-        # 0f00000000000000000000000000000000000000000000000000000000000000
-        value = "0f00000000000000000000000000000000000000000000000000000000000000"
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(value)),
-            f"0x{value}",
-        )
-
-    def test_from_str_relaxed(self):
-        # Demonstrate that all formats are accepted for 0x0.
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.longWith0x)),
-            ADDRESS_ZERO.shortWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.longWithout0x)),
-            ADDRESS_ZERO.shortWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.shortWith0x)),
-            ADDRESS_ZERO.shortWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.shortWithout0x)),
-            ADDRESS_ZERO.shortWith0x,
-        )
-
-        # Demonstrate that all formats are accepted for 0xf.
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.longWith0x)),
-            ADDRESS_F.shortWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.longWithout0x)),
-            ADDRESS_F.shortWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.shortWith0x)),
-            ADDRESS_F.shortWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.shortWithout0x)),
-            ADDRESS_F.shortWith0x,
-        )
-
-        # Demonstrate that padding zeroes are allowed for 0x0f.
-        self.assertEqual(
-            str(
-                AccountAddress.from_str_relaxed(ADDRESS_F_PADDED_SHORT_FORM.shortWith0x)
-            ),
-            ADDRESS_F.shortWith0x,
-        )
-        self.assertEqual(
-            str(
-                AccountAddress.from_str_relaxed(
-                    ADDRESS_F_PADDED_SHORT_FORM.shortWithout0x
-                )
-            ),
-            ADDRESS_F.shortWith0x,
-        )
-
-        # Demonstrate that all formats are accepted for 0x10.
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.longWith0x)),
-            ADDRESS_TEN.longWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.longWithout0x)),
-            ADDRESS_TEN.longWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.shortWith0x)),
-            ADDRESS_TEN.longWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.shortWithout0x)),
-            ADDRESS_TEN.longWith0x,
-        )
-
-        # Demonstrate that all formats are accepted for other addresses.
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_OTHER.longWith0x)),
-            ADDRESS_OTHER.longWith0x,
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_OTHER.longWithout0x)),
-            ADDRESS_OTHER.longWith0x,
-        )
-
-    def test_from_str(self):
-        # Demonstrate that only LONG and SHORT are accepted for 0x0.
-        self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_ZERO.longWith0x)),
-            ADDRESS_ZERO.shortWith0x,
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_ZERO.longWithout0x
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_ZERO.shortWith0x)),
-            ADDRESS_ZERO.shortWith0x,
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_ZERO.shortWithout0x
-        )
-
-        # Demonstrate that only LONG and SHORT are accepted for 0xf.
-        self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_F.longWith0x)), ADDRESS_F.shortWith0x
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_F.longWithout0x
-        )
-        self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_F.shortWith0x)), ADDRESS_F.shortWith0x
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_F.shortWithout0x
-        )
-
-        # Demonstrate that padding zeroes are not allowed for 0x0f.
-        self.assertRaises(
-            RuntimeError,
-            AccountAddress.from_str,
-            ADDRESS_F_PADDED_SHORT_FORM.shortWith0x,
-        )
-        self.assertRaises(
-            RuntimeError,
-            AccountAddress.from_str,
-            ADDRESS_F_PADDED_SHORT_FORM.shortWithout0x,
-        )
-
-        # Demonstrate that only LONG format is accepted for 0x10.
-        self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_TEN.longWith0x)), ADDRESS_TEN.longWith0x
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.longWithout0x
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.shortWith0x
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.shortWithout0x
-        )
-
-        # Demonstrate that only LONG format is accepted for other addresses.
-        self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_OTHER.longWith0x)),
-            ADDRESS_OTHER.longWith0x,
-        )
-        self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_OTHER.longWithout0x
-        )
+AccountAddress.ZERO = AccountAddress(b"\x00" * 32)
+AccountAddress.ONE = AccountAddress(b"\x00" * 31 + b"\x01")
+AccountAddress.THREE = AccountAddress(b"\x00" * 31 + b"\x03")
+AccountAddress.FOUR = AccountAddress(b"\x00" * 31 + b"\x04")

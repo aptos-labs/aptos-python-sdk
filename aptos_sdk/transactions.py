@@ -2,348 +2,172 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This translates Aptos transactions to and from BCS for signing and submitting to the REST API.
+Transaction types, payloads, signing, and serialization for the Aptos Python SDK.
+
+This module implements the full transaction lifecycle as specified in Spec 05:
+
+* :class:`RawTransaction` — unsigned transaction with all fields.
+* :class:`RawTransactionWithData` — base for multi-signer variants.
+* :class:`MultiAgentRawTransaction` — multi-agent signing variant.
+* :class:`FeePayerRawTransaction` — fee-payer signing variant.
+* :class:`TransactionPayload` — tagged union of payload types.
+* :class:`EntryFunction` — entry function call payload.
+* :class:`Script` — Move script payload.
+* :class:`ScriptArgument` — tagged script argument values.
+* :class:`Multisig` — multisig account payload.
+* :class:`ModuleId` — fully-qualified Move module identifier.
+* :class:`TransactionArgument` — legacy argument encoding helper.
+* :class:`SignedTransaction` — signed transaction ready for submission.
+
+Domain-separated signing messages follow the pattern::
+
+    signing_bytes = HashPrefix.RAW_TRANSACTION + BCS(raw_txn)
 """
 
-from __future__ import annotations
+from typing import Any, Callable, cast
 
-import hashlib
-import unittest
-from typing import Any, Callable, List, Optional, Union, cast
-
-from typing_extensions import Protocol
-
-from . import asymmetric_crypto, ed25519, secp256k1_ecdsa
+from . import ed25519, secp256k1_ecdsa
 from .account_address import AccountAddress
 from .authenticator import (
     AccountAuthenticator,
-    Authenticator,
     Ed25519Authenticator,
     FeePayerAuthenticator,
     MultiAgentAuthenticator,
     SingleKeyAuthenticator,
     SingleSenderAuthenticator,
+    TransactionAuthenticator,
 )
-from .bcs import Deserializable, Deserializer, Serializable, Serializer
-from .type_tag import StructTag, TypeTag
+from .bcs import Deserializer, Serializer
+from .chain_id import ChainId
+from .errors import InvalidInputError
+from .hashing import HashPrefix
+from .type_tag import TypeTag
+
+# ---------------------------------------------------------------------------
+# ModuleId
+# ---------------------------------------------------------------------------
 
 
-class RawTransactionInternal(Protocol):
-    def keyed(self) -> bytes:
-        ser = Serializer()
-        self.serialize(ser)
-        prehash = bytearray(self.prehash())
-        prehash.extend(ser.output())
-        return bytes(prehash)
+class ModuleId:
+    """
+    A fully-qualified Move module identifier: ``address::module_name``.
 
-    def prehash(self) -> bytes: ...
+    Example: ``0x1::coin``.
 
-    def serialize(self, serializer: Serializer) -> None: ...
+    This class mirrors :class:`~aptos_sdk.type_tag.MoveModuleId` and is
+    kept here for backward compatibility with callers that use
+    ``transactions.ModuleId``.
+    """
 
-    def sign(self, key: asymmetric_crypto.PrivateKey) -> AccountAuthenticator:
-        signature = key.sign(self.keyed())
-        if isinstance(signature, ed25519.Signature):
-            return AccountAuthenticator(
-                Ed25519Authenticator(
-                    cast(ed25519.PublicKey, key.public_key()), signature
-                )
-            )
-        return AccountAuthenticator(SingleKeyAuthenticator(key.public_key(), signature))
+    address: AccountAddress
+    name: str
 
-    def sign_simulated(self, key: asymmetric_crypto.PublicKey) -> AccountAuthenticator:
-        if isinstance(key, ed25519.PublicKey):
-            return AccountAuthenticator(
-                Ed25519Authenticator(key, ed25519.Signature(b"\x00" * 64))
-            )
-        elif isinstance(key, secp256k1_ecdsa.PublicKey):
-            return AccountAuthenticator(
-                SingleKeyAuthenticator(key, secp256k1_ecdsa.Signature(b"\x00" * 64))
-            )
-        else:
-            raise NotImplementedError()
-
-    def verify(self, key: ed25519.PublicKey, signature: ed25519.Signature) -> bool:
-        return key.verify(self.keyed(), signature)
-
-
-class RawTransactionWithData(RawTransactionInternal, Protocol):
-    raw_transaction: RawTransaction
-
-    def inner(self) -> RawTransaction:
-        return self.raw_transaction
-
-    def prehash(self) -> bytes:
-        hasher = hashlib.sha3_256()
-        hasher.update(b"APTOS::RawTransactionWithData")
-        return hasher.digest()
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> RawTransactionWithData:
-        enum_type = deserializer.u8()
-        if enum_type == 0:
-            return MultiAgentRawTransaction.deserialize_inner(deserializer)
-        elif enum_type == 1:
-            return FeePayerRawTransaction.deserialize_inner(deserializer)
-        else:
-            raise Exception("Unhandled RawTransaction enum type")
-
-
-class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
-    # Sender's address
-    sender: AccountAddress
-    # Sequence number of this transaction. This must match the sequence number in the sender's
-    # account at the time of execution.
-    sequence_number: int
-    # The transaction payload, e.g., a script to execute.
-    payload: TransactionPayload
-    # Maximum total gas to spend for this transaction
-    max_gas_amount: int
-    # Price to be paid per gas unit.
-    gas_unit_price: int
-    # Expiration timestamp for this transaction, represented as seconds from the Unix epoch.
-    expiration_timestamps_secs: int
-    # Chain ID of the Aptos network this transaction is intended for.
-    chain_id: int
-
-    def __init__(
-        self,
-        sender: AccountAddress,
-        sequence_number: int,
-        payload: TransactionPayload,
-        max_gas_amount: int,
-        gas_unit_price: int,
-        expiration_timestamps_secs: int,
-        chain_id: int,
-    ):
-        self.sender = sender
-        self.sequence_number = sequence_number
-        self.payload = payload
-        self.max_gas_amount = max_gas_amount
-        self.gas_unit_price = gas_unit_price
-        self.expiration_timestamps_secs = expiration_timestamps_secs
-        self.chain_id = chain_id
+    def __init__(self, address: AccountAddress, name: str) -> None:
+        self.address = address
+        self.name = name
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, RawTransaction):
+        if not isinstance(other, ModuleId):
             return NotImplemented
-        return (
-            self.sender == other.sender
-            and self.sequence_number == other.sequence_number
-            and self.payload == other.payload
-            and self.max_gas_amount == other.max_gas_amount
-            and self.gas_unit_price == other.gas_unit_price
-            and self.expiration_timestamps_secs == other.expiration_timestamps_secs
-            and self.chain_id == other.chain_id
-        )
-
-    def __str__(self):
-        return f"""RawTransaction:
-    sender: {self.sender}
-    sequence_number: {self.sequence_number}
-    payload: {self.payload}
-    max_gas_amount: {self.max_gas_amount}
-    gas_unit_price: {self.gas_unit_price}
-    expiration_timestamps_secs: {self.expiration_timestamps_secs}
-    chain_id: {self.chain_id}
-"""
-
-    def prehash(self) -> bytes:
-        hasher = hashlib.sha3_256()
-        hasher.update(b"APTOS::RawTransaction")
-        return hasher.digest()
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> RawTransaction:
-        return RawTransaction(
-            AccountAddress.deserialize(deserializer),
-            deserializer.u64(),
-            TransactionPayload.deserialize(deserializer),
-            deserializer.u64(),
-            deserializer.u64(),
-            deserializer.u64(),
-            deserializer.u8(),
-        )
-
-    def serialize(self, serializer: Serializer) -> None:
-        self.sender.serialize(serializer)
-        serializer.u64(self.sequence_number)
-        self.payload.serialize(serializer)
-        serializer.u64(self.max_gas_amount)
-        serializer.u64(self.gas_unit_price)
-        serializer.u64(self.expiration_timestamps_secs)
-        serializer.u8(self.chain_id)
-
-
-class MultiAgentRawTransaction(RawTransactionWithData):
-    secondary_signers: List[AccountAddress]
-
-    def __init__(
-        self, raw_transaction: RawTransaction, secondary_signers: List[AccountAddress]
-    ):
-        self.raw_transaction = raw_transaction
-        self.secondary_signers = secondary_signers
-
-    def serialize(self, serializer: Serializer) -> None:
-        # This is a type indicator for an enum
-        serializer.u8(0)
-        serializer.struct(self.raw_transaction)
-        serializer.sequence(self.secondary_signers, Serializer.struct)
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiAgentRawTransaction:
-        raw_txn_type = deserializer.u8()
-        if raw_txn_type != 0:
-            raise Exception(f"Enum type mismatch, expected 0 got {raw_txn_type}")
-
-        return MultiAgentRawTransaction.deserialize_inner(deserializer)
-
-    @staticmethod
-    def deserialize_inner(deserializer: Deserializer) -> MultiAgentRawTransaction:
-        raw_txn = RawTransaction.deserialize(deserializer)
-        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
-
-        return MultiAgentRawTransaction(raw_txn, secondary_signers)
-
-
-class FeePayerRawTransaction(RawTransactionWithData):
-    secondary_signers: List[AccountAddress]
-    fee_payer: Optional[AccountAddress]
-
-    def __init__(
-        self,
-        raw_transaction: RawTransaction,
-        secondary_signers: List[AccountAddress],
-        fee_payer: Optional[AccountAddress],
-    ):
-        self.raw_transaction = raw_transaction
-        self.secondary_signers = secondary_signers
-        self.fee_payer = fee_payer
-
-    def serialize(self, serializer: Serializer) -> None:
-        serializer.u8(1)
-        serializer.struct(self.raw_transaction)
-        serializer.sequence(self.secondary_signers, Serializer.struct)
-        fee_payer = (
-            AccountAddress.from_str("0x0") if self.fee_payer is None else self.fee_payer
-        )
-        serializer.struct(fee_payer)
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> FeePayerRawTransaction:
-        raw_txn_type = deserializer.u8()
-        if raw_txn_type != 1:
-            raise Exception(f"Enum type mismatch, expected 1 got {raw_txn_type}")
-
-        return FeePayerRawTransaction.deserialize_inner(deserializer)
-
-    @staticmethod
-    def deserialize_inner(deserializer: Deserializer) -> FeePayerRawTransaction:
-        raw_txn = RawTransaction.deserialize(deserializer)
-        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
-        fee_payer = AccountAddress.deserialize(deserializer)
-        if fee_payer == AccountAddress.from_str("0x0"):
-            fee_payer_optional = None
-        else:
-            fee_payer_optional = fee_payer
-
-        return FeePayerRawTransaction(raw_txn, secondary_signers, fee_payer_optional)
-
-
-class TransactionPayload:
-    SCRIPT: int = 0
-    MODULE_BUNDLE: int = 1
-    SCRIPT_FUNCTION: int = 2
-
-    variant: int
-    value: Any
-
-    def __init__(self, payload: Any):
-        if isinstance(payload, Script):
-            self.variant = TransactionPayload.SCRIPT
-        elif isinstance(payload, ModuleBundle):
-            self.variant = TransactionPayload.MODULE_BUNDLE
-        elif isinstance(payload, EntryFunction):
-            self.variant = TransactionPayload.SCRIPT_FUNCTION
-        else:
-            raise Exception("Invalid type")
-        self.value = payload
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, TransactionPayload):
-            return NotImplemented
-        return self.variant == other.variant and self.value == other.value
+        return self.address == other.address and self.name == other.name
 
     def __str__(self) -> str:
-        return self.value.__str__()
+        return f"{self.address}::{self.name}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     @staticmethod
-    def deserialize(deserializer: Deserializer) -> TransactionPayload:
-        variant = deserializer.uleb128()
+    def from_str(module_id: str) -> "ModuleId":
+        """
+        Parse a module ID string of the form ``0x1::module_name``.
 
-        if variant == TransactionPayload.SCRIPT:
-            payload: Any = Script.deserialize(deserializer)
-        elif variant == TransactionPayload.MODULE_BUNDLE:
-            payload = ModuleBundle.deserialize(deserializer)
-        elif variant == TransactionPayload.SCRIPT_FUNCTION:
-            payload = EntryFunction.deserialize(deserializer)
-        else:
-            raise Exception("Invalid type")
-
-        return TransactionPayload(payload)
+        Raises
+        ------
+        InvalidInputError
+            If the string does not contain exactly one ``::`` separator or
+            either the address or module name is empty.
+        """
+        parts = module_id.split("::")
+        if len(parts) != 2:
+            raise InvalidInputError(
+                f"Invalid ModuleId: expected 'address::module', got {module_id!r}"
+            )
+        addr_str, name = parts[0].strip(), parts[1].strip()
+        if not addr_str or not name:
+            raise InvalidInputError(
+                f"Invalid ModuleId: address and module name must both be non-empty "
+                f"in {module_id!r}"
+            )
+        return ModuleId(AccountAddress.from_str_relaxed(addr_str), name)
 
     def serialize(self, serializer: Serializer) -> None:
-        serializer.uleb128(self.variant)
-        self.value.serialize(serializer)
-
-
-class ModuleBundle:
-    def __init__(self):
-        raise NotImplementedError
+        """BCS serialize: ``struct(address) + str(name)``."""
+        self.address.serialize(serializer)
+        serializer.str(self.name)
 
     @staticmethod
-    def deserialize(deserializer: Deserializer) -> ModuleBundle:
-        raise NotImplementedError
+    def deserialize(deserializer: Deserializer) -> "ModuleId":
+        """BCS deserialize a :class:`ModuleId`."""
+        address = AccountAddress.deserialize(deserializer)
+        name = deserializer.str()
+        return ModuleId(address, name)
 
-    def serialize(self, serializer: Serializer) -> None:
-        raise NotImplementedError
+
+# ---------------------------------------------------------------------------
+# TransactionArgument  (legacy compatibility)
+# ---------------------------------------------------------------------------
 
 
-class Script:
-    code: bytes
-    ty_args: List[TypeTag]
-    args: List[ScriptArgument]
+class TransactionArgument:
+    """
+    A legacy transaction argument that pairs a value with its BCS encoder.
 
-    def __init__(self, code: bytes, ty_args: List[TypeTag], args: List[ScriptArgument]):
-        self.code = code
-        self.ty_args = ty_args
-        self.args = args
+    Used as the element type of the ``args`` list passed to
+    :meth:`EntryFunction.natural` when callers have not pre-encoded
+    their arguments.  :meth:`encode` serializes the value using
+    the provided encoder function and returns the resulting bytes.
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Script:
-        code = deserializer.to_bytes()
-        ty_args = deserializer.sequence(TypeTag.deserialize)
-        args = deserializer.sequence(ScriptArgument.deserialize)
-        return Script(code, ty_args, args)
+    Example::
 
-    def serialize(self, serializer: Serializer) -> None:
-        serializer.to_bytes(self.code)
-        serializer.sequence(self.ty_args, Serializer.struct)
-        serializer.sequence(self.args, Serializer.struct)
+        TransactionArgument(recipient, Serializer.struct)
+        TransactionArgument(amount, Serializer.u64)
+    """
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Script):
-            return NotImplemented
-        return (
-            self.code == other.code
-            and self.ty_args == other.ty_args
-            and self.args == other.args
-        )
+    value: Any
+    encoder: Callable[[Serializer, Any], None]
 
-    def __str__(self):
-        return f"<{self.ty_args}>({self.args})"
+    def __init__(
+        self,
+        value: Any,
+        encoder: Callable[[Serializer, Any], None],
+    ) -> None:
+        self.value = value
+        self.encoder = encoder
+
+    def encode(self) -> bytes:
+        """Serialize ``self.value`` via ``self.encoder`` and return the bytes."""
+        ser = Serializer()
+        self.encoder(ser, self.value)
+        return ser.output()
+
+
+# ---------------------------------------------------------------------------
+# ScriptArgument
+# ---------------------------------------------------------------------------
 
 
 class ScriptArgument:
+    """
+    A tagged-union script argument for Move script payloads.
+
+    Variant constants
+    -----------------
+    U8, U64, U128, ADDRESS, U8_VECTOR, BOOL, U16, U32, U256
+
+    The on-wire format is ``u8(variant) + encoded_value``.
+    """
+
     U8: int = 0
     U64: int = 1
     U128: int = 2
@@ -357,79 +181,187 @@ class ScriptArgument:
     variant: int
     value: Any
 
-    def __init__(self, variant: int, value: Any):
-        if variant < 0 or variant > 5:
-            raise Exception("Invalid variant")
-
+    def __init__(self, variant: int, value: Any) -> None:
+        if variant not in (
+            ScriptArgument.U8,
+            ScriptArgument.U64,
+            ScriptArgument.U128,
+            ScriptArgument.ADDRESS,
+            ScriptArgument.U8_VECTOR,
+            ScriptArgument.BOOL,
+            ScriptArgument.U16,
+            ScriptArgument.U32,
+            ScriptArgument.U256,
+        ):
+            raise InvalidInputError(
+                f"Invalid ScriptArgument variant: {variant}. "
+                "Expected 0 (U8) through 8 (U256)."
+            )
         self.variant = variant
         self.value = value
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> ScriptArgument:
-        variant = deserializer.u8()
-        if variant == ScriptArgument.U8:
-            value: Any = deserializer.u8()
-        elif variant == ScriptArgument.U16:
-            value = deserializer.u16()
-        elif variant == ScriptArgument.U32:
-            value = deserializer.u32()
-        elif variant == ScriptArgument.U64:
-            value = deserializer.u64()
-        elif variant == ScriptArgument.U128:
-            value = deserializer.u128()
-        elif variant == ScriptArgument.U256:
-            value = deserializer.u256()
-        elif variant == ScriptArgument.ADDRESS:
-            value = AccountAddress.deserialize(deserializer)
-        elif variant == ScriptArgument.U8_VECTOR:
-            value = deserializer.to_bytes()
-        elif variant == ScriptArgument.BOOL:
-            value = deserializer.bool()
-        else:
-            raise Exception("Invalid variant")
-        return ScriptArgument(variant, value)
-
-    def serialize(self, serializer: Serializer) -> None:
-        serializer.u8(self.variant)
-        if self.variant == ScriptArgument.U8:
-            serializer.u8(self.value)
-        elif self.variant == ScriptArgument.U16:
-            serializer.u16(self.value)
-        elif self.variant == ScriptArgument.U32:
-            serializer.u32(self.value)
-        elif self.variant == ScriptArgument.U64:
-            serializer.u64(self.value)
-        elif self.variant == ScriptArgument.U128:
-            serializer.u128(self.value)
-        elif self.variant == ScriptArgument.U256:
-            serializer.u256(self.value)
-        elif self.variant == ScriptArgument.ADDRESS:
-            serializer.struct(self.value)
-        elif self.variant == ScriptArgument.U8_VECTOR:
-            serializer.to_bytes(self.value)
-        elif self.variant == ScriptArgument.BOOL:
-            serializer.bool(self.value)
-        else:
-            raise Exception(f"Invalid ScriptArgument variant {self.variant}")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ScriptArgument):
             return NotImplemented
         return self.variant == other.variant and self.value == other.value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"[{self.variant}] {self.value}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def serialize(self, serializer: Serializer) -> None:
+        """BCS serialize: ``u8(variant) + encoded_value``."""
+        serializer.u8(self.variant)
+        match self.variant:
+            case ScriptArgument.U8:
+                serializer.u8(self.value)
+            case ScriptArgument.U16:
+                serializer.u16(self.value)
+            case ScriptArgument.U32:
+                serializer.u32(self.value)
+            case ScriptArgument.U64:
+                serializer.u64(self.value)
+            case ScriptArgument.U128:
+                serializer.u128(self.value)
+            case ScriptArgument.U256:
+                serializer.u256(self.value)
+            case ScriptArgument.ADDRESS:
+                serializer.struct(self.value)
+            case ScriptArgument.U8_VECTOR:
+                serializer.to_bytes(self.value)
+            case ScriptArgument.BOOL:
+                serializer.bool(self.value)
+            case _:
+                raise InvalidInputError(
+                    f"Invalid ScriptArgument variant {self.variant}"
+                )
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "ScriptArgument":
+        """BCS deserialize a :class:`ScriptArgument`."""
+        variant = deserializer.u8()
+        match variant:
+            case ScriptArgument.U8:
+                value: Any = deserializer.u8()
+            case ScriptArgument.U16:
+                value = deserializer.u16()
+            case ScriptArgument.U32:
+                value = deserializer.u32()
+            case ScriptArgument.U64:
+                value = deserializer.u64()
+            case ScriptArgument.U128:
+                value = deserializer.u128()
+            case ScriptArgument.U256:
+                value = deserializer.u256()
+            case ScriptArgument.ADDRESS:
+                value = AccountAddress.deserialize(deserializer)
+            case ScriptArgument.U8_VECTOR:
+                value = deserializer.to_bytes()
+            case ScriptArgument.BOOL:
+                value = deserializer.bool()
+            case _:
+                raise InvalidInputError(f"Unknown ScriptArgument variant: {variant}")
+        return ScriptArgument(variant, value)
+
+
+# ---------------------------------------------------------------------------
+# Script
+# ---------------------------------------------------------------------------
+
+
+class Script:
+    """
+    A Move script payload.
+
+    Attributes
+    ----------
+    code : bytes
+        The compiled Move bytecode.
+    ty_args : list[TypeTag]
+        Generic type arguments.
+    args : list[ScriptArgument]
+        Positional arguments.
+    """
+
+    code: bytes
+    ty_args: list[TypeTag]
+    args: list[ScriptArgument]
+
+    def __init__(
+        self,
+        code: bytes,
+        ty_args: list[TypeTag],
+        args: list[ScriptArgument],
+    ) -> None:
+        self.code = code
+        self.ty_args = ty_args
+        self.args = args
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Script):
+            return NotImplemented
+        return (
+            self.code == other.code
+            and self.ty_args == other.ty_args
+            and self.args == other.args
+        )
+
+    def __str__(self) -> str:
+        return f"<{self.ty_args}>({self.args})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def serialize(self, serializer: Serializer) -> None:
+        """BCS serialize: ``to_bytes(code) + sequence(ty_args) + sequence(args)``."""
+        serializer.to_bytes(self.code)
+        serializer.sequence(self.ty_args, Serializer.struct)
+        serializer.sequence(self.args, Serializer.struct)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "Script":
+        """BCS deserialize a :class:`Script`."""
+        code = deserializer.to_bytes()
+        ty_args = deserializer.sequence(TypeTag.deserialize)
+        args = deserializer.sequence(ScriptArgument.deserialize)
+        return Script(code, ty_args, args)
+
+
+# ---------------------------------------------------------------------------
+# EntryFunction
+# ---------------------------------------------------------------------------
 
 
 class EntryFunction:
+    """
+    An entry function call payload.
+
+    Attributes
+    ----------
+    module : ModuleId
+        The module that defines the entry function.
+    function : str
+        The name of the entry function.
+    ty_args : list[TypeTag]
+        Generic type arguments.
+    args : list[bytes]
+        Pre-encoded argument bytes (each individually BCS-serialized).
+    """
+
     module: ModuleId
     function: str
-    ty_args: List[TypeTag]
-    args: List[bytes]
+    ty_args: list[TypeTag]
+    args: list[bytes]
 
     def __init__(
-        self, module: ModuleId, function: str, ty_args: List[TypeTag], args: List[bytes]
-    ):
+        self,
+        module: ModuleId,
+        function: str,
+        ty_args: list[TypeTag],
+        args: list[bytes],
+    ) -> None:
         self.module = module
         self.function = function
         self.ty_args = ty_args
@@ -438,7 +370,6 @@ class EntryFunction:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EntryFunction):
             return NotImplemented
-
         return (
             self.module == other.module
             and self.function == other.function
@@ -446,108 +377,787 @@ class EntryFunction:
             and self.args == other.args
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.module}::{self.function}::<{self.ty_args}>({self.args})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     @staticmethod
     def natural(
         module: str,
         function: str,
-        ty_args: List[TypeTag],
-        args: List[TransactionArgument],
-    ) -> EntryFunction:
-        module_id = ModuleId.from_str(module)
+        ty_args: list[TypeTag],
+        args: list["TransactionArgument | bytes"],
+    ) -> "EntryFunction":
+        """
+        Convenience constructor that parses the module string and encodes args.
 
-        byte_args = []
+        Parameters
+        ----------
+        module:
+            A ``"address::module_name"`` string, e.g. ``"0x1::aptos_account"``.
+        function:
+            The entry function name.
+        ty_args:
+            Generic type arguments.
+        args:
+            Either :class:`TransactionArgument` instances (legacy) or raw
+            ``bytes`` (already BCS-encoded).  Both styles may be mixed.
+
+        Returns
+        -------
+        EntryFunction
+        """
+        module_id = ModuleId.from_str(module)
+        byte_args: list[bytes] = []
         for arg in args:
-            byte_args.append(arg.encode())
+            if isinstance(arg, TransactionArgument):
+                byte_args.append(arg.encode())
+            else:
+                byte_args.append(arg)
         return EntryFunction(module_id, function, ty_args, byte_args)
 
+    def serialize(self, serializer: Serializer) -> None:
+        """BCS serialize: ``struct(module) + str(function) + sequence(ty_args) + sequence(args)``."""
+        self.module.serialize(serializer)
+        serializer.str(self.function)
+        serializer.sequence(self.ty_args, Serializer.struct)
+        serializer.sequence(self.args, Serializer.to_bytes)
+
     @staticmethod
-    def deserialize(deserializer: Deserializer) -> EntryFunction:
+    def deserialize(deserializer: Deserializer) -> "EntryFunction":
+        """BCS deserialize an :class:`EntryFunction`."""
         module = ModuleId.deserialize(deserializer)
         function = deserializer.str()
         ty_args = deserializer.sequence(TypeTag.deserialize)
         args = deserializer.sequence(Deserializer.to_bytes)
         return EntryFunction(module, function, ty_args, args)
 
-    def serialize(self, serializer: Serializer) -> None:
-        self.module.serialize(serializer)
-        serializer.str(self.function)
-        serializer.sequence(self.ty_args, Serializer.struct)
-        serializer.sequence(self.args, Serializer.to_bytes)
+
+# ---------------------------------------------------------------------------
+# Multisig
+# ---------------------------------------------------------------------------
 
 
-class ModuleId:
-    address: AccountAddress
-    name: str
+class Multisig:
+    """
+    A multisig account payload (variant index 3).
 
-    def __init__(self, address: AccountAddress, name: str):
-        self.address = address
-        self.name = name
+    When ``entry_function`` is ``None`` the multisig transaction executes
+    whatever payload is stored on-chain for the pending transaction.
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ModuleId):
-            return NotImplemented
-        return self.address == other.address and self.name == other.name
+    Attributes
+    ----------
+    multisig_address : AccountAddress
+        The address of the multisig account.
+    entry_function : EntryFunction | None
+        Optional inline entry function payload.
+    """
 
-    def __str__(self) -> str:
-        return f"{self.address}::{self.name}"
-
-    @staticmethod
-    def from_str(module_id: str) -> ModuleId:
-        split = module_id.split("::")
-        return ModuleId(AccountAddress.from_str(split[0]), split[1])
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> ModuleId:
-        addr = AccountAddress.deserialize(deserializer)
-        name = deserializer.str()
-        return ModuleId(addr, name)
-
-    def serialize(self, serializer: Serializer) -> None:
-        self.address.serialize(serializer)
-        serializer.str(self.name)
-
-
-class TransactionArgument:
-    value: Any
-    encoder: Callable[[Serializer, Any], None]
+    multisig_address: AccountAddress
+    entry_function: "EntryFunction | None"
 
     def __init__(
         self,
-        value: Any,
-        encoder: Callable[[Serializer, Any], None],
-    ):
-        self.value = value
-        self.encoder = encoder
+        multisig_address: AccountAddress,
+        entry_function: "EntryFunction | None" = None,
+    ) -> None:
+        self.multisig_address = multisig_address
+        self.entry_function = entry_function
 
-    def encode(self) -> bytes:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Multisig):
+            return NotImplemented
+        return (
+            self.multisig_address == other.multisig_address
+            and self.entry_function == other.entry_function
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"Multisig({self.multisig_address}, "
+            f"entry_function={self.entry_function})"
+        )
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def serialize(self, serializer: Serializer) -> None:
+        """BCS serialize: ``struct(address) + option(entry_function)``."""
+        self.multisig_address.serialize(serializer)
+        serializer.option(
+            self.entry_function,
+            lambda s, ef: s.struct(ef),
+        )
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "Multisig":
+        """BCS deserialize a :class:`Multisig`."""
+        multisig_address = AccountAddress.deserialize(deserializer)
+        entry_function = deserializer.option(EntryFunction.deserialize)
+        return Multisig(multisig_address, entry_function)
+
+
+# ---------------------------------------------------------------------------
+# ModuleBundle (deprecated, kept to support deserialization of old data)
+# ---------------------------------------------------------------------------
+
+
+class ModuleBundle:
+    """
+    Deprecated ModuleBundle payload.  Construction and deserialization raise
+    ``NotImplementedError``; the class exists only to complete the variant
+    table.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError(
+            "ModuleBundle is deprecated and cannot be constructed."
+        )
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "ModuleBundle":
+        raise NotImplementedError(
+            "ModuleBundle is deprecated and cannot be deserialized."
+        )
+
+    def serialize(self, serializer: Serializer) -> None:
+        raise NotImplementedError(
+            "ModuleBundle is deprecated and cannot be serialized."
+        )
+
+
+# ---------------------------------------------------------------------------
+# TransactionPayload
+# ---------------------------------------------------------------------------
+
+
+class TransactionPayload:
+    """
+    A tagged union of transaction payload types.
+
+    Variant constants
+    -----------------
+    SCRIPT : int = 0
+        A Move script (``Script``).
+    MODULE_BUNDLE : int = 1
+        Deprecated; raises ``NotImplementedError`` if encountered.
+    ENTRY_FUNCTION : int = 2
+        An entry function call (``EntryFunction``).
+    MULTISIG : int = 3
+        A multisig account payload (``Multisig``).
+
+    The variant is auto-detected from the concrete payload type passed to
+    ``__init__``.
+    """
+
+    SCRIPT: int = 0
+    MODULE_BUNDLE: int = 1
+    ENTRY_FUNCTION: int = 2
+    # Legacy alias kept for callers that used SCRIPT_FUNCTION
+    SCRIPT_FUNCTION: int = 2
+    MULTISIG: int = 3
+
+    variant: int
+    value: Any
+
+    def __init__(self, payload: Any) -> None:
+        if isinstance(payload, Script):
+            self.variant = TransactionPayload.SCRIPT
+        elif isinstance(payload, ModuleBundle):
+            self.variant = TransactionPayload.MODULE_BUNDLE
+        elif isinstance(payload, EntryFunction):
+            self.variant = TransactionPayload.ENTRY_FUNCTION
+        elif isinstance(payload, Multisig):
+            self.variant = TransactionPayload.MULTISIG
+        else:
+            raise InvalidInputError(
+                f"Unsupported payload type: {type(payload).__name__}. "
+                "Expected Script, EntryFunction, or Multisig."
+            )
+        self.value = payload
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TransactionPayload):
+            return NotImplemented
+        return self.variant == other.variant and self.value == other.value
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def serialize(self, serializer: Serializer) -> None:
+        """BCS serialize: ``variant_index(variant) + struct(value)``."""
+        serializer.variant_index(self.variant)
+        self.value.serialize(serializer)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "TransactionPayload":
+        """BCS deserialize a :class:`TransactionPayload`."""
+        variant = deserializer.variant_index()
+        match variant:
+            case TransactionPayload.SCRIPT:
+                payload: Any = Script.deserialize(deserializer)
+            case TransactionPayload.MODULE_BUNDLE:
+                raise NotImplementedError(
+                    "ModuleBundle payload (variant 1) is deprecated."
+                )
+            case TransactionPayload.ENTRY_FUNCTION:
+                payload = EntryFunction.deserialize(deserializer)
+            case TransactionPayload.MULTISIG:
+                payload = Multisig.deserialize(deserializer)
+            case _:
+                raise InvalidInputError(
+                    f"Unknown TransactionPayload variant: {variant}"
+                )
+        return TransactionPayload(payload)
+
+
+# ---------------------------------------------------------------------------
+# RawTransaction
+# ---------------------------------------------------------------------------
+
+
+class RawTransaction:
+    """
+    An unsigned Aptos transaction.
+
+    Attributes
+    ----------
+    sender : AccountAddress
+        The account submitting the transaction.
+    sequence_number : int
+        Must match the sender's on-chain sequence number.
+    payload : TransactionPayload
+        The script, entry function, or multisig to execute.
+    max_gas_amount : int
+        Maximum total gas units to spend.
+    gas_unit_price : int
+        APT price per gas unit (in Octas).
+    expiration_timestamp_secs : int
+        Unix timestamp after which the transaction is invalid.
+    chain_id : ChainId
+        Identifies the target Aptos network.
+    """
+
+    sender: AccountAddress
+    sequence_number: int
+    payload: TransactionPayload
+    max_gas_amount: int
+    gas_unit_price: int
+    expiration_timestamp_secs: int
+    chain_id: ChainId
+
+    def __init__(
+        self,
+        sender: AccountAddress,
+        sequence_number: int,
+        payload: TransactionPayload,
+        max_gas_amount: int,
+        gas_unit_price: int,
+        expiration_timestamp_secs: int,
+        chain_id: "ChainId | int",
+    ) -> None:
+        self.sender = sender
+        self.sequence_number = sequence_number
+        self.payload = payload
+        self.max_gas_amount = max_gas_amount
+        self.gas_unit_price = gas_unit_price
+        self.expiration_timestamp_secs = expiration_timestamp_secs
+        # Accept a bare int for backward compatibility.
+        if isinstance(chain_id, int):
+            self.chain_id = ChainId(chain_id)
+        else:
+            self.chain_id = chain_id
+
+    # ------------------------------------------------------------------
+    # Equality and display
+    # ------------------------------------------------------------------
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RawTransaction):
+            return NotImplemented
+        return (
+            self.sender == other.sender
+            and self.sequence_number == other.sequence_number
+            and self.payload == other.payload
+            and self.max_gas_amount == other.max_gas_amount
+            and self.gas_unit_price == other.gas_unit_price
+            and self.expiration_timestamp_secs == other.expiration_timestamp_secs
+            and self.chain_id == other.chain_id
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"RawTransaction:\n"
+            f"    sender: {self.sender}\n"
+            f"    sequence_number: {self.sequence_number}\n"
+            f"    payload: {self.payload}\n"
+            f"    max_gas_amount: {self.max_gas_amount}\n"
+            f"    gas_unit_price: {self.gas_unit_price}\n"
+            f"    expiration_timestamp_secs: {self.expiration_timestamp_secs}\n"
+            f"    chain_id: {self.chain_id}\n"
+        )
+
+    # ------------------------------------------------------------------
+    # Signing helpers
+    # ------------------------------------------------------------------
+
+    def signing_message(self) -> bytes:
+        """
+        Return the domain-separated signing bytes for this transaction.
+
+        Returns ``HashPrefix.RAW_TRANSACTION + BCS(self)``.
+        """
         ser = Serializer()
-        self.encoder(ser, self.value)
-        return ser.output()
+        self.serialize(ser)
+        return HashPrefix.RAW_TRANSACTION + ser.output()
+
+    def sign(self, private_key: Any) -> AccountAuthenticator:
+        """
+        Sign the transaction and return an :class:`AccountAuthenticator`.
+
+        For :class:`~aptos_sdk.ed25519.Ed25519PrivateKey`:
+            Creates an :class:`~aptos_sdk.authenticator.Ed25519Authenticator`.
+        For :class:`~aptos_sdk.secp256k1_ecdsa.Secp256k1PrivateKey`:
+            Creates a :class:`~aptos_sdk.authenticator.SingleKeyAuthenticator`.
+
+        Parameters
+        ----------
+        private_key:
+            An Ed25519 or Secp256k1 private key.
+
+        Returns
+        -------
+        AccountAuthenticator
+        """
+        message = self.signing_message()
+        signature = private_key.sign(message)
+        if isinstance(signature, ed25519.Ed25519Signature):
+            return AccountAuthenticator(
+                Ed25519Authenticator(
+                    cast(ed25519.Ed25519PublicKey, private_key.public_key()),
+                    signature,
+                )
+            )
+        return AccountAuthenticator(
+            SingleKeyAuthenticator(private_key.public_key(), signature)
+        )
+
+    def sign_simulated(self, public_key: Any) -> AccountAuthenticator:
+        """
+        Create a zero-filled authenticator for simulation.
+
+        Parameters
+        ----------
+        public_key:
+            An Ed25519 or Secp256k1 public key.
+
+        Returns
+        -------
+        AccountAuthenticator
+        """
+        if isinstance(public_key, ed25519.Ed25519PublicKey):
+            return AccountAuthenticator(
+                Ed25519Authenticator(
+                    public_key,
+                    ed25519.Ed25519Signature(b"\x00" * 64),
+                )
+            )
+        if isinstance(public_key, secp256k1_ecdsa.Secp256k1PublicKey):
+            return AccountAuthenticator(
+                SingleKeyAuthenticator(
+                    public_key,
+                    secp256k1_ecdsa.Secp256k1Signature(b"\x00" * 64),
+                )
+            )
+        raise NotImplementedError(
+            f"sign_simulated: unsupported public key type {type(public_key).__name__!r}"
+        )
+
+    def verify(self, public_key: Any, signature: Any) -> bool:
+        """
+        Verify *signature* over this transaction's signing message.
+
+        Parameters
+        ----------
+        public_key:
+            The public key that should have produced *signature*.
+        signature:
+            The signature to verify.
+
+        Returns
+        -------
+        bool
+        """
+        return public_key.verify(self.signing_message(), signature)
+
+    # ------------------------------------------------------------------
+    # BCS serialization
+    # ------------------------------------------------------------------
+
+    def serialize(self, serializer: Serializer) -> None:
+        """
+        BCS serialize the raw transaction.
+
+        Wire format:
+        ``struct(sender) + u64(seq_num) + struct(payload) +
+        u64(max_gas) + u64(gas_price) + u64(expiration) + u8(chain_id)``
+
+        Note: ``chain_id`` is serialized as a plain ``u8`` (not as a
+        :class:`~aptos_sdk.chain_id.ChainId` struct) for wire compatibility.
+        """
+        self.sender.serialize(serializer)
+        serializer.u64(self.sequence_number)
+        self.payload.serialize(serializer)
+        serializer.u64(self.max_gas_amount)
+        serializer.u64(self.gas_unit_price)
+        serializer.u64(self.expiration_timestamp_secs)
+        serializer.u8(self.chain_id.value)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "RawTransaction":
+        """BCS deserialize a :class:`RawTransaction`."""
+        sender = AccountAddress.deserialize(deserializer)
+        sequence_number = deserializer.u64()
+        payload = TransactionPayload.deserialize(deserializer)
+        max_gas_amount = deserializer.u64()
+        gas_unit_price = deserializer.u64()
+        expiration_timestamp_secs = deserializer.u64()
+        chain_id = ChainId(deserializer.u8())
+        return RawTransaction(
+            sender,
+            sequence_number,
+            payload,
+            max_gas_amount,
+            gas_unit_price,
+            expiration_timestamp_secs,
+            chain_id,
+        )
+
+
+# ---------------------------------------------------------------------------
+# RawTransactionWithData  (abstract base for multi-signer variants)
+# ---------------------------------------------------------------------------
+
+
+class RawTransactionWithData:
+    """
+    Base class for multi-signer raw transaction variants.
+
+    Subclasses use ``HashPrefix.RAW_TRANSACTION_WITH_DATA`` as the signing
+    message prefix instead of ``HashPrefix.RAW_TRANSACTION``.
+
+    Concrete subclasses:
+
+    * :class:`MultiAgentRawTransaction` — variant byte ``0``
+    * :class:`FeePayerRawTransaction` — variant byte ``1``
+    """
+
+    raw_transaction: RawTransaction
+
+    # ------------------------------------------------------------------
+    # Common interface
+    # ------------------------------------------------------------------
+
+    def inner(self) -> RawTransaction:
+        """Return the underlying :class:`RawTransaction`."""
+        return self.raw_transaction
+
+    def signing_message(self) -> bytes:
+        """
+        Return the domain-separated signing bytes.
+
+        Returns ``HashPrefix.RAW_TRANSACTION_WITH_DATA + BCS(self)``.
+        """
+        ser = Serializer()
+        self.serialize(ser)
+        return HashPrefix.RAW_TRANSACTION_WITH_DATA + ser.output()
+
+    def sign(self, private_key: Any) -> AccountAuthenticator:
+        """
+        Sign using the ``RAW_TRANSACTION_WITH_DATA`` prefix.
+
+        Parameters
+        ----------
+        private_key:
+            An Ed25519 or Secp256k1 private key.
+
+        Returns
+        -------
+        AccountAuthenticator
+        """
+        message = self.signing_message()
+        signature = private_key.sign(message)
+        if isinstance(signature, ed25519.Ed25519Signature):
+            return AccountAuthenticator(
+                Ed25519Authenticator(
+                    cast(ed25519.Ed25519PublicKey, private_key.public_key()),
+                    signature,
+                )
+            )
+        return AccountAuthenticator(
+            SingleKeyAuthenticator(private_key.public_key(), signature)
+        )
+
+    def sign_simulated(self, public_key: Any) -> AccountAuthenticator:
+        """
+        Create a zero-filled authenticator for simulation (with-data prefix).
+
+        Parameters
+        ----------
+        public_key:
+            An Ed25519 or Secp256k1 public key.
+
+        Returns
+        -------
+        AccountAuthenticator
+        """
+        if isinstance(public_key, ed25519.Ed25519PublicKey):
+            return AccountAuthenticator(
+                Ed25519Authenticator(
+                    public_key,
+                    ed25519.Ed25519Signature(b"\x00" * 64),
+                )
+            )
+        if isinstance(public_key, secp256k1_ecdsa.Secp256k1PublicKey):
+            return AccountAuthenticator(
+                SingleKeyAuthenticator(
+                    public_key,
+                    secp256k1_ecdsa.Secp256k1Signature(b"\x00" * 64),
+                )
+            )
+        raise NotImplementedError(
+            f"sign_simulated: unsupported public key type {type(public_key).__name__!r}"
+        )
+
+    def verify(self, public_key: Any, signature: Any) -> bool:
+        """
+        Verify *signature* over this transaction's signing message.
+
+        Returns
+        -------
+        bool
+        """
+        return public_key.verify(self.signing_message(), signature)
+
+    def serialize(self, serializer: Serializer) -> None:
+        """Implemented by concrete subclasses."""
+        raise NotImplementedError
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "RawTransactionWithData":
+        """
+        Dispatch deserialization based on the variant byte.
+
+        Variant ``0`` → :class:`MultiAgentRawTransaction`.
+        Variant ``1`` → :class:`FeePayerRawTransaction`.
+        """
+        variant = deserializer.u8()
+        match variant:
+            case 0:
+                return MultiAgentRawTransaction._deserialize_inner(deserializer)
+            case 1:
+                return FeePayerRawTransaction._deserialize_inner(deserializer)
+            case _:
+                raise InvalidInputError(
+                    f"Unknown RawTransactionWithData variant: {variant}"
+                )
+
+
+# ---------------------------------------------------------------------------
+# MultiAgentRawTransaction
+# ---------------------------------------------------------------------------
+
+
+class MultiAgentRawTransaction(RawTransactionWithData):
+    """
+    A multi-agent raw transaction (variant byte ``0``).
+
+    All listed secondary signers must also sign the transaction using the
+    ``RAW_TRANSACTION_WITH_DATA`` signing prefix.
+
+    Attributes
+    ----------
+    raw_transaction : RawTransaction
+        The underlying transaction.
+    secondary_signers : list[AccountAddress]
+        Addresses of the secondary signers.
+    """
+
+    secondary_signers: list[AccountAddress]
+
+    def __init__(
+        self,
+        raw_transaction: RawTransaction,
+        secondary_signers: list[AccountAddress],
+    ) -> None:
+        self.raw_transaction = raw_transaction
+        self.secondary_signers = secondary_signers
+
+    def serialize(self, serializer: Serializer) -> None:
+        """BCS serialize: ``u8(0) + struct(raw_transaction) + sequence(secondary_signers)``."""
+        serializer.u8(0)
+        serializer.struct(self.raw_transaction)
+        serializer.sequence(self.secondary_signers, Serializer.struct)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "MultiAgentRawTransaction":
+        """BCS deserialize (reads and validates the ``0`` variant byte)."""
+        variant = deserializer.u8()
+        if variant != 0:
+            raise InvalidInputError(
+                f"Expected MultiAgentRawTransaction variant byte 0, got {variant}"
+            )
+        return MultiAgentRawTransaction._deserialize_inner(deserializer)
+
+    @staticmethod
+    def _deserialize_inner(
+        deserializer: Deserializer,
+    ) -> "MultiAgentRawTransaction":
+        """Deserialize fields without reading the variant byte."""
+        raw_transaction = RawTransaction.deserialize(deserializer)
+        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
+        return MultiAgentRawTransaction(raw_transaction, secondary_signers)
+
+
+# ---------------------------------------------------------------------------
+# FeePayerRawTransaction
+# ---------------------------------------------------------------------------
+
+
+class FeePayerRawTransaction(RawTransactionWithData):
+    """
+    A fee-payer raw transaction (variant byte ``1``).
+
+    The fee payer is the account that pays transaction fees on behalf of the
+    sender.  When ``fee_payer`` is ``None`` the fee payer address is not yet
+    known; it serializes as ``AccountAddress.ZERO`` on the wire.
+
+    Attributes
+    ----------
+    raw_transaction : RawTransaction
+        The underlying transaction.
+    secondary_signers : list[AccountAddress]
+        Addresses of secondary signers.
+    fee_payer : AccountAddress | None
+        The fee-payer address, or ``None`` if not yet assigned.
+    """
+
+    secondary_signers: list[AccountAddress]
+    fee_payer: "AccountAddress | None"
+
+    def __init__(
+        self,
+        raw_transaction: RawTransaction,
+        secondary_signers: list[AccountAddress],
+        fee_payer: "AccountAddress | None",
+    ) -> None:
+        self.raw_transaction = raw_transaction
+        self.secondary_signers = secondary_signers
+        self.fee_payer = fee_payer
+
+    def serialize(self, serializer: Serializer) -> None:
+        """
+        BCS serialize:
+        ``u8(1) + struct(raw_transaction) + sequence(secondary_signers) + struct(fee_payer)``
+
+        When ``fee_payer`` is ``None``, ``AccountAddress.ZERO`` is serialized.
+        """
+        serializer.u8(1)
+        serializer.struct(self.raw_transaction)
+        serializer.sequence(self.secondary_signers, Serializer.struct)
+        fee_payer_addr = (
+            AccountAddress.ZERO if self.fee_payer is None else self.fee_payer
+        )
+        fee_payer_addr.serialize(serializer)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "FeePayerRawTransaction":
+        """BCS deserialize (reads and validates the ``1`` variant byte)."""
+        variant = deserializer.u8()
+        if variant != 1:
+            raise InvalidInputError(
+                f"Expected FeePayerRawTransaction variant byte 1, got {variant}"
+            )
+        return FeePayerRawTransaction._deserialize_inner(deserializer)
+
+    @staticmethod
+    def _deserialize_inner(
+        deserializer: Deserializer,
+    ) -> "FeePayerRawTransaction":
+        """Deserialize fields without reading the variant byte."""
+        raw_transaction = RawTransaction.deserialize(deserializer)
+        secondary_signers = deserializer.sequence(AccountAddress.deserialize)
+        fee_payer_addr = AccountAddress.deserialize(deserializer)
+        fee_payer: "AccountAddress | None" = (
+            None if fee_payer_addr == AccountAddress.ZERO else fee_payer_addr
+        )
+        return FeePayerRawTransaction(raw_transaction, secondary_signers, fee_payer)
+
+
+# ---------------------------------------------------------------------------
+# SignedTransaction
+# ---------------------------------------------------------------------------
 
 
 class SignedTransaction:
+    """
+    A signed, submission-ready Aptos transaction.
+
+    The authenticator is stored as a :class:`~aptos_sdk.authenticator.TransactionAuthenticator`.
+    When an :class:`~aptos_sdk.authenticator.AccountAuthenticator` is passed
+    to the constructor, it is automatically promoted to the correct
+    :class:`TransactionAuthenticator` variant:
+
+    * Ed25519 / MultiEd25519 variants → wrapped directly in
+      :class:`TransactionAuthenticator`.
+    * SingleKey / MultiKey variants → wrapped in
+      :class:`~aptos_sdk.authenticator.SingleSenderAuthenticator` first,
+      then in :class:`TransactionAuthenticator`.
+
+    Attributes
+    ----------
+    transaction : RawTransaction
+        The unsigned transaction.
+    authenticator : TransactionAuthenticator
+        The top-level transaction authenticator.
+    """
+
     transaction: RawTransaction
-    authenticator: Authenticator
+    authenticator: TransactionAuthenticator
 
     def __init__(
         self,
         transaction: RawTransaction,
-        authenticator: Union[AccountAuthenticator, Authenticator],
-    ):
+        authenticator: "AccountAuthenticator | TransactionAuthenticator",
+    ) -> None:
         self.transaction = transaction
         if isinstance(authenticator, AccountAuthenticator):
-            if (
-                authenticator.variant == AccountAuthenticator.ED25519
-                or authenticator == AccountAuthenticator.MULTI_ED25519
+            # Promote AccountAuthenticator to TransactionAuthenticator.
+            if authenticator.variant in (
+                AccountAuthenticator.ED25519,
+                AccountAuthenticator.MULTI_ED25519,
             ):
-                authenticator = Authenticator(authenticator.authenticator)
+                # Direct Ed25519 / MultiEd25519 — unwrap the inner authenticator
+                # and build the TransactionAuthenticator directly.
+                self.authenticator = TransactionAuthenticator(
+                    authenticator.authenticator  # type: ignore[arg-type]
+                )
             else:
-                authenticator = Authenticator(SingleSenderAuthenticator(authenticator))
+                # SingleKey / MultiKey — wrap in SingleSenderAuthenticator.
+                self.authenticator = TransactionAuthenticator(
+                    SingleSenderAuthenticator(authenticator)
+                )
+        else:
+            self.authenticator = authenticator
 
-        self.authenticator = authenticator
+    # ------------------------------------------------------------------
+    # Equality and display
+    # ------------------------------------------------------------------
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SignedTransaction):
@@ -560,342 +1170,70 @@ class SignedTransaction:
     def __str__(self) -> str:
         return f"Transaction: {self.transaction}Authenticator: {self.authenticator}"
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    # ------------------------------------------------------------------
+    # Public methods
+    # ------------------------------------------------------------------
+
     def bytes(self) -> bytes:
+        """Return the full BCS-encoded signed transaction."""
         ser = Serializer()
-        ser.struct(self)
+        self.serialize(ser)
         return ser.output()
 
     def verify(self) -> bool:
-        auth = self.authenticator.authenticator
-        if isinstance(auth, MultiAgentAuthenticator):
-            transaction: RawTransactionInternal = MultiAgentRawTransaction(
-                self.transaction, auth.secondary_addresses()
-            )
-        elif isinstance(auth, FeePayerAuthenticator):
-            transaction = cast(
-                RawTransactionInternal,
-                FeePayerRawTransaction(
-                    self.transaction,
-                    auth.secondary_addresses(),
-                    auth.fee_payer_address(),
-                ),
-            )
-        else:
-            transaction = self.transaction
-        return self.authenticator.verify(transaction.keyed())
+        """
+        Verify the authenticator's signature(s) against the transaction.
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SignedTransaction:
-        transaction = RawTransaction.deserialize(deserializer)
-        authenticator = Authenticator.deserialize(deserializer)
-        return SignedTransaction(transaction, authenticator)
+        For multi-agent and fee-payer transactions the correct
+        ``RAW_TRANSACTION_WITH_DATA``-prefixed signing message is
+        reconstructed before verification.
+
+        Returns
+        -------
+        bool
+            ``True`` when all signatures are valid.
+        """
+        inner = self.authenticator.authenticator
+        if isinstance(inner, MultiAgentAuthenticator):
+            txn_with_data: RawTransactionWithData = MultiAgentRawTransaction(
+                self.transaction, inner.secondary_addresses()
+            )
+            message = txn_with_data.signing_message()
+        elif isinstance(inner, FeePayerAuthenticator):
+            fee_payer_txn = FeePayerRawTransaction(
+                self.transaction,
+                inner.secondary_addresses(),
+                inner.fee_payer_address(),
+            )
+            message = fee_payer_txn.signing_message()
+        else:
+            message = self.transaction.signing_message()
+        return self.authenticator.verify(message)
+
+    # ------------------------------------------------------------------
+    # BCS serialization
+    # ------------------------------------------------------------------
 
     def serialize(self, serializer: Serializer) -> None:
+        """BCS serialize: ``struct(transaction) + struct(authenticator)``."""
         self.transaction.serialize(serializer)
         self.authenticator.serialize(serializer)
 
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "SignedTransaction":
+        """BCS deserialize a :class:`SignedTransaction`."""
+        transaction = RawTransaction.deserialize(deserializer)
+        authenticator = TransactionAuthenticator.deserialize(deserializer)
+        return SignedTransaction(transaction, authenticator)
 
-class Test(unittest.TestCase):
-    def test_entry_function(self):
-        private_key = ed25519.PrivateKey.random()
-        public_key = private_key.public_key()
-        account_address = AccountAddress.from_key(public_key)
 
-        another_private_key = ed25519.PrivateKey.random()
-        another_public_key = another_private_key.public_key()
-        recipient_address = AccountAddress.from_key(another_public_key)
+# ---------------------------------------------------------------------------
+# Backward-compatible alias: Authenticator → TransactionAuthenticator
+# The old code used `Authenticator` as the top-level transaction authenticator.
+# ---------------------------------------------------------------------------
 
-        transaction_arguments = [
-            TransactionArgument(recipient_address, Serializer.struct),
-            TransactionArgument(5000, Serializer.u64),
-        ]
-
-        payload = EntryFunction.natural(
-            "0x1::coin",
-            "transfer",
-            [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
-            transaction_arguments,
-        )
-
-        raw_transaction = RawTransaction(
-            account_address,
-            0,
-            TransactionPayload(payload),
-            2000,
-            0,
-            18446744073709551615,
-            4,
-        )
-
-        authenticator = raw_transaction.sign(private_key)
-        signed_transaction = SignedTransaction(raw_transaction, authenticator)
-        self.assertTrue(signed_transaction.verify())
-
-    def test_entry_function_with_corpus(self):
-        # Define common inputs
-        sender_key_input = (
-            "9bf49a6a0755f953811fce125f2683d50429c3bb49e074147e0089a52eae155f"
-        )
-        receiver_key_input = (
-            "0564f879d27ae3c02ce82834acfa8c793a629f2ca0de6919610be82f411326be"
-        )
-
-        sequence_number_input = 11
-        gas_unit_price_input = 1
-        max_gas_amount_input = 2000
-        expiration_timestamps_secs_input = 1234567890
-        chain_id_input = 4
-        amount_input = 5000
-
-        # Accounts and crypto
-        sender_private_key = ed25519.PrivateKey.from_str(sender_key_input)
-        sender_public_key = sender_private_key.public_key()
-        sender_account_address = AccountAddress.from_key(sender_public_key)
-
-        receiver_private_key = ed25519.PrivateKey.from_str(receiver_key_input)
-        receiver_public_key = receiver_private_key.public_key()
-        receiver_account_address = AccountAddress.from_key(receiver_public_key)
-
-        # Generate the transaction locally
-        transaction_arguments = [
-            TransactionArgument(receiver_account_address, Serializer.struct),
-            TransactionArgument(amount_input, Serializer.u64),
-        ]
-
-        payload = EntryFunction.natural(
-            "0x1::coin",
-            "transfer",
-            [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
-            transaction_arguments,
-        )
-
-        raw_transaction_generated = RawTransaction(
-            sender_account_address,
-            sequence_number_input,
-            TransactionPayload(payload),
-            max_gas_amount_input,
-            gas_unit_price_input,
-            expiration_timestamps_secs_input,
-            chain_id_input,
-        )
-
-        authenticator = raw_transaction_generated.sign(sender_private_key)
-        signed_transaction_generated = SignedTransaction(
-            raw_transaction_generated, authenticator
-        )
-        self.assertTrue(signed_transaction_generated.verify())
-
-        # Validated corpus
-
-        raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d20296490000000004"
-        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040f25b74ec60a38a1ed780fd2bef6ddb6eb4356e3ab39276c9176cdf0fcae2ab37d79b626abb43d926e91595b66503a4a3c90acbae36a28d405e308f3537af720b"
-
-        self.verify_transactions(
-            raw_transaction_input,
-            raw_transaction_generated,
-            signed_transaction_input,
-            signed_transaction_generated,
-        )
-
-    def test_entry_function_multi_agent_with_corpus(self):
-        # Define common inputs
-        sender_key_input = (
-            "9bf49a6a0755f953811fce125f2683d50429c3bb49e074147e0089a52eae155f"
-        )
-        receiver_key_input = (
-            "0564f879d27ae3c02ce82834acfa8c793a629f2ca0de6919610be82f411326be"
-        )
-
-        sequence_number_input = 11
-        gas_unit_price_input = 1
-        max_gas_amount_input = 2000
-        expiration_timestamps_secs_input = 1234567890
-        chain_id_input = 4
-
-        # Accounts and crypto
-        sender_private_key = ed25519.PrivateKey.from_str(sender_key_input)
-        sender_public_key = sender_private_key.public_key()
-        sender_account_address = AccountAddress.from_key(sender_public_key)
-
-        receiver_private_key = ed25519.PrivateKey.from_str(receiver_key_input)
-        receiver_public_key = receiver_private_key.public_key()
-        receiver_account_address = AccountAddress.from_key(receiver_public_key)
-
-        # Generate the transaction locally
-        transaction_arguments = [
-            TransactionArgument(receiver_account_address, Serializer.struct),
-            TransactionArgument("collection_name", Serializer.str),
-            TransactionArgument("token_name", Serializer.str),
-            TransactionArgument(1, Serializer.u64),
-        ]
-
-        payload = EntryFunction.natural(
-            "0x3::token",
-            "direct_transfer_script",
-            [],
-            transaction_arguments,
-        )
-
-        raw_transaction_generated = MultiAgentRawTransaction(
-            RawTransaction(
-                sender_account_address,
-                sequence_number_input,
-                TransactionPayload(payload),
-                max_gas_amount_input,
-                gas_unit_price_input,
-                expiration_timestamps_secs_input,
-                chain_id_input,
-            ),
-            [receiver_account_address],
-        )
-
-        sender_authenticator = raw_transaction_generated.sign(sender_private_key)
-        receiver_authenticator = raw_transaction_generated.sign(receiver_private_key)
-
-        authenticator = Authenticator(
-            MultiAgentAuthenticator(
-                sender_authenticator,
-                [(receiver_account_address, receiver_authenticator)],
-            )
-        )
-
-        signed_transaction_generated = SignedTransaction(
-            raw_transaction_generated.inner(), authenticator
-        )
-        self.assertTrue(signed_transaction_generated.verify())
-
-        # Validated corpus
-
-        raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004"
-        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004020020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040343e7b10aa323c480391a5d7cd2d0cf708d51529b96b5a2be08cbb365e4f11dcc2cf0655766cf70d40853b9c395b62dad7a9f58ed998803d8bf1901ba7a7a401012d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9010020aef3f4a4b8eca1dfc343361bf8e436bd42de9259c04b8314eb8e2054dd6e82ab408a7f06e404ae8d9535b0cbbeafb7c9e34e95fe1425e4529758150a4f7ce7a683354148ad5c313ec36549e3fb29e669d90010f97467c9074ff0aec3ed87f76608"
-
-        self.verify_transactions(
-            raw_transaction_input,
-            raw_transaction_generated.inner(),
-            signed_transaction_input,
-            signed_transaction_generated,
-        )
-
-    def verify_transactions(
-        self,
-        raw_transaction_input: str,
-        raw_transaction_generated: RawTransaction,
-        signed_transaction_input: str,
-        signed_transaction_generated: SignedTransaction,
-    ):
-        # Produce serialized generated transactions
-        ser = Serializer()
-        ser.struct(raw_transaction_generated)
-        raw_transaction_generated_bytes = ser.output().hex()
-
-        ser = Serializer()
-        ser.struct(signed_transaction_generated)
-        signed_transaction_generated_bytes = ser.output().hex()
-
-        # Verify the RawTransaction
-        self.assertEqual(raw_transaction_input, raw_transaction_generated_bytes)
-        raw_transaction = RawTransaction.deserialize(
-            Deserializer(bytes.fromhex(raw_transaction_input))
-        )
-        self.assertEqual(raw_transaction_generated, raw_transaction)
-
-        # Verify the SignedTransaction
-        self.assertEqual(signed_transaction_input, signed_transaction_generated_bytes)
-        signed_transaction = SignedTransaction.deserialize(
-            Deserializer(bytes.fromhex(signed_transaction_input))
-        )
-
-        self.assertEqual(signed_transaction.transaction, raw_transaction)
-        self.assertTrue(signed_transaction.verify())
-
-    def test_verify_fee_payer(self):
-        signed_transaction_input = "4629fa78b6a7810c6c3a45565707896944c4936a5583f9d3981c0692beb9e3fe010000000000000002915efe6647e0440f927d46e39bcb5eb040a7e567e1756e002073bc6e26f2cd230c63616e7661735f746f6b656e04647261770004205d45bb2a6f391440ba10444c7734559bd5ef9053930e3ef53d05be332518522bc90164850086008700880089008a008b008c008d008e008f0090009100920093009400950096009700980099009a009b009c009d009e009f00a000a100a200a300a400a500a600a700a800a900aa00ab00ac00ad00ae00af00b000b100b200b300b400b500b600b700b800b900ba00bb00bc00bd00be00bf00c000c100c200c300c4009f00a000a100a200a300a400a500a600a700a800a900aa00ab00ac00ad00ae00af00b000b100b200b300b400b500b600b700b800b900ba00bb00bc00bd00be00bf00c000c100c200c90164b701b701b701b701b701b701b701b701b701b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302656400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400d030000000000640000000000000043663065000000000103002076585d13da61c3d65f786b082e75ef790be66639fa066e0fc3b6f427d6ceb89340e137736ee1a0b60e8bdac8d0c75f29f1e6c6e7378689928125ea7a13164f96244d98ed3584df98643f5db00624f0271931498ff19492558737fbd4dcd0e99c040000af621023eaa26d6f1139da3e146a43aa4757fd77552f73ceba34b00295c340ce0020c245d6e4f0ce0867b80f9b901c00be5d790ed73272f4e5126ce02a5a7d55a15c4002fbb70e7d79b536d692953e4bdc3f762b5a288839ab974f03c8597ebb1c51d1d7e0920991bd79ca8c0acd02a7fb7c38b9c1f4d7e53f19f88b130555b20ef60d"
-        der = Deserializer(bytes.fromhex(signed_transaction_input))
-        signed_txn = der.struct(SignedTransaction)
-
-        ser = Serializer()
-        signed_txn.serialize(ser)
-        self.assertEqual(ser.output().hex(), signed_transaction_input)
-
-        self.assertTrue(
-            isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator)
-        )
-        self.assertTrue(signed_txn.verify())
-
-    def test_deserialize_raw_transaction(self):
-        input = "6b4003b51a1b33c398fe2b8fd3ca6a1d5dae0967350547813df937cdae2c36d400000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e736665720002206f20ce883cf1503cb4dc135e81a7a7b705486d342eaf182314e1a8299bc1586408e803000000000000a08601000000000064000000000000007a382e67000000009d"
-        der = Deserializer(bytes.fromhex(input))
-        raw_txn = der.struct(RawTransaction)
-
-        ser = Serializer()
-        raw_txn.serialize(ser)
-        self.assertEqual(ser.output().hex(), input)
-
-        self.assertTrue(isinstance(raw_txn, RawTransaction))
-
-    def test_deserialize_raw_transaction_fee_payer_with_data(self):
-        # From Go's RawTransactionWithData
-        input = "01e5275b443b31ba82afc1780036e77b4bc11bb2d67cfbefd079abde7cf00a1c3b00000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e736665720002201152725822d847a4c4922f2d67af98ae76614b9137780cebcb9a14ea3646a63508e803000000000000a086010000000000640000000000000090392e67000000009d000000000000000000000000000000000000000000000000000000000000000000"
-
-        # As a generic raw transaction with data
-        der = Deserializer(bytes.fromhex(input))
-        raw_txn_with_data = RawTransactionWithData.deserialize(der)
-
-        ser = Serializer()
-        raw_txn_with_data.serialize(ser)
-        self.assertEqual(ser.output().hex(), input)
-
-        self.assertTrue(isinstance(raw_txn_with_data, FeePayerRawTransaction))
-
-        # As a fee payer transaction, with no fee payer
-        der2 = Deserializer(bytes.fromhex(input))
-        fee_payer = FeePayerRawTransaction.deserialize(der2)
-
-        ser2 = Serializer()
-        fee_payer.serialize(ser2)
-        self.assertEqual(ser2.output().hex(), input)
-
-        self.assertTrue(isinstance(fee_payer, FeePayerRawTransaction))
-        self.assertEqual(None, fee_payer.fee_payer)
-
-        # From Go's RawTransactionWithData
-        input = "01a5ea85eada4d5cf6d0bdd1d1d348cab3812b2b76d1a4ce235ab5c42d3a530bc900000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e73666572000220ffa66435120c841909d355aff22998ef838786baf699c1b96274cc542569333908e803000000000000a0860100000000006400000000000000b13b2e67000000009d00a5ea85eada4d5cf6d0bdd1d1d348cab3812b2b76d1a4ce235ab5c42d3a530bc9"
-        # As a fee payer transaction, with fee payer
-        der2 = Deserializer(bytes.fromhex(input))
-        fee_payer = FeePayerRawTransaction.deserialize(der2)
-
-        ser3 = Serializer()
-        fee_payer.serialize(ser3)
-        self.assertEqual(ser3.output().hex(), input)
-
-        self.assertTrue(isinstance(fee_payer, FeePayerRawTransaction))
-        self.assertEqual(
-            AccountAddress.from_str(
-                "0xa5ea85eada4d5cf6d0bdd1d1d348cab3812b2b76d1a4ce235ab5c42d3a530bc9"
-            ),
-            fee_payer.fee_payer,
-        )
-
-    def test_deserialize_raw_transaction_multi_agent(self):
-        # fee payer
-        input_fee_payer = "01f3e03d9a7f4512518d4d02580a015bdd728883b7d974c7239def2b97a9103c9c00000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e73666572000220251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a46008e803000000000000a08601000000000064000000000000001a3d2e67000000009d01251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a460f3e03d9a7f4512518d4d02580a015bdd728883b7d974c7239def2b97a9103c9c"
-        # multi agent
-        input_ma = "00f3e03d9a7f4512518d4d02580a015bdd728883b7d974c7239def2b97a9103c9c00000000000000000200000000000000000000000000000000000000000000000000000000000000010d6170746f735f6163636f756e74087472616e73666572000220251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a46008e803000000000000a08601000000000064000000000000001a3d2e67000000009d01251b43a7dc28f376a8d6426999e9e32e1f70c6d6685a72327030263fed77a460"
-
-        der = Deserializer(bytes.fromhex(input_fee_payer))
-        raw_txn_with_data = RawTransactionWithData.deserialize(der)
-
-        ser = Serializer()
-        raw_txn_with_data.serialize(ser)
-        self.assertEqual(ser.output().hex(), input_fee_payer)
-
-        self.assertTrue(isinstance(raw_txn_with_data, FeePayerRawTransaction))
-
-        der = Deserializer(bytes.fromhex(input_ma))
-        raw_txn_with_data = RawTransactionWithData.deserialize(der)
-
-        ser = Serializer()
-        raw_txn_with_data.serialize(ser)
-        self.assertEqual(ser.output().hex(), input_ma)
-
-        self.assertTrue(isinstance(raw_txn_with_data, MultiAgentRawTransaction))
+#: Legacy alias.  New code should use ``TransactionAuthenticator`` directly.
+Authenticator = TransactionAuthenticator
