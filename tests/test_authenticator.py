@@ -32,6 +32,8 @@ from aptos_sdk.crypto_wrapper import (
 )
 from aptos_sdk.ed25519 import (
     Ed25519PrivateKey,
+    Ed25519PublicKey,
+    Ed25519Signature,
     MultiEd25519PublicKey,
     MultiEd25519Signature,
 )
@@ -72,8 +74,8 @@ def _make_ed25519_single_key_auth() -> SingleKeyAuthenticator:
 class TestEd25519Authenticator:
     def test_construction(self):
         auth = _make_ed25519_auth()
-        assert auth.public_key is not None
-        assert auth.signature is not None
+        assert isinstance(auth.public_key, Ed25519PublicKey)
+        assert isinstance(auth.signature, Ed25519Signature)
 
     def test_verify_valid(self):
         priv = Ed25519PrivateKey.generate()
@@ -403,8 +405,6 @@ class TestTransactionAuthenticator:
 
 class TestMultiAgentAuthenticator:
     def test_construction(self):
-        Ed25519PrivateKey.generate()
-        Ed25519PrivateKey.generate()
         sender_auth = AccountAuthenticator(_make_ed25519_auth())
         secondary_auth = AccountAuthenticator(_make_ed25519_auth())
         secondary_addr = AccountAddress.from_hex("0x" + "cc" * 32)
@@ -609,8 +609,8 @@ class TestMultiEd25519Authenticator:
 
     def test_construction(self):
         auth = self._make_auth()
-        assert auth.public_key is not None
-        assert auth.signature is not None
+        assert isinstance(auth.public_key, MultiEd25519PublicKey)
+        assert isinstance(auth.signature, MultiEd25519Signature)
 
     def test_equality_same(self):
         # Line 129-131: __eq__ for matching instances

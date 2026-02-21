@@ -118,7 +118,8 @@ class TestAnyPublicKey:
         any_pub = AnyPublicKey(pub)
         crypto_bytes = any_pub.to_crypto_bytes()
         assert isinstance(crypto_bytes, bytes)
-        assert len(crypto_bytes) > 0
+        # variant byte (1) + BCS length prefix (1) + Ed25519 public key (32 bytes) = 34
+        assert len(crypto_bytes) == 34
 
     def test_verify_ed25519_valid(self):
         priv = Ed25519PrivateKey.generate()
@@ -265,7 +266,9 @@ class TestMultiKeyPublicKey:
         multi = MultiKeyPublicKey(keys, 2)
         cb = multi.to_crypto_bytes()
         assert isinstance(cb, bytes)
-        assert len(cb) > 0
+        # BCS-serialized: each AnyPublicKey is 1 (variant) + 32 (key) = 33 bytes,
+        # plus length prefix, threshold byte, and key count — at least 2*33 = 66 bytes
+        assert len(cb) > 66
 
     def test_equality(self):
         pub = self._ed25519_pub()
@@ -434,12 +437,13 @@ class TestAnySignatureAdditional:
         result = any_sig.__eq__("not a sig")
         assert result is NotImplemented
 
-    def test_hash_defined(self):
-        # AnySignature defines __hash__ but the inner Ed25519Signature type is
-        # not itself hashable, so we only verify __hash__ is callable.
+    def test_hash_raises_for_unhashable_inner(self):
+        # AnySignature defines __hash__ but Ed25519Signature is not hashable,
+        # so hash() raises TypeError for Ed25519-backed AnySignatures.
         sig = self._ed25519_sig()
         any_sig = AnySignature(sig)
-        assert hasattr(type(any_sig), "__hash__")
+        with pytest.raises(TypeError):
+            hash(any_sig)
 
     def test_inequality_different_variants(self):
         ed_sig = AnySignature(self._ed25519_sig())
@@ -541,8 +545,9 @@ class TestMultiKeySignatureAdditional:
     def test_str_contains_signature_list(self):
         sig = AnySignature(self._ed25519_sig())
         multi = MultiKeySignature([(0, sig)])
-        # __str__ returns string of the internal list
-        assert str(multi) is not None
+        s = str(multi)
+        assert isinstance(s, str)
+        assert len(s) > 0
 
     def test_eq_non_multi_key_sig_returns_not_implemented(self):
         sig = AnySignature(self._ed25519_sig())

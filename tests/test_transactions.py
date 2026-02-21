@@ -591,7 +591,7 @@ class TestScriptArgumentAllVariants:
         # Craft a raw byte stream with an invalid variant byte
         data = bytes([99, 0])  # variant=99, dummy value
         der = Deserializer(data)
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidInputError):
             ScriptArgument.deserialize(der)
 
 

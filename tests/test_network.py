@@ -93,6 +93,7 @@ class TestNetworkTestnet:
 
     def test_has_indexer(self):
         assert Network.TESTNET.indexer_url is not None
+        assert "testnet" in Network.TESTNET.indexer_url
 
     def test_chain_id(self):
         assert Network.TESTNET.chain_id == 2

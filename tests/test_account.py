@@ -43,7 +43,7 @@ class TestAccountGenerate:
         assert a.private_key != b.private_key
 
     def test_generate_invalid_scheme_raises(self):
-        with pytest.raises((ValueError, Exception)):
+        with pytest.raises(ValueError):
             Account.generate(scheme=99)  # type: ignore[arg-type]
 
 
@@ -116,7 +116,8 @@ class TestAccountSigning:
     def test_sign_produces_signature(self):
         account = Account.generate()
         sig = account.sign(b"hello aptos")
-        assert sig is not None
+        assert isinstance(sig, Ed25519Signature)
+        assert len(sig.to_bytes()) == 64
 
     def test_sign_ed25519_produces_ed25519_signature(self):
         account = Account.generate(scheme=PrivateKeyVariant.ED25519)
@@ -241,3 +242,4 @@ class TestAccountRepr:
         account = Account.generate()
         auth = account.auth_key()
         assert auth.startswith("0x")
+        assert len(auth) == 66  # "0x" + 64 hex chars (32 bytes)

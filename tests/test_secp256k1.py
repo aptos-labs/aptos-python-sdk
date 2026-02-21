@@ -102,7 +102,7 @@ class TestSecp256k1PrivateKey:
 
     def test_strict_aip80_mode_rejects_plain_hex(self):
         key = Secp256k1PrivateKey.generate()
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidPrivateKeyError):
             Secp256k1PrivateKey.from_str(key.to_hex(), strict=True)
 
 

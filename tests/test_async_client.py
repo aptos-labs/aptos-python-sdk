@@ -232,6 +232,7 @@ class TestRaiseForStatus:
         client = self._client()
         resp = _json_response({"ok": True}, 200)
         client._raise_for_status(resp)  # Should not raise
+        assert resp.status_code == 200
 
     def test_400_raises_bad_request(self):
         client = self._client()
@@ -315,6 +316,7 @@ class TestRaiseForStatus:
         client = self._client()
         resp = _json_response({}, 301)
         client._raise_for_status(resp)  # 3xx should not raise
+        assert resp.status_code == 301
 
 
 # ---------------------------------------------------------------------------

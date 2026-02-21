@@ -117,7 +117,7 @@ class TestEd25519PrivateKey:
 
     def test_strict_aip80_rejects_plain_hex(self):
         key = Ed25519PrivateKey.generate()
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidPrivateKeyError):
             Ed25519PrivateKey.from_hex(key.to_hex(), strict=True)
 
     def test_random_alias(self):

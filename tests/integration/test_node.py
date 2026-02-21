@@ -112,11 +112,13 @@ class TestViewFunction:
 
     async def test_view_nonexistent_balance(self, rest_client: RestClient):
         """Querying balance of a non-existent account should raise or return 0."""
+        from aptos_sdk.errors import ApiError
+
         phantom = Account.generate()
         try:
             balance = await rest_client.account_balance(phantom.address)
             # Some nodes return 0 for non-existent coin stores
             assert balance == 0
-        except Exception:
+        except ApiError:
             # Expected — view function aborts for non-existent coin store
             pass
