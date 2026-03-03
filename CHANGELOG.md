@@ -4,6 +4,7 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 - Update dependencies for vulnerability fixes
+- Add support for orderless txns
 
 ## 0.11.0
 
