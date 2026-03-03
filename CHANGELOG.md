@@ -3,7 +3,13 @@
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
 ## Unreleased
-- Update dependencies for vulnerability fixes
+
+## 0.12.0
+
+- **[Breaking Change]**: Migrated from `ecdsa` to `cryptography` library to fix CVE-2024-23342 (Minerva timing attack vulnerability)
+  - The `ecdsa` library maintainers stated they will not fix this vulnerability as it's inherent to pure Python implementations
+  - SECP256K1 ECDSA operations now use the `cryptography` library which provides constant-time implementations
+  - This change is transparent to users of the SDK - all APIs remain the same
 
 ## 0.11.0
 
