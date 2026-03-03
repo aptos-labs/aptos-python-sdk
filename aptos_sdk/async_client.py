@@ -903,7 +903,11 @@ class RestClient:
 
 
 class FaucetClient:
-    """Faucet creates and funds accounts. This is a thin wrapper around that."""
+    """Faucet creates and funds accounts. This is a thin wrapper around that.
+
+    Note: only devnet has a publicly accessible faucet. For testnet, you must
+    provide an auth_token. See https://aptos.dev/network/faucet for details.
+    """
 
     base_url: str
     rest_client: RestClient
@@ -914,7 +918,7 @@ class FaucetClient:
     ):
         self.base_url = base_url
         self.rest_client = rest_client
-        self.headers = {}
+        self.headers = {"Content-Type": "application/json"}
         if auth_token:
             self.headers["Authorization"] = f"Bearer {auth_token}"
 
@@ -925,12 +929,19 @@ class FaucetClient:
         self, address: AccountAddress, amount: int, wait_for_transaction=True
     ):
         """This creates an account if it does not exist and mints the specified amount of
-        coins into that account."""
-        request = f"{self.base_url}/mint?amount={amount}&address={address}"
-        response = await self.rest_client.client.post(request, headers=self.headers)
+        coins into that account.
+
+        Note: only devnet has a publicly accessible faucet. For testnet, you must
+        initialize this client with an auth_token.
+        """
+        response = await self.rest_client.client.post(
+            f"{self.base_url}/fund",
+            headers=self.headers,
+            json={"address": str(address), "amount": amount},
+        )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        txn_hash = response.json()[0]
+        txn_hash = response.json()["txn_hashes"][0]
         if wait_for_transaction:
             await self.rest_client.wait_for_transaction(txn_hash)
         return txn_hash
