@@ -25,8 +25,8 @@ async def main():
     print(f"Alice: {alice.address()}")
     print(f"Bob: {bob.address()}")
 
-    bob_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    alice_fund = faucet_client.fund_account(bob.address(), 100_000_000)
+    bob_fund = faucet_client.fund_account(alice.address(), 1_000_000_000)
+    alice_fund = faucet_client.fund_account(bob.address(), 1_000_000_000)
     await asyncio.gather(*[bob_fund, alice_fund])
 
     print("\n=== Initial Coin Balances ===")

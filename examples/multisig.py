@@ -79,10 +79,10 @@ async def main(should_wait_input=True):
 
     # :!:>section_3
     print("\n=== Funding accounts ===")
-    alice_start = 10_000_000
-    bob_start = 20_000_000
-    chad_start = 30_000_000
-    multisig_start = 40_000_000
+    alice_start = 100_000_000
+    bob_start = 200_000_000
+    chad_start = 300_000_000
+    multisig_start = 400_000_000
 
     alice_fund = faucet_client.fund_account(alice.address(), alice_start)
     bob_fund = faucet_client.fund_account(bob.address(), bob_start)
@@ -190,7 +190,7 @@ async def main(should_wait_input=True):
     print(f"Deedee's address:    {deedee.address()}")
     print(f"Deedee's public key: {deedee.public_key()}")
 
-    deedee_start = 50_000_000
+    deedee_start = 500_000_000
 
     await faucet_client.fund_account(deedee.address(), deedee_start)
     deedee_balance = await rest_client.account_balance(deedee.address())
