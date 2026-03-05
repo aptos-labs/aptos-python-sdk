@@ -4,6 +4,7 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 - Update dependencies for vulnerability fixes
+- Increase default `max_gas_amount` from 100,000 to 1,000,000
 
 ## 0.11.0
 
