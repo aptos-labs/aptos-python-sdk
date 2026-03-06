@@ -1,330 +1,330 @@
-# Aptos Python SDK PR 分析和优化建议报告
+# Aptos Python SDK PR Analysis and Optimization Recommendations
 
-## 一、当前仓库 PR 状态分析
+## 1. Current Repository PR Status Analysis
 
-### 1.1 主要分支和 PR 概览
+### 1.1 Overview of Major Branches and PRs
 
-根据 git 分支分析，以下是当前仓库中的主要分支及其状态：
+Based on git branch analysis, here are the main branches and their status in the current repository:
 
-#### 已完成/已合并的 PR
-- ✅ `origin/main` - 主分支，包含最新的合并代码
-- ✅ `origin/cursor/default-max-gas-limit-29b1` - 增加默认 max_gas_amount 从 100,000 到 1,000,000
+#### Completed/Merged PRs
+- ✅ `origin/main` - Main branch containing the latest merged code
+- ✅ `origin/cursor/default-max-gas-limit-29b1` - Increased default max_gas_amount from 100,000 to 1,000,000
 
-#### 待审查/可完成的 PR
+#### Pending Review/Completable PRs
 
-##### 1. **from-spec 分支** - Tier 2 合规性重建
-**状态**: 大型重构，包含大量改进
-**提交内容**:
+##### 1. **from-spec branch** - Tier 2 Compliance Rebuild
+**Status**: Large refactoring with extensive improvements
+**Commits**:
 - Rebuild Aptos Python SDK from spec (Tier 2 compliance)
-- 增加测试覆盖率从 86% 到 96% (1060 个测试)
-- 添加集成测试、更新示例、强制执行代码质量
-- 添加单元测试（async_client, RestClient, FaucetClient, dataclasses）
-- 为所有 SDK 模块添加全面的单元测试
+- Increased test coverage from 86% to 96% (1060 tests)
+- Added integration tests, updated examples, and enforced code quality
+- Added unit tests (async_client, RestClient, FaucetClient, dataclasses)
+- Added comprehensive unit tests for all SDK modules
 
-**主要变更文件**:
-- `aptos_sdk/errors.py` - 新增错误处理模块
-- `aptos_sdk/retry.py` - 新增重试机制模块
-- `aptos_sdk/hashing.py` - 新增哈希功能
-- `aptos_sdk/chain_id.py` - 新增链 ID 处理
-- `aptos_sdk/mnemonic.py` - 新增助记词支持
-- `aptos_sdk/network.py` - 新增网络配置
-- `aptos_sdk/transaction_builder.py` - 新增交易构建器
-- `aptos_sdk/crypto_wrapper.py` - 新增加密包装器
-- 大量现有文件的改进和重构
+**Key Changed Files**:
+- `aptos_sdk/errors.py` - New error handling module
+- `aptos_sdk/retry.py` - New retry mechanism module
+- `aptos_sdk/hashing.py` - New hashing functionality
+- `aptos_sdk/chain_id.py` - New chain ID handling
+- `aptos_sdk/mnemonic.py` - New mnemonic support
+- `aptos_sdk/network.py` - New network configuration
+- `aptos_sdk/transaction_builder.py` - New transaction builder
+- `aptos_sdk/crypto_wrapper.py` - New crypto wrapper
+- Extensive improvements and refactoring of existing files
 
-**建议**: ⭐⭐⭐⭐⭐ **高优先级** - 这是一个重大改进，建议审查并合并
+**Recommendation**: ⭐⭐⭐⭐⭐ **High Priority** - This is a major improvement, recommend review and merge
 
-##### 2. **document-python-sdk 分支** - 文档改进
-**状态**: 文档增强
-**提交内容**:
-- 为 Python SDK 函数添加文档
-- 修复代码扫描告警
-- 格式化文档文件
+##### 2. **document-python-sdk branch** - Documentation Improvements
+**Status**: Documentation enhancements
+**Commits**:
+- Added documentation for Python SDK functions
+- Fixed code scanning alerts
+- Formatted documentation files
 
-**建议**: ⭐⭐⭐⭐ **中高优先级** - 文档改进对开发者体验很重要
+**Recommendation**: ⭐⭐⭐⭐ **Medium-High Priority** - Documentation improvements are important for developer experience
 
-##### 3. **modernize-sdk 分支** - SDK 现代化
-**状态**: 代码现代化和重构
-**提交内容**:
-- 添加适当的测试
-- 使 SDK 更加文档化和符合 Python 习惯用法
-- 修复 CICD 问题
-- 默认 ed25519 和 secp256k1 私钥的 `__str__` 使用 AIP80
+##### 3. **modernize-sdk branch** - SDK Modernization
+**Status**: Code modernization and refactoring
+**Commits**:
+- Added proper testing
+- Made SDK more documented and Pythonic
+- Fixed CICD issues
+- Default ed25519 and secp256k1 private key's `__str__` to AIP80
 
-**建议**: ⭐⭐⭐⭐ **中高优先级** - 提升代码质量和可维护性
+**Recommendation**: ⭐⭐⭐⭐ **Medium-High Priority** - Improves code quality and maintainability
 
-##### 4. **claude/fix-ecdsa-cve-2024-23342-aUa3y** - 安全修复
-**状态**: CVE 修复
-**提交内容**:
-- 修复 CVE-2024-23342，从 ecdsa 迁移到 cryptography 库
-- 应用代码格式化
+##### 4. **claude/fix-ecdsa-cve-2024-23342-aUa3y** - Security Fix
+**Status**: CVE fix
+**Commits**:
+- Fixed CVE-2024-23342 by migrating from ecdsa to cryptography library
+- Applied code formatting
 
-**建议**: ⭐⭐⭐⭐⭐ **高优先级** - 安全修复应该优先处理
+**Recommendation**: ⭐⭐⭐⭐⭐ **High Priority** - Security fixes should be prioritized
 
-##### 5. **large-package-publisher 分支** - 大包发布器改进
-**状态**: 功能增强
-**提交内容**:
-- 在 `large_package_publisher` 示例中使用 `compile_and_publish_move_package` 方法
-- 在 `PackagePublisher` 中添加 `publish_move_package` 方法
-- 重构 `package_publisher.py`，引入辅助类
-- 添加函数文档
+##### 5. **large-package-publisher branch** - Large Package Publisher Improvements
+**Status**: Feature enhancement
+**Commits**:
+- Use `compile_and_publish_move_package` method in `large_package_publisher` example
+- Add `publish_move_package` method to `PackagePublisher`
+- Refactor `package_publisher.py`, introducing helper classes
+- Add function documentation
 
-**建议**: ⭐⭐⭐ **中优先级** - 功能改进，但不是关键
+**Recommendation**: ⭐⭐⭐ **Medium Priority** - Feature improvement, but not critical
 
-##### 6. **fix-urls 分支** - URL 修复
-**状态**: Bug 修复
-**提交内容**:
-- 从 `integration_test.py` 的 `setUpClass` 方法中移除 `APTOS_INDEXER_URL` 配置
-- 重构环境变量处理并移除未使用的代码
+##### 6. **fix-urls branch** - URL Fixes
+**Status**: Bug fix
+**Commits**:
+- Remove `APTOS_INDEXER_URL` config from `setUpClass` method of `integration_test.py`
+- Refactor environment variable handling and remove unused code
 
-**建议**: ⭐⭐⭐ **中优先级** - 清理和修复
+**Recommendation**: ⭐⭐⭐ **Medium Priority** - Cleanup and fixes
 
-##### 7. **dependabot 分支** - 依赖更新
-**状态**: 依赖安全更新
+##### 7. **dependabot branches** - Dependency Updates
+**Status**: Dependency security updates
 - `dependabot/pip/aiohttp-3.13.3`
 - `dependabot/pip/pynacl-1.6.2`
 - `dependabot/pip/requests-2.32.4`
 - `dependabot/pip/urllib3-2.6.3`
 
-**建议**: ⭐⭐⭐⭐ **中高优先级** - 依赖更新通常包含安全修复
+**Recommendation**: ⭐⭐⭐⭐ **Medium-High Priority** - Dependency updates often include security fixes
 
-##### 8. **alert-autofix 分支** - CI/CD 修复
-**状态**: CI/CD 配置修复
-- `alert-autofix-4` - 修复工作流权限问题
-- `alert-autofix-7` - 修复工作流权限问题
+##### 8. **alert-autofix branches** - CI/CD Fixes
+**Status**: CI/CD configuration fixes
+- `alert-autofix-4` - Fix workflow permissions issue
+- `alert-autofix-7` - Fix workflow permissions issue
 
-**建议**: ⭐⭐⭐ **中优先级** - CI/CD 改进
+**Recommendation**: ⭐⭐⭐ **Medium Priority** - CI/CD improvements
 
-##### 9. **sponsored 分支** - 赞助交易
-**状态**: 功能开发
-**提交内容**:
-- 使赞助交易更无缝地工作
-- Python 修复
+##### 9. **sponsored branch** - Sponsored Transactions
+**Status**: Feature development
+**Commits**:
+- Enable sponsored transactions to work more seamlessly
+- Python fixes
 - Move inscriptions for Aptos
 
-**建议**: ⭐⭐⭐ **中优先级** - 功能开发，需要进一步审查
+**Recommendation**: ⭐⭐⭐ **Medium Priority** - Feature development, requires further review
 
-## 二、与其他 SDK 的对比分析
+## 2. Comparison Analysis with Other SDKs
 
-### 2.1 TypeScript SDK 对比
+### 2.1 TypeScript SDK Comparison
 
-#### 主要差异点：
+#### Key Differences:
 
-1. **API 设计**
-   - **TypeScript SDK**: 统一的 `Aptos` 入口，通过 `AptosConfig` 配置
-   - **Python SDK**: 分离的客户端类（`RestClient`, `IndexerClient`, `FaucetClient`）
-   - **优化建议**: 考虑引入统一的 `Aptos` 客户端类，简化 API
+1. **API Design**
+   - **TypeScript SDK**: Unified `Aptos` entry point, configured via `AptosConfig`
+   - **Python SDK**: Separate client classes (`RestClient`, `IndexerClient`, `FaucetClient`)
+   - **Optimization Suggestion**: Consider introducing a unified `Aptos` client class to simplify the API
 
-2. **交易构建流程**
-   - **TypeScript SDK**: 5 步流程（Build → Simulate → Sign → Submit → Wait），提供多种 TransactionBuilder
-   - **Python SDK**: 手动构建，提供便捷方法如 `bcs_transfer()`
-   - **优化建议**: 实现更流畅的链式 API，参考 TypeScript SDK 的设计
+2. **Transaction Building Flow**
+   - **TypeScript SDK**: 5-step flow (Build → Simulate → Sign → Submit → Wait) with multiple TransactionBuilder variants
+   - **Python SDK**: Manual building with convenience methods like `bcs_transfer()`
+   - **Optimization Suggestion**: Implement a more fluent chained API, referencing TypeScript SDK's design
 
-3. **错误处理**
-   - **TypeScript SDK**: 交易相关错误类（`FailedTransactionError`, `WaitForTransactionError`）
-   - **Python SDK**: 更细分的错误类（`AccountNotFound`, `ResourceNotFound`）
-   - **优化建议**: 添加交易特定的错误类型，提供更详细的错误信息
+3. **Error Handling**
+   - **TypeScript SDK**: Transaction-related error classes (`FailedTransactionError`, `WaitForTransactionError`)
+   - **Python SDK**: More granular error classes (`AccountNotFound`, `ResourceNotFound`)
+   - **Optimization Suggestion**: Add transaction-specific error types for more detailed error information
 
-4. **重试机制**
-   - **TypeScript SDK**: 无内置重试
-   - **Python SDK**: 无内置重试（但 `from-spec` 分支添加了 `retry.py` 模块）
-   - **优化建议**: ✅ `from-spec` 分支已解决此问题
+4. **Retry Mechanism**
+   - **TypeScript SDK**: No built-in retry
+   - **Python SDK**: No built-in retry (but `from-spec` branch adds `retry.py` module)
+   - **Optimization Suggestion**: ✅ `from-spec` branch already addresses this
 
-5. **类型安全**
-   - **TypeScript SDK**: 编译时强类型检查
-   - **Python SDK**: 运行时弱类型，依赖类型提示和 mypy
-   - **优化建议**: 继续改进类型提示，确保 mypy 检查通过
+5. **Type Safety**
+   - **TypeScript SDK**: Compile-time strong type checking
+   - **Python SDK**: Runtime weak typing, relies on type hints and mypy
+   - **Optimization Suggestion**: Continue improving type hints, ensure mypy checks pass
 
-6. **文档和社区**
-   - **TypeScript SDK**: 更完善的文档，更活跃的社区（112 stars）
-   - **Python SDK**: 基础文档，社区较小（29 stars）
-   - **优化建议**: ✅ `document-python-sdk` 分支正在解决此问题
+6. **Documentation and Community**
+   - **TypeScript SDK**: More comprehensive documentation, more active community (112 stars)
+   - **Python SDK**: Basic documentation, smaller community (29 stars)
+   - **Optimization Suggestion**: ✅ `document-python-sdk` branch is addressing this
 
-### 2.2 Rust SDK 对比
+### 2.2 Rust SDK Comparison
 
-#### 主要差异点：
+#### Key Differences:
 
-1. **客户端设计**
-   - **Rust SDK**: 统一的 `Aptos` 主客户端
-   - **Python SDK**: 分离的客户端类
-   - **优化建议**: 考虑统一客户端设计
+1. **Client Design**
+   - **Rust SDK**: Unified `Aptos` main client
+   - **Python SDK**: Separate client classes
+   - **Optimization Suggestion**: Consider unified client design
 
-2. **签名方案支持**
-   - **Rust SDK**: 支持 Ed25519, Secp256k1, Secp256r1
-   - **Python SDK**: 仅支持 Ed25519 和 Secp256k1
-   - **优化建议**: 考虑添加 Secp256r1 支持（如果需求明确）
+2. **Signature Scheme Support**
+   - **Rust SDK**: Supports Ed25519, Secp256k1, Secp256r1
+   - **Python SDK**: Only supports Ed25519 and Secp256k1
+   - **Optimization Suggestion**: Consider adding Secp256r1 support (if requirements are clear)
 
-3. **错误处理和重试**
-   - **Rust SDK**: `Result<T, E>` 类型 + 自动重试机制（指数退避）
-   - **Python SDK**: 异常处理，无内置重试
-   - **优化建议**: ✅ `from-spec` 分支添加了重试机制
+3. **Error Handling and Retry**
+   - **Rust SDK**: `Result<T, E>` type + automatic retry mechanism (exponential backoff)
+   - **Python SDK**: Exception handling, no built-in retry
+   - **Optimization Suggestion**: ✅ `from-spec` branch adds retry mechanism
 
-4. **代码生成**
-   - **Rust SDK**: 支持从 Move ABI 生成类型安全绑定
-   - **Python SDK**: 无代码生成功能
-   - **优化建议**: 考虑添加代码生成功能，提升类型安全
+4. **Code Generation**
+   - **Rust SDK**: Supports generating type-safe bindings from Move ABI
+   - **Python SDK**: No code generation functionality
+   - **Optimization Suggestion**: Consider adding code generation functionality to improve type safety
 
-5. **类型系统**
-   - **Rust SDK**: 编译时强类型 + 所有权系统
-   - **Python SDK**: 运行时类型检查
-   - **优化建议**: 继续改进类型提示和静态分析
+5. **Type System**
+   - **Rust SDK**: Compile-time strong typing + ownership system
+   - **Python SDK**: Runtime type checking
+   - **Optimization Suggestion**: Continue improving type hints and static analysis
 
-### 2.3 Go SDK 对比
+### 2.3 Go SDK Comparison
 
-#### 主要差异点：
+#### Key Differences:
 
-1. **并发模型**
-   - **Go SDK**: 使用 goroutines 和 channels 进行并发处理
-   - **Python SDK**: 使用 asyncio 和 `TransactionWorker` 进行批量处理
-   - **优化建议**: 当前设计合理，保持异步模型
+1. **Concurrency Model**
+   - **Go SDK**: Uses goroutines and channels for concurrent processing
+   - **Python SDK**: Uses asyncio and `TransactionWorker` for batch processing
+   - **Optimization Suggestion**: Current design is reasonable, maintain async model
 
-2. **批量交易处理**
-   - **Go SDK**: `BuildSignAndSubmitTransactions()` 支持批量并发交易
-   - **Python SDK**: `TransactionWorker` 提供批量处理
-   - **优化建议**: 确保批量处理功能完善
+2. **Batch Transaction Processing**
+   - **Go SDK**: `BuildSignAndSubmitTransactions()` supports batch concurrent transactions
+   - **Python SDK**: `TransactionWorker` provides batch processing
+   - **Optimization Suggestion**: Ensure batch processing functionality is complete
 
-3. **错误处理**
-   - **Go SDK**: 标准 Go 错误处理（`error` 接口）
-   - **Python SDK**: 自定义异常类型
-   - **优化建议**: 当前设计合理，保持异常处理方式
+3. **Error Handling**
+   - **Go SDK**: Standard Go error handling (`error` interface)
+   - **Python SDK**: Custom exception types
+   - **Optimization Suggestion**: Current design is reasonable, maintain exception handling approach
 
-4. **文档完整性**
-   - **Go SDK**: 更完善的文档和示例
-   - **Python SDK**: 基础文档
-   - **优化建议**: ✅ `document-python-sdk` 分支正在解决此问题
+4. **Documentation Completeness**
+   - **Go SDK**: More comprehensive documentation and examples
+   - **Python SDK**: Basic documentation
+   - **Optimization Suggestion**: ✅ `document-python-sdk` branch is addressing this
 
-## 三、优化建议总结
+## 3. Optimization Recommendations Summary
 
-### 3.1 高优先级优化（建议立即实施）
+### 3.1 High Priority Optimizations (Recommended for Immediate Implementation)
 
-1. **合并 from-spec 分支** ⭐⭐⭐⭐⭐
-   - 包含 Tier 2 合规性改进
-   - 测试覆盖率从 86% 提升到 96%
-   - 添加重试机制（`retry.py`）
-   - 添加错误处理模块（`errors.py`）
-   - 大量代码质量改进
+1. **Merge from-spec branch** ⭐⭐⭐⭐⭐
+   - Contains Tier 2 compliance improvements
+   - Test coverage increased from 86% to 96%
+   - Added retry mechanism (`retry.py`)
+   - Added error handling module (`errors.py`)
+   - Extensive code quality improvements
 
-2. **合并安全修复** ⭐⭐⭐⭐⭐
-   - `claude/fix-ecdsa-cve-2024-23342-aUa3y` - CVE-2024-23342 修复
-   - 所有 dependabot 依赖更新
+2. **Merge Security Fixes** ⭐⭐⭐⭐⭐
+   - `claude/fix-ecdsa-cve-2024-23342-aUa3y` - CVE-2024-23342 fix
+   - All dependabot dependency updates
 
-3. **统一客户端 API 设计** ⭐⭐⭐⭐
-   - 参考 TypeScript SDK，引入统一的 `Aptos` 客户端类
-   - 简化 API，提升开发者体验
-   - 保持向后兼容性
+3. **Unified Client API Design** ⭐⭐⭐⭐
+   - Reference TypeScript SDK, introduce unified `Aptos` client class
+   - Simplify API, improve developer experience
+   - Maintain backward compatibility
 
-4. **改进交易构建流程** ⭐⭐⭐⭐
-   - 实现更流畅的链式 API
-   - 参考 TypeScript SDK 的 5 步流程设计
-   - 添加更多便捷方法
+4. **Improve Transaction Building Flow** ⭐⭐⭐⭐
+   - Implement more fluent chained API
+   - Reference TypeScript SDK's 5-step flow design
+   - Add more convenience methods
 
-### 3.2 中优先级优化（建议后续实施）
+### 3.2 Medium Priority Optimizations (Recommended for Future Implementation)
 
-1. **合并文档改进** ⭐⭐⭐⭐
-   - `document-python-sdk` 分支
-   - 提升开发者体验
+1. **Merge Documentation Improvements** ⭐⭐⭐⭐
+   - `document-python-sdk` branch
+   - Improve developer experience
 
-2. **合并现代化改进** ⭐⭐⭐⭐
-   - `modernize-sdk` 分支
-   - 提升代码质量和可维护性
+2. **Merge Modernization Improvements** ⭐⭐⭐⭐
+   - `modernize-sdk` branch
+   - Improve code quality and maintainability
 
-3. **添加交易特定错误类型** ⭐⭐⭐
-   - 参考 TypeScript SDK 的 `FailedTransactionError`
-   - 提供更详细的错误信息
+3. **Add Transaction-Specific Error Types** ⭐⭐⭐
+   - Reference TypeScript SDK's `FailedTransactionError`
+   - Provide more detailed error information
 
-4. **改进类型提示** ⭐⭐⭐
-   - 确保所有公共 API 都有完整的类型提示
-   - 通过 mypy 严格检查
+4. **Improve Type Hints** ⭐⭐⭐
+   - Ensure all public APIs have complete type hints
+   - Pass strict mypy checks
 
-5. **添加代码生成功能** ⭐⭐⭐
-   - 参考 Rust SDK，从 Move ABI 生成类型安全绑定
-   - 提升类型安全性
+5. **Add Code Generation Functionality** ⭐⭐⭐
+   - Reference Rust SDK, generate type-safe bindings from Move ABI
+   - Improve type safety
 
-### 3.3 低优先级优化（可选）
+### 3.3 Low Priority Optimizations (Optional)
 
-1. **考虑添加 Secp256r1 支持** ⭐⭐
-   - 如果需求明确，参考 Rust SDK
+1. **Consider Adding Secp256r1 Support** ⭐⭐
+   - If requirements are clear, reference Rust SDK
 
-2. **改进批量交易处理** ⭐⭐
-   - 确保 `TransactionWorker` 功能完善
-   - 参考 Go SDK 的批量处理设计
+2. **Improve Batch Transaction Processing** ⭐⭐
+   - Ensure `TransactionWorker` functionality is complete
+   - Reference Go SDK's batch processing design
 
-3. **CI/CD 改进** ⭐⭐
-   - 合并 `alert-autofix` 分支
-   - 修复工作流权限问题
+3. **CI/CD Improvements** ⭐⭐
+   - Merge `alert-autofix` branches
+   - Fix workflow permissions issues
 
-## 四、具体实施建议
+## 4. Specific Implementation Recommendations
 
-### 4.1 立即可以完成的工作
+### 4.1 Work That Can Be Completed Immediately
 
-1. **审查并合并 from-spec 分支**
+1. **Review and Merge from-spec branch**
    ```bash
    git checkout from-spec
-   # 审查变更
+   # Review changes
    git checkout main
    git merge from-spec
    ```
 
-2. **合并安全修复**
+2. **Merge Security Fixes**
    ```bash
    git checkout claude/fix-ecdsa-cve-2024-23342-aUa3y
-   # 审查变更
+   # Review changes
    git checkout main
    git merge claude/fix-ecdsa-cve-2024-23342-aUa3y
    ```
 
-3. **合并依赖更新**
+3. **Merge Dependency Updates**
    ```bash
-   # 合并所有 dependabot 分支
+   # Merge all dependabot branches
    git merge dependabot/pip/aiohttp-3.13.3
    git merge dependabot/pip/pynacl-1.6.2
    git merge dependabot/pip/requests-2.32.4
    git merge dependabot/pip/urllib3-2.6.3
    ```
 
-### 4.2 需要进一步开发的工作
+### 4.2 Work Requiring Further Development
 
-1. **统一客户端 API 设计**
-   - 设计新的 `Aptos` 客户端类
-   - 保持向后兼容性
-   - 更新文档和示例
+1. **Unified Client API Design**
+   - Design new `Aptos` client class
+   - Maintain backward compatibility
+   - Update documentation and examples
 
-2. **改进交易构建流程**
-   - 实现链式 API
-   - 添加更多便捷方法
-   - 更新示例代码
+2. **Improve Transaction Building Flow**
+   - Implement chained API
+   - Add more convenience methods
+   - Update example code
 
-3. **添加交易特定错误类型**
-   - 定义新的错误类
-   - 更新错误处理逻辑
-   - 更新文档
+3. **Add Transaction-Specific Error Types**
+   - Define new error classes
+   - Update error handling logic
+   - Update documentation
 
-## 五、总结
+## 5. Summary
 
-### 5.1 当前状态
-- Python SDK 功能完整，支持核心 Aptos 功能
-- 代码质量良好，但仍有改进空间
-- 测试覆盖率较高（86%，from-spec 分支提升到 96%）
-- 文档基础但需要改进
+### 5.1 Current Status
+- Python SDK has complete functionality, supports core Aptos features
+- Good code quality, but still has room for improvement
+- High test coverage (86%, from-spec branch increases to 96%)
+- Basic documentation but needs improvement
 
-### 5.2 主要差距
-1. **API 设计**: 相比 TypeScript SDK，缺少统一的客户端入口
-2. **错误处理**: 缺少交易特定的错误类型和自动重试（from-spec 分支已解决重试）
-3. **文档**: 相比 Go SDK，文档不够完善（document-python-sdk 分支正在解决）
-4. **类型安全**: 相比 Rust SDK，缺少代码生成功能
+### 5.2 Main Gaps
+1. **API Design**: Compared to TypeScript SDK, lacks unified client entry point
+2. **Error Handling**: Lacks transaction-specific error types and automatic retry (from-spec branch addresses retry)
+3. **Documentation**: Compared to Go SDK, documentation is less comprehensive (document-python-sdk branch is addressing this)
+4. **Type Safety**: Compared to Rust SDK, lacks code generation functionality
 
-### 5.3 建议优先级
-1. **立即**: 合并 from-spec 分支（重大改进）
-2. **立即**: 合并安全修复（CVE 修复）
-3. **短期**: 合并文档和现代化改进
-4. **中期**: 统一客户端 API 设计
-5. **长期**: 添加代码生成功能
+### 5.3 Recommended Priorities
+1. **Immediate**: Merge from-spec branch (major improvements)
+2. **Immediate**: Merge security fixes (CVE fixes)
+3. **Short-term**: Merge documentation and modernization improvements
+4. **Medium-term**: Unified client API design
+5. **Long-term**: Add code generation functionality
 
 ---
 
-**报告生成时间**: 2026-03-06
-**分析基于**: 
-- Git 分支和提交历史
+**Report Generated**: 2026-03-06
+**Analysis Based On**: 
+- Git branches and commit history
 - TypeScript SDK (aptos-labs/aptos-ts-sdk)
 - Rust SDK (aptos-labs/aptos-rust-sdk)
 - Go SDK (aptos-labs/aptos-go-sdk)
