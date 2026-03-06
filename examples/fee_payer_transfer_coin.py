@@ -36,7 +36,7 @@ async def main():
     print(f"Sponsor: {sponsor.address()}")
 
     # :!:>section_3
-    await faucet_client.fund_account(sponsor.address(), 100_000_000)  # <:!:section_3
+    await faucet_client.fund_account(sponsor.address(), 1_000_000_000)  # <:!:section_3
 
     print("\n=== Initial Data ===")
     # :!:>section_4

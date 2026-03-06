@@ -77,8 +77,10 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # :!:>section_3
-    bob_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    alice_fund = faucet_client.fund_account(bob.address(), 100_000_000)  # <:!:section_3
+    bob_fund = faucet_client.fund_account(alice.address(), 1_000_000_000)
+    alice_fund = faucet_client.fund_account(
+        bob.address(), 1_000_000_000
+    )  # <:!:section_3
     await asyncio.gather(*[bob_fund, alice_fund])
 
     print("\n=== Initial Coin Balances ===")

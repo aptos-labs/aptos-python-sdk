@@ -71,7 +71,7 @@ async def publish_contract(package_dir: str) -> AccountAddress:
     contract_publisher = Account.generate()
     rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
-    await faucet_client.fund_account(contract_publisher.address(), 10_000_000)
+    await faucet_client.fund_account(contract_publisher.address(), 100_000_000)
 
     AptosCLIWrapper.compile_package(
         package_dir, {"hello_blockchain": contract_publisher.address()}
@@ -111,8 +111,8 @@ async def main(contract_address: AccountAddress):
     rest_client = HelloBlockchainClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
-    alice_fund = faucet_client.fund_account(alice.address(), 10_000_000)
-    bob_fund = faucet_client.fund_account(bob.address(), 10_000_000)
+    alice_fund = faucet_client.fund_account(alice.address(), 100_000_000)
+    bob_fund = faucet_client.fund_account(bob.address(), 100_000_000)
     await asyncio.gather(*[alice_fund, bob_fund])
 
     a_alice_balance = rest_client.account_balance(alice.address())

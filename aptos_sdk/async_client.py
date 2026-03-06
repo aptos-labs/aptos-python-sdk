@@ -34,7 +34,7 @@ class ClientConfig:
 
     expiration_ttl: int = 600
     gas_unit_price: int = 100
-    max_gas_amount: int = 100_000
+    max_gas_amount: int = 1_000_000
     transaction_wait_in_seconds: int = 20
     http2: bool = True
     api_key: Optional[str] = None

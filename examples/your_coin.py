@@ -90,8 +90,8 @@ async def main(moon_coin_path: str):
     rest_client = CoinClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
-    alice_fund = faucet_client.fund_account(alice.address(), 20_000_000)
-    bob_fund = faucet_client.fund_account(bob.address(), 20_000_000)
+    alice_fund = faucet_client.fund_account(alice.address(), 200_000_000)
+    bob_fund = faucet_client.fund_account(bob.address(), 200_000_000)
     await asyncio.gather(*[alice_fund, bob_fund])
 
     if AptosCLIWrapper.does_cli_exist():

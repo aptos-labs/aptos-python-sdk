@@ -29,7 +29,7 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # :!:>section_3
-    alice_fund = faucet_client.fund_account(alice.address(), 100_000_000)
+    alice_fund = faucet_client.fund_account(alice.address(), 1_000_000_000)
     bob_fund = faucet_client.fund_account(bob.address(), 1)  # <:!:section_3
     await asyncio.gather(*[alice_fund, bob_fund])
 
@@ -88,8 +88,12 @@ async def main():
         """
 
         variables = {"account": f"{bob.address()}"}
-        data = await indexer_client.query(query, variables)
-        assert len(data["data"]["account_transactions"]) > 0
+        for i in range(20):
+            data = await indexer_client.query(query, variables)
+            if "data" in data and len(data["data"]["account_transactions"]) > 0:
+                break
+            await asyncio.sleep(1)
+        assert "data" in data and len(data["data"]["account_transactions"]) > 0
 
     await rest_client.close()
 

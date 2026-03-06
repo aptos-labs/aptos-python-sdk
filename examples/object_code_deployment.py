@@ -22,7 +22,7 @@ async def main(package_dir):
     print("\n=== Publisher Address ===")
     print(f"Alice: {alice.address()}")
 
-    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.fund_account(alice.address(), 1_000_000_000)
 
     print("\n=== Initial Coin Balance ===")
     alice_balance = await rest_client.account_balance(alice.address())
