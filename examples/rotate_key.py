@@ -132,7 +132,7 @@ async def main():
     bob = Account.generate()
 
     # Fund Alice's account, since we don't use Bob's
-    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.fund_account(alice.address(), 1_000_000_000)
 
     # Display formatted account info
     print(

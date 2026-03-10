@@ -26,8 +26,8 @@ async def main():
     print(f"Carol: {carol.address()}")
     print(f"David: {david.address()}")
 
-    alice_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    bob_fund = faucet_client.fund_account(bob.address(), 100_000_000)
+    alice_fund = faucet_client.fund_account(alice.address(), 1_000_000_000)
+    bob_fund = faucet_client.fund_account(bob.address(), 1_000_000_000)
     carol_fund = faucet_client.fund_account(carol.address(), 1)
     david_fund = faucet_client.fund_account(david.address(), 1)
     await asyncio.gather(*[alice_fund, bob_fund, carol_fund, david_fund])

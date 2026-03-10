@@ -30,7 +30,7 @@ async def main():
     print(f"Alice: {alice.address()}")
     print(f"Bob: {bob.address()}")
 
-    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.fund_account(alice.address(), 1_000_000_000)
 
     payload = EntryFunction.natural(
         "0x1::coin",
