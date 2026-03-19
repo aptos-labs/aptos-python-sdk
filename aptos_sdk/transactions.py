@@ -25,6 +25,7 @@ from .authenticator import (
     SingleSenderAuthenticator,
 )
 from .bcs import Deserializable, Deserializer, Serializable, Serializer
+from .errors import DeserializationError, InvalidTypeError, SerializationError
 from .type_tag import StructTag, TypeTag
 
 
@@ -85,7 +86,7 @@ class RawTransactionWithData(RawTransactionInternal, Protocol):
         elif enum_type == 1:
             return FeePayerRawTransaction.deserialize_inner(deserializer)
         else:
-            raise Exception("Unhandled RawTransaction enum type")
+            raise DeserializationError("Unhandled RawTransaction enum type")
 
 
 class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
@@ -193,7 +194,9 @@ class MultiAgentRawTransaction(RawTransactionWithData):
     def deserialize(deserializer: Deserializer) -> MultiAgentRawTransaction:
         raw_txn_type = deserializer.u8()
         if raw_txn_type != 0:
-            raise Exception(f"Enum type mismatch, expected 0 got {raw_txn_type}")
+            raise DeserializationError(
+                f"Enum type mismatch, expected 0 got {raw_txn_type}"
+            )
 
         return MultiAgentRawTransaction.deserialize_inner(deserializer)
 
@@ -232,7 +235,9 @@ class FeePayerRawTransaction(RawTransactionWithData):
     def deserialize(deserializer: Deserializer) -> FeePayerRawTransaction:
         raw_txn_type = deserializer.u8()
         if raw_txn_type != 1:
-            raise Exception(f"Enum type mismatch, expected 1 got {raw_txn_type}")
+            raise DeserializationError(
+                f"Enum type mismatch, expected 1 got {raw_txn_type}"
+            )
 
         return FeePayerRawTransaction.deserialize_inner(deserializer)
 
@@ -265,7 +270,7 @@ class TransactionPayload:
         elif isinstance(payload, EntryFunction):
             self.variant = TransactionPayload.SCRIPT_FUNCTION
         else:
-            raise Exception("Invalid type")
+            raise InvalidTypeError("Invalid type")
         self.value = payload
 
     def __eq__(self, other: object) -> bool:
@@ -287,7 +292,7 @@ class TransactionPayload:
         elif variant == TransactionPayload.SCRIPT_FUNCTION:
             payload = EntryFunction.deserialize(deserializer)
         else:
-            raise Exception("Invalid type")
+            raise InvalidTypeError("Invalid type")
 
         return TransactionPayload(payload)
 
@@ -359,7 +364,7 @@ class ScriptArgument:
 
     def __init__(self, variant: int, value: Any):
         if variant < 0 or variant > 5:
-            raise Exception("Invalid variant")
+            raise InvalidTypeError("Invalid variant")
 
         self.variant = variant
         self.value = value
@@ -386,7 +391,7 @@ class ScriptArgument:
         elif variant == ScriptArgument.BOOL:
             value = deserializer.bool()
         else:
-            raise Exception("Invalid variant")
+            raise DeserializationError("Invalid variant")
         return ScriptArgument(variant, value)
 
     def serialize(self, serializer: Serializer) -> None:
@@ -410,7 +415,7 @@ class ScriptArgument:
         elif self.variant == ScriptArgument.BOOL:
             serializer.bool(self.value)
         else:
-            raise Exception(f"Invalid ScriptArgument variant {self.variant}")
+            raise SerializationError(f"Invalid ScriptArgument variant {self.variant}")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ScriptArgument):
