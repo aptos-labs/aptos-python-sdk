@@ -128,7 +128,7 @@ class AccountSequenceNumber:
         while check(self):
             ledger_time = await self._client.current_timestamp()
             if ledger_time - start_time > self._maximum_wait_time:
-                logging.warn(
+                logging.warning(
                     f"Waited over {self._maximum_wait_time} seconds for a transaction to commit, resyncing {self._account}"
                 )
                 failed = True

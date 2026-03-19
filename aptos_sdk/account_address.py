@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
 from .bcs import Deserializer, Serializer
+from .errors import InvalidKeyError
 
 
 class AuthKeyScheme:
@@ -211,7 +212,7 @@ class AccountAddress:
         elif isinstance(key, asymmetric_crypto_wrapper.MultiPublicKey):
             hasher.update(AuthKeyScheme.MultiKey)
         else:
-            raise Exception("Unsupported asymmetric_crypto.PublicKey key type.")
+            raise InvalidKeyError("Unsupported asymmetric_crypto.PublicKey key type.")
 
         return AccountAddress(hasher.digest())
 

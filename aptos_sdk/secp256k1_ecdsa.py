@@ -11,6 +11,7 @@ from ecdsa import SECP256k1, SigningKey, VerifyingKey, util
 
 from . import asymmetric_crypto
 from .bcs import Deserializer, Serializer
+from .errors import InvalidKeyError, InvalidSignatureError
 
 
 class PrivateKey(asymmetric_crypto.PrivateKey):
@@ -42,7 +43,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
             value, asymmetric_crypto.PrivateKeyVariant.Secp256k1, strict
         )
         if len(parsed_value.hex()) != PrivateKey.LENGTH * 2:
-            raise Exception("Length mismatch")
+            raise InvalidKeyError("Length mismatch")
         return PrivateKey(
             SigningKey.from_string(parsed_value, SECP256k1, hashlib.sha3_256)
         )
@@ -89,7 +90,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def deserialize(deserializer: Deserializer) -> PrivateKey:
         key = deserializer.to_bytes()
         if len(key) != PrivateKey.LENGTH:
-            raise Exception("Length mismatch")
+            raise InvalidKeyError("Length mismatch")
 
         return PrivateKey(SigningKey.from_string(key, SECP256k1, hashlib.sha3_256))
 
@@ -123,7 +124,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             len(value) != PublicKey.LENGTH * 2
             and len(value) != PublicKey.LENGTH_WITH_PREFIX_LENGTH * 2
         ):
-            raise Exception("Length mismatch")
+            raise InvalidKeyError("Length mismatch")
         return PublicKey(
             VerifyingKey.from_string(bytes.fromhex(value), SECP256k1, hashlib.sha3_256)
         )
@@ -150,7 +151,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             if len(key) == PublicKey.LENGTH_WITH_PREFIX_LENGTH:
                 key = key[1:]
             else:
-                raise Exception("Length mismatch")
+                raise InvalidKeyError("Length mismatch")
 
         return PublicKey(VerifyingKey.from_string(key, SECP256k1, hashlib.sha3_256))
 
@@ -182,7 +183,7 @@ class Signature(asymmetric_crypto.Signature):
         if value[0:2] == "0x":
             value = value[2:]
         if len(value) != Signature.LENGTH * 2:
-            raise Exception("Length mismatch")
+            raise InvalidSignatureError("Length mismatch")
         return Signature(bytes.fromhex(value))
 
     def data(self) -> bytes:
@@ -192,7 +193,7 @@ class Signature(asymmetric_crypto.Signature):
     def deserialize(deserializer: Deserializer) -> Signature:
         signature = deserializer.to_bytes()
         if len(signature) != Signature.LENGTH:
-            raise Exception("Length mismatch")
+            raise InvalidSignatureError("Length mismatch")
 
         return Signature(signature)
 
