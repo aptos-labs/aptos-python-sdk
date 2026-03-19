@@ -36,12 +36,20 @@ class Account:
 
     @staticmethod
     def generate() -> Account:
+        """Generate a new Ed25519 account with a random private key.
+
+        :returns: A new Account with a freshly generated Ed25519 key pair.
+        """
         private_key = ed25519.PrivateKey.random()
         account_address = AccountAddress.from_key(private_key.public_key())
         return Account(account_address, private_key)
 
     @staticmethod
     def generate_secp256k1_ecdsa() -> Account:
+        """Generate a new Secp256k1 ECDSA account with a random private key.
+
+        :returns: A new Account with a freshly generated Secp256k1 key pair.
+        """
         private_key = secp256k1_ecdsa.PrivateKey.random()
         public_key = asymmetric_crypto_wrapper.PublicKey(private_key.public_key())
         account_address = AccountAddress.from_key(public_key)
@@ -49,12 +57,22 @@ class Account:
 
     @staticmethod
     def load_key(key: str) -> Account:
+        """Create an Account from an Ed25519 private key hex string.
+
+        :param key: Hex-encoded private key string.
+        :returns: An Account derived from the given private key.
+        """
         private_key = ed25519.PrivateKey.from_str(key)
         account_address = AccountAddress.from_key(private_key.public_key())
         return Account(account_address, private_key)
 
     @staticmethod
     def load(path: str) -> Account:
+        """Load an Account from a JSON file containing ``account_address`` and ``private_key``.
+
+        :param path: Path to the JSON file.
+        :returns: The deserialized Account.
+        """
         with open(path) as file:
             data = json.load(file)
         return Account(
@@ -62,7 +80,11 @@ class Account:
             ed25519.PrivateKey.from_str(data["private_key"]),
         )
 
-    def store(self, path: str):
+    def store(self, path: str) -> None:
+        """Store the Account as a JSON file.
+
+        :param path: Path to write the JSON file.
+        """
         data = {
             "account_address": str(self.account_address),
             "private_key": str(self.private_key),
@@ -80,16 +102,31 @@ class Account:
         return str(AccountAddress.from_key(self.private_key.public_key()))
 
     def sign(self, data: bytes) -> asymmetric_crypto.Signature:
+        """Sign arbitrary data with this account's private key.
+
+        :param data: The bytes to sign.
+        :returns: The cryptographic signature.
+        """
         return self.private_key.sign(data)
 
     def sign_simulated_transaction(
         self, transaction: RawTransactionInternal
     ) -> AccountAuthenticator:
+        """Create a simulated transaction authenticator (zero-filled signature).
+
+        :param transaction: The raw transaction to create a simulated signature for.
+        :returns: An AccountAuthenticator suitable for transaction simulation.
+        """
         return transaction.sign_simulated(self.private_key.public_key())
 
     def sign_transaction(
         self, transaction: RawTransactionInternal
     ) -> AccountAuthenticator:
+        """Sign a transaction with this account's private key.
+
+        :param transaction: The raw transaction to sign.
+        :returns: An AccountAuthenticator containing the real signature.
+        """
         return transaction.sign(self.private_key)
 
     def public_key(self) -> asymmetric_crypto.PublicKey:

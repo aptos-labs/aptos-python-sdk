@@ -12,6 +12,7 @@ from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.account_sequence_number import AccountSequenceNumber
 from aptos_sdk.async_client import RestClient
 from aptos_sdk.bcs import Serializer
+from aptos_sdk.errors import TransactionWorkerError
 from aptos_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
@@ -137,9 +138,9 @@ class TransactionWorker:
     def stop(self):
         """Stop the tasks for managing transactions"""
         if not self._started:
-            raise Exception("Start not yet called")
+            raise TransactionWorkerError("Start not yet called")
         if self._stopped:
-            raise Exception("Already stopped")
+            raise TransactionWorkerError("Already stopped")
         self._stopped = True
 
         self._submit_transactions_task.cancel()
@@ -148,7 +149,7 @@ class TransactionWorker:
     def start(self):
         """Begin the tasks for managing transactions"""
         if self._started:
-            raise Exception("Already started")
+            raise TransactionWorkerError("Already started")
         self._started = True
 
         self._submit_transactions_task = asyncio.create_task(

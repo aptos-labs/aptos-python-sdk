@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
 
 from . import asymmetric_crypto
 from .bcs import Deserializer, Serializer
+from .errors import InvalidKeyError, InvalidSignatureError
 
 _SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
@@ -51,10 +52,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
             value, asymmetric_crypto.PrivateKeyVariant.Secp256k1, strict
         )
         if len(parsed_value) != PrivateKey.LENGTH:
-            raise Exception("Length mismatch")
+            raise InvalidKeyError("Length mismatch")
         private_int = int.from_bytes(parsed_value, "big")
         if not (1 <= private_int < _SECP256K1_ORDER):
-            raise ValueError("Invalid Secp256k1 private key scalar")
+            raise InvalidKeyError("Invalid Secp256k1 private key scalar")
         return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     @staticmethod
@@ -100,10 +101,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def deserialize(deserializer: Deserializer) -> PrivateKey:
         key = deserializer.to_bytes()
         if len(key) != PrivateKey.LENGTH:
-            raise Exception("Length mismatch")
+            raise InvalidKeyError("Length mismatch")
         private_int = int.from_bytes(key, "big")
         if not (1 <= private_int < _SECP256K1_ORDER):
-            raise ValueError("Invalid Secp256k1 private key scalar")
+            raise InvalidKeyError("Invalid Secp256k1 private key scalar")
         return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     def serialize(self, serializer: Serializer):
@@ -141,12 +142,12 @@ class PublicKey(asymmetric_crypto.PublicKey):
             len(value) != PublicKey.LENGTH * 2
             and len(value) != PublicKey.LENGTH_WITH_PREFIX_LENGTH * 2
         ):
-            raise Exception("Length mismatch")
+            raise InvalidKeyError("Length mismatch")
         raw = bytes.fromhex(value)
         if len(raw) == PublicKey.LENGTH:
             raw = b"\x04" + raw
         elif raw[0] != 0x04:
-            raise Exception("Invalid uncompressed point prefix")
+            raise InvalidKeyError("Invalid uncompressed point prefix")
         return PublicKey(
             ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), raw)
         )
@@ -184,10 +185,10 @@ class PublicKey(asymmetric_crypto.PublicKey):
         key = deserializer.to_bytes()
         if len(key) == PublicKey.LENGTH_WITH_PREFIX_LENGTH:
             if key[0] != 0x04:
-                raise Exception("Invalid uncompressed point prefix")
+                raise InvalidKeyError("Invalid uncompressed point prefix")
             key = key[1:]
         elif len(key) != PublicKey.LENGTH:
-            raise Exception("Length mismatch")
+            raise InvalidKeyError("Length mismatch")
         return PublicKey(
             ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), b"\x04" + key)
         )
@@ -220,7 +221,7 @@ class Signature(asymmetric_crypto.Signature):
         if value[0:2] == "0x":
             value = value[2:]
         if len(value) != Signature.LENGTH * 2:
-            raise Exception("Length mismatch")
+            raise InvalidSignatureError("Length mismatch")
         return Signature(bytes.fromhex(value))
 
     def data(self) -> bytes:
@@ -230,7 +231,7 @@ class Signature(asymmetric_crypto.Signature):
     def deserialize(deserializer: Deserializer) -> Signature:
         signature = deserializer.to_bytes()
         if len(signature) != Signature.LENGTH:
-            raise Exception("Length mismatch")
+            raise InvalidSignatureError("Length mismatch")
 
         return Signature(signature)
 
