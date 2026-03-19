@@ -35,11 +35,9 @@ jobs:
         run: make test-spec
         shell: bash
 
-      - name: Upload coverage report
+      - name: Upload to Codecov
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: codecov/codecov-action@v5
         with:
-          name: coverage-report
-          path: |
-            coverage.xml
-            htmlcov/
+          files: coverage.xml
+          fail_ci_if_error: false
