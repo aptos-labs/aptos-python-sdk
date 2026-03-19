@@ -35,6 +35,26 @@ mypy = "^1.16.0"
 mypy-extensions = "^1.1.0"
 types-six = "^1.17.0.20250515"
 
+[tool.coverage.run]
+source = ["aptos_sdk"]
+omit = [
+    "aptos_sdk/**/test_*.py",
+    "aptos_sdk/**/*_test.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "class Test\\(",
+    "def test_",
+    "raise NotImplementedError",
+]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
