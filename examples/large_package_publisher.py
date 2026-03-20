@@ -16,14 +16,20 @@ import aptos_sdk.cli as aptos_sdk_cli
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
-from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
+from aptos_sdk.async_client import FaucetClient, RestClient
 from aptos_sdk.package_publisher import MODULE_ADDRESS, PackagePublisher
 
-from .common import API_KEY, APTOS_CORE_PATH, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import (
+    APTOS_CORE_PATH,
+    CLIENT_CONFIG,
+    FAUCET_AUTH_TOKEN,
+    FAUCET_URL,
+    NODE_URL,
+)
 
 
 async def publish_large_packages(large_packages_dir) -> AccountAddress:
-    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
+    rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice = Account.generate()
@@ -38,10 +44,7 @@ async def main(
     large_package_example_dir,
     large_packages_account: AccountAddress = MODULE_ADDRESS,
 ):
-    client_config = ClientConfig()
-    client_config.transaction_wait_in_seconds = 120
-    client_config.max_gas_amount = 1_000_000
-    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
+    rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice = Account.generate()
