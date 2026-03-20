@@ -16,9 +16,9 @@ class AuthKeyScheme:
     MultiEd25519: bytes = b"\x01"
     SingleKey: bytes = b"\x02"
     MultiKey: bytes = b"\x03"
-    DeriveObjectAddressFromGuid: bytes = b"\xFD"
-    DeriveObjectAddressFromSeed: bytes = b"\xFE"
-    DeriveResourceAccountAddress: bytes = b"\xFF"
+    DeriveObjectAddressFromGuid: bytes = b"\xfd"
+    DeriveObjectAddressFromSeed: bytes = b"\xfe"
+    DeriveResourceAccountAddress: bytes = b"\xff"
 
 
 class ParseAddressError(Exception):

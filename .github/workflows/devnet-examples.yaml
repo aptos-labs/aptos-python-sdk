@@ -16,7 +16,7 @@ jobs:
       API_KEY: ${{ secrets.DEVNET_API_KEY }}
       FAUCET_AUTH_TOKEN: ${{ secrets.DEVNET_FAUCET_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/python-setup
         with:
