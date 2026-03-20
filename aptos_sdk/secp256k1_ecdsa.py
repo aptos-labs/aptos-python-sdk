@@ -53,6 +53,8 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         if len(parsed_value) != PrivateKey.LENGTH:
             raise Exception("Length mismatch")
         private_int = int.from_bytes(parsed_value, "big")
+        if not (1 <= private_int < _SECP256K1_ORDER):
+            raise ValueError("Invalid Secp256k1 private key scalar")
         return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     @staticmethod
@@ -100,6 +102,8 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         if len(key) != PrivateKey.LENGTH:
             raise Exception("Length mismatch")
         private_int = int.from_bytes(key, "big")
+        if not (1 <= private_int < _SECP256K1_ORDER):
+            raise ValueError("Invalid Secp256k1 private key scalar")
         return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     def serialize(self, serializer: Serializer):
@@ -141,6 +145,8 @@ class PublicKey(asymmetric_crypto.PublicKey):
         raw = bytes.fromhex(value)
         if len(raw) == PublicKey.LENGTH:
             raw = b"\x04" + raw
+        elif raw[0] != 0x04:
+            raise Exception("Invalid uncompressed point prefix")
         return PublicKey(
             ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), raw)
         )
@@ -156,8 +162,12 @@ class PublicKey(asymmetric_crypto.PublicKey):
         try:
             signature = cast(Signature, signature)
             sig_data = signature.data()
+            if len(sig_data) != Signature.LENGTH:
+                return False
             r = int.from_bytes(sig_data[:32], "big")
             s = int.from_bytes(sig_data[32:], "big")
+            if r == 0 or s == 0:
+                return False
             if s > (_SECP256K1_ORDER // 2):
                 return False
             der_sig = encode_dss_signature(r, s)

@@ -4,7 +4,7 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 - **[Breaking Change]**: Minimum supported Python is now 3.10 (required for patched dev tooling and alignment with Python 3.9 end-of-life).
-- **[Breaking Change]**: Replace `python-ecdsa` (CVE-2024-23342, pure-Python) with `cryptography` (OpenSSL-backed) for secp256k1 ECDSA operations. The public API is unchanged.
+- **[Breaking Change]**: Replace `python-ecdsa` (CVE-2024-23342, pure-Python) with `cryptography` (OpenSSL-backed) for secp256k1 ECDSA operations. The public API is unchanged. Note: signing now uses OpenSSL's randomized nonce instead of RFC 6979 deterministic nonce — identical (key, message) pairs will produce different valid signatures on each call. `verify()` now rejects high-S signatures to match Aptos on-chain behaviour.
 - Update dependencies for vulnerability fixes (`aiohttp`, `urllib3`, `PyNaCl`, `black`).
 - Apply Black 26 formatting across `aptos_sdk`, `examples`, and `features` stubs (required by CI `make fmt` gate).
 - CI: pin Python 3.12 in the composite setup action; use `actions/checkout@v5` and `actions/setup-python@v5`.
