@@ -98,7 +98,7 @@ class WorkerContainer:
     _process: Process
 
     def __init__(self, node_url: str, account: Account, recipient: AccountAddress):
-        (self._conn, conn) = Pipe()
+        self._conn, conn = Pipe()
         self._process = Process(
             target=Worker.run, args=(conn, node_url, account, recipient)
         )

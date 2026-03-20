@@ -131,7 +131,7 @@ class RotationProofChallenge:
 
 class Test(unittest.TestCase):
     def test_load_and_store(self):
-        (file, path) = tempfile.mkstemp()
+        file, path = tempfile.mkstemp()
         start = Account.generate()
         start.store(path)
         load = Account.load(path)

@@ -5,6 +5,8 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 ## Unreleased
 - **[Breaking Change]**: Minimum supported Python is now 3.10 (required for patched dev tooling and alignment with Python 3.9 end-of-life).
 - Update dependencies for vulnerability fixes (`aiohttp`, `urllib3`, `PyNaCl`, `black`; `python-ecdsa` remains at latest PyPI release—CVE-2024-23342 has no upstream fix).
+- Apply Black 26 formatting across `aptos_sdk`, `examples`, and `features` stubs (required by CI `make fmt` gate).
+- CI: pin Python 3.12 in the composite setup action; use `actions/checkout@v5` and `actions/setup-python@v5`.
 - Increase default `max_gas_amount` from 100,000 to 1,000,000
 
 ## 0.11.0

@@ -433,7 +433,7 @@ class AptosTokenClient:
         uri: str,
         properties: PropertyMap,
     ) -> TransactionPayload:
-        (property_names, property_types, property_values) = properties.to_tuple()
+        property_names, property_types, property_values = properties.to_tuple()
         transaction_arguments = [
             TransactionArgument(collection, Serializer.str),
             TransactionArgument(description, Serializer.str),
@@ -487,7 +487,7 @@ class AptosTokenClient:
         properties: PropertyMap,
         soul_bound_to: AccountAddress,
     ):
-        (property_names, property_types, property_values) = properties.to_tuple()
+        property_names, property_types, property_values = properties.to_tuple()
         transaction_arguments = [
             TransactionArgument(collection, Serializer.str),
             TransactionArgument(description, Serializer.str),

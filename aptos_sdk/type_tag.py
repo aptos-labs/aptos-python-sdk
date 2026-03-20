@@ -325,7 +325,7 @@ class StructTag(Deserializable, Serializable):
                 continue
 
             if letter == "<":
-                (inner_tags, index) = StructTag._from_str_internal(type_tag, index)
+                inner_tags, index = StructTag._from_str_internal(type_tag, index)
             elif letter == ",":
                 split = name.split("::")
                 tag = TypeTag(

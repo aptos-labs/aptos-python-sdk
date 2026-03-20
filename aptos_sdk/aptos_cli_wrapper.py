@@ -29,7 +29,7 @@ class AptosCLIWrapper:
 
     @staticmethod
     def prepare_named_addresses(
-        named_addresses: Dict[str, AccountAddress]
+        named_addresses: Dict[str, AccountAddress],
     ) -> List[str]:
         total_names = len(named_addresses)
         args: List[str] = []

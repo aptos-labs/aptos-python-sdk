@@ -19,10 +19,10 @@ jobs:
       APTOS_TEST_USE_EXISTING_NETWORK: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Checkout aptos-core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: aptos-labs/aptos-core
           path: './aptos-core'
