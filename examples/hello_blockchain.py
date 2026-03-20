@@ -21,12 +21,7 @@ from typing import Any, Dict, Optional
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
-from aptos_sdk.async_client import (
-    ClientConfig,
-    FaucetClient,
-    ResourceNotFound,
-    RestClient,
-)
+from aptos_sdk.async_client import FaucetClient, ResourceNotFound, RestClient
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.package_publisher import PackagePublisher
 from aptos_sdk.transactions import (
@@ -35,7 +30,7 @@ from aptos_sdk.transactions import (
     TransactionPayload,
 )
 
-from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
+from .common import CLIENT_CONFIG, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 
 class HelloBlockchainClient(RestClient):
@@ -69,7 +64,7 @@ class HelloBlockchainClient(RestClient):
 
 async def publish_contract(package_dir: str) -> AccountAddress:
     contract_publisher = Account.generate()
-    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
+    rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
     await faucet_client.fund_account(contract_publisher.address(), 100_000_000)
 
