@@ -16,9 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
 from . import asymmetric_crypto
 from .bcs import Deserializer, Serializer
 
-_SECP256K1_ORDER = (
-    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-)
+_SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 class PrivateKey(asymmetric_crypto.PrivateKey):
@@ -178,9 +176,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             else:
                 raise Exception("Length mismatch")
         return PublicKey(
-            ec.EllipticCurvePublicKey.from_encoded_point(
-                ec.SECP256K1(), b"\x04" + key
-            )
+            ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), b"\x04" + key)
         )
 
     def serialize(self, serializer: Serializer):
