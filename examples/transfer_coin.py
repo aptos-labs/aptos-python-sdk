@@ -4,14 +4,14 @@
 import asyncio
 
 from aptos_sdk.account import Account
-from aptos_sdk.async_client import ClientConfig, FaucetClient, IndexerClient, RestClient
+from aptos_sdk.async_client import FaucetClient, IndexerClient, RestClient
 
-from .common import API_KEY, FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, NODE_URL
+from .common import CLIENT_CONFIG, FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, NODE_URL
 
 
 async def main():
     # :!:>section_1
-    rest_client = RestClient(NODE_URL, client_config=ClientConfig(api_key=API_KEY))
+    rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
     faucet_client = FaucetClient(
         FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
     )  # <:!:section_1
@@ -75,14 +75,6 @@ async def main():
                 where: {account_address: {_eq: $account}}
               ) {
                 transaction_version
-                coin_activities {
-                  amount
-                  activity_type
-                  coin_type
-                  entry_function_id_str
-                  owner_address
-                  transaction_timestamp
-                }
               }
             }
         """
