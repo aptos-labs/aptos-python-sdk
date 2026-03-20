@@ -7,7 +7,7 @@ Aptos Python SDK — a pure Python library for interacting with the Aptos blockc
 ### Prerequisites
 
 - **Poetry** must be available on PATH at `/home/ubuntu/.local/bin/poetry`. The update script handles installation if missing.
-- **Python 3.9+** is required (Python 3.12 is pre-installed on the VM).
+- **Python 3.10+** is required (Python 3.12 is pre-installed on the VM).
 
 ### Common commands
 

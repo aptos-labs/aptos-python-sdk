@@ -3,7 +3,8 @@
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
 ## Unreleased
-- Update dependencies for vulnerability fixes
+- **[Breaking Change]**: Minimum supported Python is now 3.10 (required for patched dev tooling and alignment with Python 3.9 end-of-life).
+- Update dependencies for vulnerability fixes (`aiohttp`, `urllib3`, `PyNaCl`, `black`; `python-ecdsa` remains at latest PyPI release—CVE-2024-23342 has no upstream fix).
 - Increase default `max_gas_amount` from 100,000 to 1,000,000
 
 ## 0.11.0
