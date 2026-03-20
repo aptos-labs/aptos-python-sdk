@@ -158,6 +158,8 @@ class PublicKey(asymmetric_crypto.PublicKey):
             sig_data = signature.data()
             r = int.from_bytes(sig_data[:32], "big")
             s = int.from_bytes(sig_data[32:], "big")
+            if s > (_SECP256K1_ORDER // 2):
+                return False
             der_sig = encode_dss_signature(r, s)
             self.key.verify(der_sig, data, ec.ECDSA(hashes.SHA3_256()))
         except Exception:
@@ -307,3 +309,28 @@ class Test(unittest.TestCase):
         signature.serialize(ser)
         ser_signature = Signature.deserialize(Deserializer(ser.output()))
         self.assertEqual(signature, ser_signature)
+
+    def test_signatures_are_low_s(self):
+        """All signatures must be low-S normalized per Aptos requirements."""
+        half_n = _SECP256K1_ORDER // 2
+        private_key = PrivateKey.random()
+        for _ in range(50):
+            sig = private_key.sign(b"low-s check")
+            s = int.from_bytes(sig.data()[32:], "big")
+            self.assertLessEqual(s, half_n)
+
+    def test_high_s_signature_is_rejected_by_verify(self):
+        """A high-S variant of a valid signature must fail Aptos-style verification."""
+        private_key = PrivateKey.random()
+        public_key = private_key.public_key()
+        data = b"malleability check"
+
+        sig = private_key.sign(data)
+        self.assertTrue(public_key.verify(data, sig))
+
+        sig_bytes = sig.data()
+        r = int.from_bytes(sig_bytes[:32], "big")
+        low_s = int.from_bytes(sig_bytes[32:], "big")
+        high_s = _SECP256K1_ORDER - low_s
+        flipped = Signature(r.to_bytes(32, "big") + high_s.to_bytes(32, "big"))
+        self.assertFalse(public_key.verify(data, flipped))
