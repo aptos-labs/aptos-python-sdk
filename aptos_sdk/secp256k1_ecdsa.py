@@ -50,7 +50,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         parsed_value = PrivateKey.parse_hex_input(
             value, asymmetric_crypto.PrivateKeyVariant.Secp256k1, strict
         )
-        if len(parsed_value.hex()) != PrivateKey.LENGTH * 2:
+        if len(parsed_value) != PrivateKey.LENGTH:
             raise Exception("Length mismatch")
         private_int = int.from_bytes(parsed_value, "big")
         return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
@@ -170,11 +170,12 @@ class PublicKey(asymmetric_crypto.PublicKey):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> PublicKey:
         key = deserializer.to_bytes()
-        if len(key) != PublicKey.LENGTH:
-            if len(key) == PublicKey.LENGTH_WITH_PREFIX_LENGTH:
-                key = key[1:]
-            else:
-                raise Exception("Length mismatch")
+        if len(key) == PublicKey.LENGTH_WITH_PREFIX_LENGTH:
+            if key[0] != 0x04:
+                raise Exception("Invalid uncompressed point prefix")
+            key = key[1:]
+        elif len(key) != PublicKey.LENGTH:
+            raise Exception("Length mismatch")
         return PublicKey(
             ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), b"\x04" + key)
         )
