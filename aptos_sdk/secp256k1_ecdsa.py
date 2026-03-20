@@ -3,28 +3,39 @@
 
 from __future__ import annotations
 
-import hashlib
 import unittest
 from typing import cast
 
-from ecdsa import SECP256k1, SigningKey, VerifyingKey, util
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import (
+    decode_dss_signature,
+    encode_dss_signature,
+)
 
 from . import asymmetric_crypto
 from .bcs import Deserializer, Serializer
+
+_SECP256K1_ORDER = (
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+)
 
 
 class PrivateKey(asymmetric_crypto.PrivateKey):
     LENGTH: int = 32
 
-    key: SigningKey
+    key: ec.EllipticCurvePrivateKey
 
-    def __init__(self, key: SigningKey):
+    def __init__(self, key: ec.EllipticCurvePrivateKey):
         self.key = key
 
     def __eq__(self, other: object):
         if not isinstance(other, PrivateKey):
             return NotImplemented
-        return self.key == other.key
+        return (
+            self.key.private_numbers().private_value
+            == other.key.private_numbers().private_value
+        )
 
     def __str__(self):
         return self.aip80()
@@ -43,9 +54,8 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         )
         if len(parsed_value.hex()) != PrivateKey.LENGTH * 2:
             raise Exception("Length mismatch")
-        return PrivateKey(
-            SigningKey.from_string(parsed_value, SECP256k1, hashlib.sha3_256)
-        )
+        private_int = int.from_bytes(parsed_value, "big")
+        return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     @staticmethod
     def from_str(value: str, strict: bool | None = None) -> PrivateKey:
@@ -59,7 +69,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         return PrivateKey.from_hex(value, strict)
 
     def hex(self) -> str:
-        return f"0x{self.key.to_string().hex()}"
+        raw = self.key.private_numbers().private_value.to_bytes(
+            PrivateKey.LENGTH, "big"
+        )
+        return f"0x{raw.hex()}"
 
     def aip80(self) -> str:
         return PrivateKey.format_private_key(
@@ -67,49 +80,52 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         )
 
     def public_key(self) -> PublicKey:
-        return PublicKey(self.key.verifying_key)
+        return PublicKey(self.key.public_key())
 
     @staticmethod
     def random() -> PrivateKey:
-        return PrivateKey(
-            SigningKey.generate(curve=SECP256k1, hashfunc=hashlib.sha3_256)
-        )
+        return PrivateKey(ec.generate_private_key(ec.SECP256K1()))
 
     def sign(self, data: bytes) -> Signature:
-        sig = self.key.sign_deterministic(data, hashfunc=hashlib.sha3_256)
-        n = SECP256k1.generator.order()
-        r, s = util.sigdecode_string(sig, n)
-        # The signature is valid for both s and -s, normalization ensures that only s < n // 2 is valid
+        der_sig = self.key.sign(data, ec.ECDSA(hashes.SHA3_256()))
+        r, s = decode_dss_signature(der_sig)
+        # Normalize to low-S: only s < n // 2 is valid
+        n = _SECP256K1_ORDER
         if s > (n // 2):
-            mod_s = (s * -1) % n
-            sig = util.sigencode_string(r, mod_s, n)
-        return Signature(sig)
+            s = n - s
+        sig_bytes = r.to_bytes(32, "big") + s.to_bytes(32, "big")
+        return Signature(sig_bytes)
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> PrivateKey:
         key = deserializer.to_bytes()
         if len(key) != PrivateKey.LENGTH:
             raise Exception("Length mismatch")
-
-        return PrivateKey(SigningKey.from_string(key, SECP256k1, hashlib.sha3_256))
+        private_int = int.from_bytes(key, "big")
+        return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     def serialize(self, serializer: Serializer):
-        serializer.to_bytes(self.key.to_string())
+        raw = self.key.private_numbers().private_value.to_bytes(
+            PrivateKey.LENGTH, "big"
+        )
+        serializer.to_bytes(raw)
 
 
 class PublicKey(asymmetric_crypto.PublicKey):
     LENGTH: int = 64
     LENGTH_WITH_PREFIX_LENGTH: int = 65
 
-    key: VerifyingKey
+    key: ec.EllipticCurvePublicKey
 
-    def __init__(self, key: VerifyingKey):
+    def __init__(self, key: ec.EllipticCurvePublicKey):
         self.key = key
 
     def __eq__(self, other: object):
         if not isinstance(other, PublicKey):
             return NotImplemented
-        return self.key == other.key
+        self_nums = self.key.public_numbers()
+        other_nums = other.key.public_numbers()
+        return self_nums.x == other_nums.x and self_nums.y == other_nums.y
 
     def __str__(self) -> str:
         return self.hex()
@@ -118,41 +134,54 @@ class PublicKey(asymmetric_crypto.PublicKey):
     def from_str(value: str) -> PublicKey:
         if value[0:2] == "0x":
             value = value[2:]
-        # We are measuring hex values which are twice the length of their binary counterpart.
+        # Hex values are twice the length of their binary counterpart.
         if (
             len(value) != PublicKey.LENGTH * 2
             and len(value) != PublicKey.LENGTH_WITH_PREFIX_LENGTH * 2
         ):
             raise Exception("Length mismatch")
+        raw = bytes.fromhex(value)
+        if len(raw) == PublicKey.LENGTH:
+            raw = b"\x04" + raw
         return PublicKey(
-            VerifyingKey.from_string(bytes.fromhex(value), SECP256k1, hashlib.sha3_256)
+            ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), raw)
         )
 
+    def _raw_bytes(self) -> bytes:
+        nums = self.key.public_numbers()
+        return nums.x.to_bytes(32, "big") + nums.y.to_bytes(32, "big")
+
     def hex(self) -> str:
-        return f"0x04{self.key.to_string().hex()}"
+        return f"0x04{self._raw_bytes().hex()}"
 
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         try:
             signature = cast(Signature, signature)
-            self.key.verify(signature.data(), data)
+            sig_data = signature.data()
+            r = int.from_bytes(sig_data[:32], "big")
+            s = int.from_bytes(sig_data[32:], "big")
+            der_sig = encode_dss_signature(r, s)
+            self.key.verify(der_sig, data, ec.ECDSA(hashes.SHA3_256()))
         except Exception:
             return False
         return True
 
     def to_crypto_bytes(self) -> bytes:
-        return b"\x04" + self.key.to_string()
+        return b"\x04" + self._raw_bytes()
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> PublicKey:
         key = deserializer.to_bytes()
         if len(key) != PublicKey.LENGTH:
-            # Some standards apply an extra byte to represent that this is a 64-byte key
             if len(key) == PublicKey.LENGTH_WITH_PREFIX_LENGTH:
                 key = key[1:]
             else:
                 raise Exception("Length mismatch")
-
-        return PublicKey(VerifyingKey.from_string(key, SECP256k1, hashlib.sha3_256))
+        return PublicKey(
+            ec.EllipticCurvePublicKey.from_encoded_point(
+                ec.SECP256K1(), b"\x04" + key
+            )
+        )
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.to_crypto_bytes())
