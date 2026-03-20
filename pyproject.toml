@@ -16,8 +16,8 @@ keywords = ["web3", "sdk", "aptos", "blockchain"]
 ecdsa = "0.19.1"
 python-graphql-client = "^0.4.3"
 httpx = {extras = ["http2"], version = "^0.28.0"}
-PyNaCl = "^1.5.0"
-python = ">=3.9.0"
+PyNaCl = "^1.6.2"
+python = ">=3.10.0"
 tomli = "^2.2.1"
 typing-extensions = "^4.15.0"
 behave = "^1.2.6"
@@ -26,13 +26,13 @@ h11 = "^0.16.0"
 multidict = "^6.6.4"
 # These below are to fix security vulnerabilities in dependencies
 h2 = "^4.3.0"
-urllib3 = "^2.5.0"
+urllib3 = "^2.6.3"
 requests = "^2.32.5"
-aiohttp = "^3.12.14"
+aiohttp = "^3.13.3"
 
 [tool.poetry.group.dev.dependencies]
 autoflake = "^2.3.1"
-black = "^24.10.0"
+black = "^26.3.1"
 coverage = "^7.6.12"
 flake8 = "^7.2.0"
 isort = "^5.13.2"
