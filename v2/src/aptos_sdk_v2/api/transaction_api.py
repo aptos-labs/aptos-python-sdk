@@ -12,6 +12,8 @@ from ..config import AptosConfig
 from ..crypto.keys import PublicKey
 from ..errors import TransactionFailedError, TransactionTimeoutError
 from ..transactions.payload import (
+    EntryFunction,
+    Script,
     TransactionExecutable,
     TransactionExtraConfig,
     TransactionInnerPayload,
@@ -57,6 +59,7 @@ class TransactionApi:
         The sequence_number is set to 0 (ignored on-chain for orderless txns).
         """
         if replay_protection_nonce is not None:
+            assert isinstance(payload.value, (Script, EntryFunction))
             inner = TransactionInnerPayload(
                 executable=TransactionExecutable(payload.value),
                 extra_config=TransactionExtraConfig(
