@@ -66,7 +66,5 @@ class TestTransfer:
             )
             m.get(NODE, payload={"chain_id": 4})
             m.post(f"{NODE}/transactions", payload={"hash": "0xcustom"})
-            result = await coin_api.transfer(
-                sender, recipient, 500, coin_type="0xdead::my::Coin"
-            )
+            result = await coin_api.transfer(sender, recipient, 500, coin_type="0xdead::my::Coin")
             assert result == "0xcustom"

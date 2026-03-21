@@ -1,0 +1,79 @@
+name: "V2 SDK CI"
+permissions:
+  contents: read
+on:
+  pull_request:
+    paths:
+      - "v2/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "v2/**"
+
+defaults:
+  run:
+    working-directory: v2
+
+jobs:
+  lint-format:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "v2/uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Check formatting
+        run: uv run ruff format --check src/ tests/
+
+      - name: Check linting
+        run: uv run ruff check src/ tests/
+
+      - name: Check types
+        run: uv run mypy src/
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "v2/uv.lock"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run tests with coverage
+        run: uv run pytest tests/unit --cov=aptos_sdk_v2 --cov-report=term-missing --cov-report=xml:coverage.xml
+
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: v2/coverage.xml
+          flags: v2-sdk
+          fail_ci_if_error: false

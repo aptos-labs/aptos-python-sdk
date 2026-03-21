@@ -9,7 +9,7 @@ from aptos_sdk_v2.account.account import Account
 from aptos_sdk_v2.api.http_client import HttpClient
 from aptos_sdk_v2.api.transaction_api import TransactionApi
 from aptos_sdk_v2.config import AptosConfig
-from aptos_sdk_v2.errors import ApiError, TransactionFailedError, TransactionTimeoutError
+from aptos_sdk_v2.errors import TransactionFailedError, TransactionTimeoutError
 from aptos_sdk_v2.transactions.payload import EntryFunction, TransactionPayload
 from aptos_sdk_v2.types.account_address import AccountAddress
 from aptos_sdk_v2.types.type_tag import StructTag, TypeTag
@@ -95,9 +95,7 @@ class TestBuild:
         with aioresponses() as m:
             m.get(f"{NODE}/accounts/{SENDER}", payload={"sequence_number": "0"})
             m.get(NODE, payload={"chain_id": 4})
-            raw = await api.build(
-                SENDER, _dummy_payload(), max_gas_amount=5000, gas_unit_price=200
-            )
+            raw = await api.build(SENDER, _dummy_payload(), max_gas_amount=5000, gas_unit_price=200)
             assert raw.max_gas_amount == 5000
             assert raw.gas_unit_price == 200
 
@@ -105,9 +103,7 @@ class TestBuild:
         with aioresponses() as m:
             m.get(f"{NODE}/accounts/{SENDER}", payload={"sequence_number": "0"})
             m.get(NODE, payload={"chain_id": 4})
-            raw = await api.build(
-                SENDER, _dummy_payload(), expiration_timestamps_secs=9999999
-            )
+            raw = await api.build(SENDER, _dummy_payload(), expiration_timestamps_secs=9999999)
             assert raw.expiration_timestamps_secs == 9999999
 
 
@@ -182,7 +178,6 @@ class TestWaitForTransaction:
 
     async def test_timeout_raises(self, api, monkeypatch):
         call_count = 0
-        original_time = time.time
 
         def fake_time():
             nonlocal call_count

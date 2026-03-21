@@ -32,9 +32,7 @@ class AccountApi:
         resource = await self.get_resource(address, f"0x1::coin::CoinStore<{coin_type}>")
         return int(resource["data"]["coin"]["value"])
 
-    async def get_resource(
-        self, address: AccountAddress, resource_type: str
-    ) -> dict[str, Any]:
+    async def get_resource(self, address: AccountAddress, resource_type: str) -> dict[str, Any]:
         url = f"{self._config.node_url}/accounts/{address}/resource/{resource_type}"
         return await self._client.get(url)
 

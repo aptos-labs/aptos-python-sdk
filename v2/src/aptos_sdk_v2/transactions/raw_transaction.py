@@ -44,13 +44,9 @@ def _sign_internal(keyed_data: bytes, key: PrivateKey) -> AccountAuthenticator:
 def _sign_simulated(keyed_data: bytes, key: PublicKey) -> AccountAuthenticator:
     """Create a zero-signature authenticator for simulation."""
     if isinstance(key, Ed25519PublicKey):
-        return AccountAuthenticator(
-            Ed25519Authenticator(key, Ed25519Signature(b"\x00" * 64))
-        )
+        return AccountAuthenticator(Ed25519Authenticator(key, Ed25519Signature(b"\x00" * 64)))
     elif isinstance(key, Secp256k1PublicKey):
-        return AccountAuthenticator(
-            SingleKeyAuthenticator(key, Secp256k1Signature(b"\x00" * 64))
-        )
+        return AccountAuthenticator(SingleKeyAuthenticator(key, Secp256k1Signature(b"\x00" * 64)))
     raise NotImplementedError(f"Unsupported key type for simulation: {type(key).__name__}")
 
 

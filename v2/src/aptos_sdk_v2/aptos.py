@@ -81,9 +81,7 @@ class Aptos:
     @property
     def fungible_asset(self) -> FungibleAssetApi:
         if self._fungible_asset is None:
-            self._fungible_asset = FungibleAssetApi(
-                self._config, self._client, self.transaction
-            )
+            self._fungible_asset = FungibleAssetApi(self._config, self._client, self.transaction)
         return self._fungible_asset
 
     @property

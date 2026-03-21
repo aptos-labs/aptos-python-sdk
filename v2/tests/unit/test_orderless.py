@@ -58,7 +58,9 @@ class TestBcsOption:
         assert result == 42
 
     def test_option_some_struct(self):
-        addr = AccountAddress.from_str("0x000000000000000000000000000000000000000000000000000000000000dead")
+        addr = AccountAddress.from_str(
+            "0x000000000000000000000000000000000000000000000000000000000000dead"
+        )
         ser = Serializer()
         ser.option(addr, Serializer.struct)
         data = ser.output()
@@ -115,7 +117,9 @@ class TestTransactionExtraConfig:
         assert result.replay_protection_nonce == 12345
 
     def test_multisig_only(self):
-        addr = AccountAddress.from_str("0x000000000000000000000000000000000000000000000000000000000000beef")
+        addr = AccountAddress.from_str(
+            "0x000000000000000000000000000000000000000000000000000000000000beef"
+        )
         config = TransactionExtraConfig(multisig_address=addr)
         ser = Serializer()
         config.serialize(ser)
@@ -125,10 +129,10 @@ class TestTransactionExtraConfig:
         assert result.replay_protection_nonce is None
 
     def test_both_fields(self):
-        addr = AccountAddress.from_str("0x000000000000000000000000000000000000000000000000000000000000cafe")
-        config = TransactionExtraConfig(
-            multisig_address=addr, replay_protection_nonce=999
+        addr = AccountAddress.from_str(
+            "0x000000000000000000000000000000000000000000000000000000000000cafe"
         )
+        config = TransactionExtraConfig(multisig_address=addr, replay_protection_nonce=999)
         ser = Serializer()
         config.serialize(ser)
         result = TransactionExtraConfig.deserialize(Deserializer(ser.output()))
@@ -222,9 +226,7 @@ class TestTransactionApiBuildOrderless:
         payload = TransactionPayload(_transfer_entry_function())
         with aioresponses() as m:
             m.get(NODE, payload={"chain_id": 4})
-            raw = await api.build(
-                SENDER, payload, replay_protection_nonce=12345
-            )
+            raw = await api.build(SENDER, payload, replay_protection_nonce=12345)
         # Sequence number defaults to 0 for orderless
         assert raw.sequence_number == 0
         # Payload should be wrapped in variant 4

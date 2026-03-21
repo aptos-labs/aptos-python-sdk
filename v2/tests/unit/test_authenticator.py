@@ -149,9 +149,7 @@ class TestMultiAgentAuthenticator:
         key1 = Ed25519PrivateKey.generate()
         key2 = Ed25519PrivateKey.generate()
         data = b"verify_me"
-        sender_auth = AccountAuthenticator(
-            Ed25519Authenticator(key1.public_key(), key1.sign(data))
-        )
+        sender_auth = AccountAuthenticator(Ed25519Authenticator(key1.public_key(), key1.sign(data)))
         secondary_auth = AccountAuthenticator(
             Ed25519Authenticator(key2.public_key(), key2.sign(data))
         )
@@ -217,16 +215,10 @@ class TestFeePayerAuthenticator:
         key2 = Ed25519PrivateKey.generate()
         key3 = Ed25519PrivateKey.generate()
         data = b"fee_payer_data"
-        sender_auth = AccountAuthenticator(
-            Ed25519Authenticator(key1.public_key(), key1.sign(data))
-        )
-        sec_auth = AccountAuthenticator(
-            Ed25519Authenticator(key2.public_key(), key2.sign(data))
-        )
+        sender_auth = AccountAuthenticator(Ed25519Authenticator(key1.public_key(), key1.sign(data)))
+        sec_auth = AccountAuthenticator(Ed25519Authenticator(key2.public_key(), key2.sign(data)))
         sec_addr = AccountAddress.from_str_relaxed("0x111")
-        fee_auth = AccountAuthenticator(
-            Ed25519Authenticator(key3.public_key(), key3.sign(data))
-        )
+        fee_auth = AccountAuthenticator(Ed25519Authenticator(key3.public_key(), key3.sign(data)))
         fee_addr = AccountAddress.from_str_relaxed("0xFEE")
         auth = FeePayerAuthenticator(sender_auth, [(sec_addr, sec_auth)], (fee_addr, fee_auth))
         assert auth.verify(data)
@@ -235,9 +227,7 @@ class TestFeePayerAuthenticator:
         key1 = Ed25519PrivateKey.generate()
         key2 = Ed25519PrivateKey.generate()
         data = b"fee_data"
-        sender_auth = AccountAuthenticator(
-            Ed25519Authenticator(key1.public_key(), key1.sign(data))
-        )
+        sender_auth = AccountAuthenticator(Ed25519Authenticator(key1.public_key(), key1.sign(data)))
         fee_auth = AccountAuthenticator(
             Ed25519Authenticator(key2.public_key(), key2.sign(b"wrong"))
         )
@@ -252,9 +242,7 @@ class TestFeePayerAuthenticator:
         sender_auth = AccountAuthenticator(
             Ed25519Authenticator(key1.public_key(), key1.sign(b"wrong"))
         )
-        fee_auth = AccountAuthenticator(
-            Ed25519Authenticator(key2.public_key(), key2.sign(data))
-        )
+        fee_auth = AccountAuthenticator(Ed25519Authenticator(key2.public_key(), key2.sign(data)))
         fee_addr = AccountAddress.from_str_relaxed("0xFEE")
         auth = FeePayerAuthenticator(sender_auth, [], (fee_addr, fee_auth))
         assert not auth.verify(data)
