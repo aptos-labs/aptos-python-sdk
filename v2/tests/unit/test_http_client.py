@@ -4,7 +4,7 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 
-from aptos_sdk_v2.api.http_client import HttpClient, _USER_AGENT
+from aptos_sdk_v2.api.http_client import _USER_AGENT, HttpClient
 from aptos_sdk_v2.config import AptosConfig
 from aptos_sdk_v2.errors import ApiError
 

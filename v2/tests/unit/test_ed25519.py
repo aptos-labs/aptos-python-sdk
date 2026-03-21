@@ -25,9 +25,7 @@ class TestPrivateKey:
         assert key.aip80().startswith("ed25519-priv-0x")
 
     def test_from_hex_bytes(self):
-        raw = bytes.fromhex(
-            "4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
-        )
+        raw = bytes.fromhex("4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe")
         key = Ed25519PrivateKey.from_hex(raw)
         assert key.hex() == "0x4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
 
@@ -135,6 +133,7 @@ class TestEdgeCases:
 
     def test_invalid_private_key_length_from_hex(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         with pytest.raises(InvalidKeyError):
@@ -142,6 +141,7 @@ class TestEdgeCases:
 
     def test_invalid_private_key_length_from_str(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         with pytest.raises(InvalidKeyError):
@@ -149,6 +149,7 @@ class TestEdgeCases:
 
     def test_invalid_public_key_length(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         with pytest.raises(InvalidKeyError):
@@ -160,6 +161,7 @@ class TestEdgeCases:
 
     def test_private_key_deserialize_bad_length(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         ser = Serializer()
@@ -169,6 +171,7 @@ class TestEdgeCases:
 
     def test_public_key_deserialize_bad_length(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         ser = Serializer()

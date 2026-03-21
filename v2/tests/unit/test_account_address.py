@@ -4,7 +4,6 @@ import pytest
 
 from aptos_sdk_v2.types.account_address import AccountAddress
 
-
 # --- Test data ---
 
 ADDR_ZERO_LONG = "0x0000000000000000000000000000000000000000000000000000000000000000"

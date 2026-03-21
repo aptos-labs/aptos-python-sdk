@@ -1,12 +1,9 @@
 """Unit tests for Account class — all key types, construction, signing."""
 
-import pytest
-
 from aptos_sdk_v2 import Account
 from aptos_sdk_v2.crypto.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from aptos_sdk_v2.crypto.mnemonic import generate_mnemonic
 from aptos_sdk_v2.crypto.secp256k1 import Secp256k1PrivateKey
-from aptos_sdk_v2.crypto.single_key import AnyPublicKey
 from aptos_sdk_v2.transactions.authenticator import AccountAuthenticator
 from aptos_sdk_v2.transactions.payload import (
     EntryFunction,

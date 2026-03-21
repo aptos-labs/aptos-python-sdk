@@ -12,8 +12,8 @@ from ..config import AptosConfig
 from ..crypto.keys import PublicKey
 from ..errors import TransactionFailedError, TransactionTimeoutError
 from ..transactions.payload import (
-    TransactionExtraConfig,
     TransactionExecutable,
+    TransactionExtraConfig,
     TransactionInnerPayload,
     TransactionPayload,
 )
@@ -124,9 +124,7 @@ class TransactionApi:
                     await asyncio.sleep(1)
                     continue
                 if not result.get("success", False):
-                    raise TransactionFailedError(
-                        txn_hash, result.get("vm_status", "unknown")
-                    )
+                    raise TransactionFailedError(txn_hash, result.get("vm_status", "unknown"))
                 return result
             except Exception as e:
                 if isinstance(e, TransactionFailedError):
@@ -135,9 +133,7 @@ class TransactionApi:
 
         raise TransactionTimeoutError(txn_hash)
 
-    async def sign_and_submit(
-        self, raw_txn: RawTransaction, account: Account
-    ) -> str:
+    async def sign_and_submit(self, raw_txn: RawTransaction, account: Account) -> str:
         """Sign and submit a transaction, returning the hash."""
         signed = self.sign(raw_txn, account)
         return await self.submit(signed)
@@ -150,11 +146,7 @@ class TransactionApi:
         return await self.wait_for_transaction(txn_hash)
 
     async def get_by_hash(self, txn_hash: str) -> dict[str, Any]:
-        return await self._client.get(
-            f"{self._config.node_url}/transactions/by_hash/{txn_hash}"
-        )
+        return await self._client.get(f"{self._config.node_url}/transactions/by_hash/{txn_hash}")
 
     async def get_by_version(self, version: int) -> dict[str, Any]:
-        return await self._client.get(
-            f"{self._config.node_url}/transactions/by_version/{version}"
-        )
+        return await self._client.get(f"{self._config.node_url}/transactions/by_version/{version}")

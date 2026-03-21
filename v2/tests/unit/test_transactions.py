@@ -110,10 +110,14 @@ class TestMultiAgentCorpus:
         receiver_key_input = "0564f879d27ae3c02ce82834acfa8c793a629f2ca0de6919610be82f411326be"
 
         sender_private_key = Ed25519PrivateKey.from_str(sender_key_input)
-        sender_address = AuthenticationKey.from_public_key(sender_private_key.public_key()).account_address()
+        sender_address = AuthenticationKey.from_public_key(
+            sender_private_key.public_key()
+        ).account_address()
 
         receiver_private_key = Ed25519PrivateKey.from_str(receiver_key_input)
-        receiver_address = AuthenticationKey.from_public_key(receiver_private_key.public_key()).account_address()
+        receiver_address = AuthenticationKey.from_public_key(
+            receiver_private_key.public_key()
+        ).account_address()
 
         payload = EntryFunction.natural(
             "0x3::token",
@@ -136,9 +140,7 @@ class TestMultiAgentCorpus:
         receiver_auth = raw_txn.sign(receiver_private_key)
 
         authenticator = Authenticator(
-            MultiAgentAuthenticator(
-                sender_auth, [(receiver_address, receiver_auth)]
-            )
+            MultiAgentAuthenticator(sender_auth, [(receiver_address, receiver_auth)])
         )
 
         signed_txn = SignedTransaction(raw_txn.inner(), authenticator)
@@ -366,6 +368,7 @@ class TestRawTransactionExtras:
 class TestPayloadErrorBranches:
     def test_script_argument_invalid_deserialize_variant(self):
         import pytest
+
         from aptos_sdk_v2.errors import BcsDeserializationError
         from aptos_sdk_v2.transactions.payload import ScriptArgument
 
@@ -376,6 +379,7 @@ class TestPayloadErrorBranches:
 
     def test_script_argument_invalid_serialize_variant(self):
         import pytest
+
         from aptos_sdk_v2.errors import BcsSerializationError
         from aptos_sdk_v2.transactions.payload import ScriptArgument
 
@@ -386,6 +390,7 @@ class TestPayloadErrorBranches:
 
     def test_transaction_payload_invalid_variant_deserialize(self):
         import pytest
+
         from aptos_sdk_v2.errors import BcsDeserializationError
 
         ser = Serializer()
@@ -403,6 +408,7 @@ class TestPayloadErrorBranches:
 
     def test_multi_agent_deserialize_bad_tag(self):
         import pytest
+
         from aptos_sdk_v2.errors import BcsDeserializationError
 
         ser = Serializer()
@@ -412,6 +418,7 @@ class TestPayloadErrorBranches:
 
     def test_fee_payer_deserialize_bad_tag(self):
         import pytest
+
         from aptos_sdk_v2.errors import BcsDeserializationError
 
         ser = Serializer()
@@ -433,15 +440,23 @@ class TestPayloadErrorBranches:
 
     def test_sign_simulated_unsupported_type(self):
         import pytest
-        from aptos_sdk_v2.transactions.raw_transaction import _sign_simulated
+
         from aptos_sdk_v2.crypto.keys import PublicKey
+        from aptos_sdk_v2.transactions.raw_transaction import _sign_simulated
 
         class FakeKey(PublicKey):
-            def to_crypto_bytes(self): return b""
-            def verify(self, d, s): return False
-            def serialize(self, s): pass
+            def to_crypto_bytes(self):
+                return b""
+
+            def verify(self, d, s):
+                return False
+
+            def serialize(self, s):
+                pass
+
             @staticmethod
-            def deserialize(d): pass
+            def deserialize(d):
+                pass
 
         with pytest.raises(NotImplementedError):
             _sign_simulated(b"data", FakeKey())
@@ -481,7 +496,9 @@ class TestSignedTransactionVerify:
         sender_key = Ed25519PrivateKey.generate()
         sender_addr = AuthenticationKey.from_public_key(sender_key.public_key()).account_address()
         secondary_key = Ed25519PrivateKey.generate()
-        secondary_addr = AuthenticationKey.from_public_key(secondary_key.public_key()).account_address()
+        secondary_addr = AuthenticationKey.from_public_key(
+            secondary_key.public_key()
+        ).account_address()
 
         payload = EntryFunction.natural("0x1::coin", "transfer", [], [])
         raw = RawTransaction(sender_addr, 0, TransactionPayload(payload), 2000, 0, 999999, 4)

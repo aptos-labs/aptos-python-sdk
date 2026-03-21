@@ -2,8 +2,6 @@
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from aptos_sdk_v2.api.account_api import AccountApi
 from aptos_sdk_v2.api.coin_api import CoinApi
 from aptos_sdk_v2.api.faucet_api import FaucetApi

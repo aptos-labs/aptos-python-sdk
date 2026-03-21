@@ -31,7 +31,9 @@ class TestVectors:
     """Test against known vectors from v1."""
 
     def test_known_vectors(self):
-        private_key_hex = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+        private_key_hex = (
+            "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+        )
         public_key_hex = "0x04210c9129e35337ff5d6488f90f18d842cf985f06e0baeff8df4bfb2ac4221863e2631b971a237b5db0aa71188e33250732dd461d56ee623cbe0426a5c2db79ef"
         signature_hex = "0xa539b0973e76fa99b2a864eebd5da950b4dfb399c7afe57ddb34130e454fc9db04dceb2c3d4260b8cc3d3952ab21b5d36c7dc76277fe3747764e6762d12bd9a9"
         data = b"Hello world"
@@ -120,6 +122,7 @@ class TestEdgeCases:
 
     def test_invalid_public_key_length(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         with pytest.raises(InvalidKeyError):
@@ -127,6 +130,7 @@ class TestEdgeCases:
 
     def test_invalid_signature_length(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidSignatureError
 
         with pytest.raises(InvalidSignatureError):
@@ -134,6 +138,7 @@ class TestEdgeCases:
 
     def test_signature_deserialize_bad_length(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidSignatureError
 
         ser = Serializer()
@@ -148,6 +153,7 @@ class TestEdgeCases:
 
     def test_invalid_private_key_length_from_str(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         with pytest.raises(InvalidKeyError):
@@ -155,6 +161,7 @@ class TestEdgeCases:
 
     def test_invalid_private_key_length_from_hex(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         with pytest.raises(InvalidKeyError):
@@ -162,6 +169,7 @@ class TestEdgeCases:
 
     def test_invalid_private_key_deserialize_bad_length(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidKeyError
 
         ser = Serializer()
@@ -186,21 +194,25 @@ class TestEdgeCases:
         class BrokenSig(Signature):
             def data(self):
                 raise RuntimeError("broken")
-            def serialize(self, s): pass
+
+            def serialize(self, s):
+                pass
+
             @staticmethod
-            def deserialize(d): pass
+            def deserialize(d):
+                pass
 
         assert not pub.verify(b"msg", BrokenSig())
 
     def test_low_s_normalization(self):
         """Sign many messages to exercise the low-S normalization branch."""
-        import hashlib
+
         k = Secp256k1PrivateKey.generate()
-        _N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+        curve_order = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
         for i in range(100):
             sig = k.sign(f"msg_{i}".encode())
             s = int.from_bytes(sig.data()[32:64], "big")
-            assert s <= _N // 2, "All signatures should have low-S"
+            assert s <= curve_order // 2, "All signatures should have low-S"
 
 
 class TestSerialization:

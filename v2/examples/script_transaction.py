@@ -28,7 +28,7 @@ import asyncio
 
 from aptos_sdk_v2 import Account, Aptos, AptosConfig, Network
 from aptos_sdk_v2.transactions import Script, ScriptArgument, TransactionPayload
-from aptos_sdk_v2.types import AccountAddress, StructTag, TypeTag
+from aptos_sdk_v2.types import StructTag, TypeTag
 
 # ── About script bytecode ───────────────────────────────────────────────
 #

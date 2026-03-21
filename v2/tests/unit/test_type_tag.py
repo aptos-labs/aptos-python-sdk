@@ -59,6 +59,7 @@ class TestTypeTagSerialization:
 
     def test_primitive_tags_round_trip(self):
         from aptos_sdk_v2.bcs import Deserializer, Serializer
+        from aptos_sdk_v2.types.account_address import AccountAddress
         from aptos_sdk_v2.types.type_tag import (
             AccountAddressTag,
             BoolTag,
@@ -69,7 +70,6 @@ class TestTypeTagSerialization:
             U128Tag,
             U256Tag,
         )
-        from aptos_sdk_v2.types.account_address import AccountAddress
 
         cases = [
             TypeTag(BoolTag(True)),
@@ -115,7 +115,6 @@ class TestTypeTagSerialization:
         """Ensure each TypeTag variant deserializes correctly via individual serialize."""
         from aptos_sdk_v2.bcs import Deserializer, Serializer
         from aptos_sdk_v2.types.type_tag import (
-            AccountAddressTag,
             BoolTag,
             U8Tag,
             U16Tag,
@@ -124,10 +123,9 @@ class TestTypeTagSerialization:
             U128Tag,
             U256Tag,
         )
-        from aptos_sdk_v2.types.account_address import AccountAddress
 
         # Test individual primitive tags serialize/deserialize methods
-        for TagClass, value, ser_fn, deser_fn in [
+        for tag_class, value, ser_fn, deser_fn in [
             (BoolTag, True, lambda s, v: s.bool(v.value), lambda d: BoolTag(d.bool())),
             (U8Tag, 42, lambda s, v: s.u8(v.value), lambda d: U8Tag(d.u8())),
             (U16Tag, 1000, lambda s, v: s.u16(v.value), lambda d: U16Tag(d.u16())),
@@ -136,17 +134,17 @@ class TestTypeTagSerialization:
             (U128Tag, 10**30, lambda s, v: s.u128(v.value), lambda d: U128Tag(d.u128())),
             (U256Tag, 10**60, lambda s, v: s.u256(v.value), lambda d: U256Tag(d.u256())),
         ]:
-            tag = TagClass(value)
+            tag = tag_class(value)
             ser = Serializer()
             tag.serialize(ser)
-            result = TagClass.deserialize(Deserializer(ser.output()))
-            assert tag == result, f"Failed for {TagClass.__name__}"
+            result = tag_class.deserialize(Deserializer(ser.output()))
+            assert tag == result, f"Failed for {tag_class.__name__}"
             assert str(tag) == str(value)
 
     def test_account_address_tag_direct(self):
         from aptos_sdk_v2.bcs import Deserializer, Serializer
-        from aptos_sdk_v2.types.type_tag import AccountAddressTag
         from aptos_sdk_v2.types.account_address import AccountAddress
+        from aptos_sdk_v2.types.type_tag import AccountAddressTag
 
         addr = AccountAddress.from_str("0x1")
         tag = AccountAddressTag(addr)
@@ -158,6 +156,7 @@ class TestTypeTagSerialization:
 
     def test_invalid_type_tag_parse(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidTypeTagError
 
         with pytest.raises(InvalidTypeTagError):
@@ -165,6 +164,7 @@ class TestTypeTagSerialization:
 
     def test_struct_tag_from_str_non_struct_raises(self):
         import pytest
+
         from aptos_sdk_v2.errors import InvalidTypeTagError
 
         # A standalone address without :: should fail
@@ -177,6 +177,7 @@ class TestTypeTagSerialization:
 
     def test_type_tag_unknown_variant_raises(self):
         import pytest
+
         from aptos_sdk_v2.bcs import Deserializer, Serializer
         from aptos_sdk_v2.errors import InvalidTypeTagError
 

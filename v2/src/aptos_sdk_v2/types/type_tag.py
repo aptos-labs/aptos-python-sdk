@@ -231,8 +231,15 @@ class StructTag:
 @dataclass(slots=True)
 class TypeTag:
     value: (
-        BoolTag | U8Tag | U16Tag | U32Tag | U64Tag
-        | U128Tag | U256Tag | AccountAddressTag | StructTag
+        BoolTag
+        | U8Tag
+        | U16Tag
+        | U32Tag
+        | U64Tag
+        | U128Tag
+        | U256Tag
+        | AccountAddressTag
+        | StructTag
     )
 
     def __eq__(self, other: object) -> bool:

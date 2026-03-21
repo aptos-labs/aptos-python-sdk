@@ -101,8 +101,6 @@ class TestView:
     async def test_view_function(self, api):
         with aioresponses() as m:
             m.post(f"{NODE}/view", payload=["1000"])
-            result = await api.view(
-                "0x1::coin", "balance", ["0x1::aptos_coin::AptosCoin"], ["0x1"]
-            )
+            result = await api.view("0x1::coin", "balance", ["0x1::aptos_coin::AptosCoin"], ["0x1"])
             assert result == ["1000"]
             assert isinstance(result, list)
