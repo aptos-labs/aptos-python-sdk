@@ -187,7 +187,10 @@ def _rs_to_der(r: int, s: int) -> bytes:
     """Encode r, s integers as a DER-encoded ECDSA signature."""
 
     def _int_to_der_bytes(val: int) -> bytes:
-        b = val.to_bytes((val.bit_length() + 8) // 8, "big")
+        length = (val.bit_length() + 7) // 8 or 1
+        b = val.to_bytes(length, "big")
+        if b[0] & 0x80:
+            b = b"\x00" + b
         return b
 
     r_bytes = _int_to_der_bytes(r)
