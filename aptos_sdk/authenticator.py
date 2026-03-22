@@ -10,6 +10,7 @@ from typing import List
 from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
 from .account_address import AccountAddress
 from .bcs import Deserializer, Serializer
+from .errors import InvalidTypeError
 
 
 class Authenticator:
@@ -41,7 +42,7 @@ class Authenticator:
         elif isinstance(authenticator, SingleSenderAuthenticator):
             self.variant = Authenticator.SINGLE_SENDER
         else:
-            raise Exception("Invalid type")
+            raise InvalidTypeError("Invalid type")
         self.authenticator = authenticator
 
     def from_key(key: asymmetric_crypto.PublicKey) -> int:
@@ -80,7 +81,7 @@ class Authenticator:
         elif variant == Authenticator.SINGLE_SENDER:
             authenticator = SingleSenderAuthenticator.deserialize(deserializer)
         else:
-            raise Exception(f"Invalid type: {variant}")
+            raise InvalidTypeError(f"Invalid type: {variant}")
 
         return Authenticator(authenticator)
 
@@ -108,7 +109,7 @@ class AccountAuthenticator:
         elif isinstance(authenticator, MultiKeyAuthenticator):
             self.variant = AccountAuthenticator.MULTI_KEY
         else:
-            raise Exception("Invalid type")
+            raise InvalidTypeError("Invalid type")
         self.authenticator = authenticator
 
     def __eq__(self, other: object) -> bool:
@@ -140,7 +141,7 @@ class AccountAuthenticator:
         elif variant == AccountAuthenticator.MULTI_KEY:
             authenticator = MultiKeyAuthenticator.deserialize(deserializer)
         else:
-            raise Exception(f"Invalid type: {variant}")
+            raise InvalidTypeError(f"Invalid type: {variant}")
 
         return AccountAuthenticator(authenticator)
 

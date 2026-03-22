@@ -1,6 +1,7 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import os
 from enum import Enum
 from typing import List, Optional
@@ -250,7 +251,7 @@ class PackagePublisher:
         # Submit and wait for each transaction, including publishing.
         txn_hashes = []
         for payload in payloads:
-            print("Submitting transaction...")
+            logging.info("Submitting transaction...")
             signed_txn = await self.client.create_bcs_signed_transaction(
                 sender, payload
             )

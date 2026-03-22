@@ -3,26 +3,70 @@
 [![PyPI Package Version][pypi-image-version]][pypi-url]
 [![PyPI Package Downloads][pypi-image-downloads]][pypi-url]
 
-This provides basic functionalities to interact with [Aptos](https:/github.com/aptos-labs/aptos-core/). Get started [here](https://aptos.dev/guides/system-integrators-guide/#getting-started).
+The official Python SDK for interacting with the [Aptos](https://github.com/aptos-labs/aptos-core/) blockchain. Get started with the [integration guide](https://aptos.dev/guides/system-integrators-guide/#getting-started).
 
-Currently, this is still in development and may not be suitable for production purposes.
+> **Note:** The sync client is deprecated. Please use the async client for all new projects.
 
-Note: The sync client is deprecated, please only start new projects using the async client. Feature contributions to the sync client will be rejected.
+## Installation
 
-## Requirements
+```bash
+pip install aptos-sdk
+```
+
+## Quickstart
+
+```python
+import asyncio
+from aptos_sdk.account import Account
+from aptos_sdk.async_client import FaucetClient, RestClient
+
+async def main():
+    rest_client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
+    faucet_client = FaucetClient("https://faucet.devnet.aptoslabs.com", rest_client)
+
+    # Create and fund two accounts
+    alice = Account.generate()
+    bob = Account.generate()
+    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.fund_account(bob.address(), 0)
+
+    # Transfer 1_000 octas from Alice to Bob
+    txn_hash = await rest_client.bcs_transfer(alice, bob.address(), 1_000)
+    await rest_client.wait_for_transaction(txn_hash)
+
+    print(f"Bob's balance: {await rest_client.account_balance(bob.address())}")
+    await rest_client.close()
+
+asyncio.run(main())
+```
+
+## API Overview
+
+| Class | Description |
+|-------|-------------|
+| `RestClient` | Async client for the Aptos REST API (accounts, transactions, events, blocks). |
+| `FaucetClient` | Funds accounts on devnet/testnet via the faucet service. |
+| `Account` | Represents a keypair and address; supports Ed25519 and Secp256k1. |
+| `AccountAddress` | 32-byte account address with AIP-40 compliant formatting. |
+| `EntryFunction` | Constructs Move entry function payloads for submission. |
+| `PackagePublisher` | Publishes and upgrades Move packages, with large-package chunking support. |
+
+## Development
+
+### Requirements
 This SDK uses [Poetry](https://python-poetry.org/docs/#installation) for packaging and dependency management:
 
-```
+```bash
 curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
-## Unit testing
+### Unit testing
 ```bash
 make test
 ```
 
-## E2E testing and Using the Aptos CLI
+### E2E testing and Using the Aptos CLI
 
 * Download and install the [Aptos CLI](https://aptos.dev/tools/aptos-cli/use-cli/running-a-local-network).
 * Set the environment variable `APTOS_CLI_PATH` to the full path of the CLI.
@@ -62,17 +106,17 @@ make integration_test
 > [!NOTE]
 > The Python SDK does not require the Indexer, if you would prefer to test without it, unset or do not set the environmental variable `APTOS_INDEXER_URL` and exclude `--with-indexer-api` from running the aptos node software.
 
-## Autoformatting
+### Autoformatting
 ```bash
 make fmt
 ```
 
-## Autolinting
+### Autolinting
 ```bash
 make lint
 ```
 
-## Package Publishing
+### Package Publishing
 
 * Download the [Aptos CLI](https://aptos.dev/tools/aptos-cli/install-cli/).
 * Set the environment variable `APTOS_CLI_PATH` to the full path of the CLI.

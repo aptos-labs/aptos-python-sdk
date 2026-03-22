@@ -13,31 +13,50 @@ keywords = ["web3", "sdk", "aptos", "blockchain"]
 "aptos-sdk" = ["py.typed"]
 
 [tool.poetry.dependencies]
-cryptography = "^44.0.0"
+cryptography = "^46.0.5"
 python-graphql-client = "^0.4.3"
 httpx = {extras = ["http2"], version = "^0.28.0"}
 PyNaCl = "^1.6.2"
 python = ">=3.10.0"
-tomli = "^2.2.1"
+tomli = "^2.4.0"
 typing-extensions = "^4.15.0"
-behave = "^1.2.6"
-types-six = "^1.17.0.20250515"
-h11 = "^0.16.0"
-multidict = "^6.6.4"
-# These below are to fix security vulnerabilities in dependencies
-h2 = "^4.3.0"
+# Security overrides for transitive dependencies
+h11 = "^0.16.0"  # via httpx -> httpcore
+h2 = "^4.3.0"  # via httpx[http2]
 urllib3 = "^2.6.3"
 requests = "^2.32.5"
 aiohttp = "^3.13.3"
 
 [tool.poetry.group.dev.dependencies]
 autoflake = "^2.3.1"
+behave = "^1.2.6"
 black = "^26.3.1"
 coverage = "^7.6.12"
 flake8 = "^7.2.0"
 isort = "^5.13.2"
 mypy = "^1.16.0"
 mypy-extensions = "^1.1.0"
+types-six = "^1.17.0.20250515"
+
+[tool.coverage.run]
+source = ["aptos_sdk"]
+omit = [
+    "aptos_sdk/**/test_*.py",
+    "aptos_sdk/**/*_test.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "class Test\\(",
+    "def test_",
+    "raise NotImplementedError",
+]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

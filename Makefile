@@ -8,6 +8,8 @@ test:
 test-coverage:
 	poetry run python -m coverage run -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
 	poetry run python -m coverage report
+	poetry run python -m coverage xml -o coverage.xml
+	poetry run python -m coverage html
 
 test-spec:
 	poetry run behave
@@ -44,4 +46,4 @@ examples_cli:
 integration_test:
 	poetry run python -m unittest -b examples.integration_test
 
-.PHONY: examples fmt lint test
+.PHONY: examples fmt lint test test-coverage test-spec

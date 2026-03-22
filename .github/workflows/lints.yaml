@@ -27,6 +27,17 @@ jobs:
         run: make lint
         shell: bash
 
-      - name: Run integration tests
-        run: make test
+      - name: Run tests with coverage
+        run: make test-coverage
         shell: bash
+
+      - name: Run BDD tests
+        run: make test-spec
+        shell: bash
+
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
