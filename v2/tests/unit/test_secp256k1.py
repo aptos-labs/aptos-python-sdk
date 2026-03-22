@@ -215,6 +215,65 @@ class TestEdgeCases:
             assert s <= curve_order // 2, "All signatures should have low-S"
 
 
+class TestRsToDer:
+    """Tests for _rs_to_der DER encoding, including sign-bit handling."""
+
+    def test_high_bit_r_gets_zero_padded(self):
+        from aptos_sdk_v2.crypto.secp256k1 import _rs_to_der
+
+        r = 0xFF << 248  # 256-bit value with high bit set
+        s = 1
+        der = _rs_to_der(r, s)
+        assert der[0] == 0x30
+        r_len = der[3]
+        assert r_len == 33
+        assert der[4] == 0x00, "Leading 0x00 required for sign bit"
+
+    def test_high_bit_s_gets_zero_padded(self):
+        from aptos_sdk_v2.crypto.secp256k1 import _rs_to_der
+
+        r = 1
+        s = 0x80 << 248  # high bit set
+        der = _rs_to_der(r, s)
+        s_tag_offset = 2 + der[3] + 2
+        s_len = der[s_tag_offset + 1] if der[s_tag_offset] == 0x02 else der[s_tag_offset - 1]
+        # Parse more directly
+        r_len = der[3]
+        s_start = 4 + r_len
+        assert der[s_start] == 0x02
+        s_len = der[s_start + 1]
+        assert s_len == 33
+        assert der[s_start + 2] == 0x00, "Leading 0x00 required for sign bit"
+
+    def test_no_padding_when_high_bit_clear(self):
+        from aptos_sdk_v2.crypto.secp256k1 import _rs_to_der
+
+        r = 0x7F << 248  # high bit clear
+        s = 0x01
+        der = _rs_to_der(r, s)
+        r_len = der[3]
+        assert r_len == 32, "No padding when high bit is clear"
+        assert der[4] == 0x7F
+
+    def test_round_trip_with_coincurve(self):
+        """DER output must be parseable by coincurve."""
+        from coincurve import PublicKey as CoinPublicKey
+
+        from aptos_sdk_v2.crypto.secp256k1 import _rs_to_der
+
+        key = Secp256k1PrivateKey.generate()
+        sig = key.sign(b"der_test")
+        r = int.from_bytes(sig.data()[:32], "big")
+        s = int.from_bytes(sig.data()[32:], "big")
+        der = _rs_to_der(r, s)
+        # coincurve should be able to parse the DER without raising
+        pub = CoinPublicKey(key.public_key().to_crypto_bytes())
+        import hashlib
+
+        digest = hashlib.sha3_256(b"der_test").digest()
+        assert pub.verify(der, digest, hasher=None)
+
+
 class TestSerialization:
     def test_private_key_round_trip(self):
         key = Secp256k1PrivateKey.generate()
