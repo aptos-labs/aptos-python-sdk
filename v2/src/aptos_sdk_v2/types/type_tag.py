@@ -170,6 +170,22 @@ class AccountAddressTag:
         serializer.struct(self.value)
 
 
+@dataclass(frozen=True, slots=True)
+class SignerTag:
+    def variant(self) -> int:
+        return TypeTagVariant.SIGNER
+
+    def __str__(self) -> str:
+        return "signer"
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> SignerTag:
+        return SignerTag()
+
+    def serialize(self, serializer: Serializer) -> None:
+        pass
+
+
 # --- StructTag ---
 
 
@@ -229,6 +245,29 @@ class StructTag:
 
 
 @dataclass(slots=True)
+class VectorTag:
+    element_type: TypeTag
+
+    def variant(self) -> int:
+        return TypeTagVariant.VECTOR
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, VectorTag):
+            return NotImplemented
+        return self.element_type == other.element_type
+
+    def __str__(self) -> str:
+        return f"vector<{self.element_type}>"
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> VectorTag:
+        return VectorTag(TypeTag.deserialize(deserializer))
+
+    def serialize(self, serializer: Serializer) -> None:
+        serializer.struct(self.element_type)
+
+
+@dataclass(slots=True)
 class TypeTag:
     value: (
         BoolTag
@@ -239,6 +278,8 @@ class TypeTag:
         | U128Tag
         | U256Tag
         | AccountAddressTag
+        | SignerTag
+        | VectorTag
         | StructTag
     )
 
@@ -273,6 +314,10 @@ class TypeTag:
                 return TypeTag(U256Tag.deserialize(deserializer))
             case TypeTagVariant.ACCOUNT_ADDRESS:
                 return TypeTag(AccountAddressTag.deserialize(deserializer))
+            case TypeTagVariant.SIGNER:
+                return TypeTag(SignerTag.deserialize(deserializer))
+            case TypeTagVariant.VECTOR:
+                return TypeTag(VectorTag.deserialize(deserializer))
             case TypeTagVariant.STRUCT:
                 return TypeTag(StructTag.deserialize(deserializer))
             case _:
