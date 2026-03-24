@@ -8,6 +8,9 @@ from typing import Any
 
 from ..errors import BcsSerializationError
 
+_bool = bool
+_str = str
+
 MAX_U8 = 2**8 - 1
 MAX_U16 = 2**16 - 1
 MAX_U32 = 2**32 - 1
@@ -29,7 +32,7 @@ class Serializer:
 
     # --- Primitive types ---
 
-    def bool(self, value: bool) -> None:
+    def bool(self, value: _bool) -> None:
         self._write_int(int(value), 1)
 
     def u8(self, value: int) -> None:
@@ -82,7 +85,7 @@ class Serializer:
     def fixed_bytes(self, value: bytes) -> None:
         self._output.write(value)
 
-    def str(self, value: str) -> None:
+    def str(self, value: _str) -> None:
         self.to_bytes(value.encode())
 
     # --- Option ---

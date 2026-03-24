@@ -66,7 +66,7 @@ class GeneralApi:
     ) -> list[Any]:
         """Execute a view function (read-only)."""
         url = f"{self._config.node_url}/view"
-        result: Any = await self._client.post(
+        return await self._client.post_view(
             url,
             json={
                 "function": f"{module}::{function}",
@@ -74,4 +74,3 @@ class GeneralApi:
                 "arguments": args,
             },
         )
-        return result  # view endpoint returns a JSON array
