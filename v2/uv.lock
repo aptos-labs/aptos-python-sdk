@@ -127,7 +127,7 @@ wheels = [
 ]
 
 [[package]]
-name = "aptos-python-sdk-v2"
+name = "aptos-sdk-v2"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

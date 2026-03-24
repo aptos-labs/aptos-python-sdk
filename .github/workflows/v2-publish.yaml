@@ -1,0 +1,30 @@
+name: "Publish aptos-sdk-v2 to PyPI"
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Build and publish to PyPI
+    if: startsWith(github.event.release.tag_name, 'v2-')
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Build package
+        working-directory: v2
+        run: uv build
+
+      - name: Publish to PyPI
+        working-directory: v2
+        run: uv publish
