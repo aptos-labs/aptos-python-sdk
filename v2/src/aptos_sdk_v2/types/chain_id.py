@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 from ..bcs import Deserializer, Serializer
 
@@ -12,6 +13,9 @@ class ChainId:
     """Single-byte chain identifier."""
 
     value: int
+
+    MAINNET: ClassVar[ChainId]
+    TESTNET: ClassVar[ChainId]
 
     def __post_init__(self) -> None:
         if not (0 <= self.value <= 255):
@@ -23,3 +27,8 @@ class ChainId:
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.u8(self.value)
+
+
+# Initialize class-level constants after class definition
+setattr(ChainId, "MAINNET", ChainId(1))
+setattr(ChainId, "TESTNET", ChainId(2))

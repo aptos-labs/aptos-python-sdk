@@ -24,3 +24,7 @@ class TestChainId:
 
         with pytest.raises(ValueError):
             ChainId(256)
+
+    def test_constants(self):
+        assert ChainId.MAINNET.value == 1
+        assert ChainId.TESTNET.value == 2
