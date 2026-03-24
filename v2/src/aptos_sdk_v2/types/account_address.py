@@ -76,7 +76,10 @@ class AccountAddress:
         if len(addr) < LENGTH * 2:
             addr = addr.zfill(LENGTH * 2)
 
-        return AccountAddress(bytes.fromhex(addr))
+        try:
+            return AccountAddress(bytes.fromhex(addr))
+        except ValueError as e:
+            raise InvalidAddressError(f"Invalid hex in address: {e}") from e
 
     # --- Derived addresses ---
 

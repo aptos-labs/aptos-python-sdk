@@ -59,7 +59,10 @@ class TransactionApi:
         The sequence_number is set to 0 (ignored on-chain for orderless txns).
         """
         if replay_protection_nonce is not None:
-            assert isinstance(payload.value, (Script, EntryFunction))
+            if not isinstance(payload.value, (Script, EntryFunction)):
+                got = type(payload.value).__name__
+                msg = f"Orderless transactions require Script or EntryFunction payload, got {got}"
+                raise TypeError(msg)
             inner = TransactionInnerPayload(
                 executable=TransactionExecutable(payload.value),
                 extra_config=TransactionExtraConfig(
