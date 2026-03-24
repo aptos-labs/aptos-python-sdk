@@ -40,7 +40,7 @@ class SignedTransaction:
             return NotImplemented
         return self.transaction == other.transaction and self.authenticator == other.authenticator
 
-    def bytes(self) -> bytes:
+    def to_bytes(self) -> bytes:
         ser = Serializer()
         self.serialize(ser)
         return ser.output()

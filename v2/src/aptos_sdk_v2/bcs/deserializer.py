@@ -8,6 +8,9 @@ from typing import Any
 
 from ..errors import BcsDeserializationError
 
+_bool = bool
+_str = str
+
 MAX_U32 = 2**32 - 1
 
 
@@ -26,7 +29,7 @@ class Deserializer:
 
     # --- Primitive types ---
 
-    def bool(self) -> bool:
+    def bool(self) -> _bool:
         value = int.from_bytes(self._read(1), byteorder="little", signed=False)
         if value == 0:
             return False
@@ -75,7 +78,7 @@ class Deserializer:
     def fixed_bytes(self, length: int) -> bytes:
         return self._read(length)
 
-    def str(self) -> str:
+    def str(self) -> _str:
         return self.to_bytes().decode()
 
     # --- Option ---

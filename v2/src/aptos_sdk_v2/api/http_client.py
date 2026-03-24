@@ -42,6 +42,10 @@ class HttpClient:
     async def post(self, url: str, **kwargs: Any) -> dict[str, Any]:
         return await self._request("POST", url, **kwargs)
 
+    async def post_view(self, url: str, **kwargs: Any) -> list[Any]:
+        """POST to a view endpoint that returns a JSON array."""
+        return await self._request("POST", url, **kwargs)
+
     async def post_bcs(self, url: str, data: bytes) -> dict[str, Any]:
         """POST BCS-encoded bytes."""
         return await self._request(

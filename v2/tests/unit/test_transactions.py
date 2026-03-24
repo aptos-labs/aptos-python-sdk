@@ -301,7 +301,7 @@ class TestSignedTransactionExtras:
         raw = RawTransaction(addr, 0, TransactionPayload(payload), 2000, 0, 999999999, 4)
         auth = raw.sign(key)
         signed = SignedTransaction(raw, auth)
-        data = signed.bytes()
+        data = signed.to_bytes()
         assert len(data) > 0
 
     def test_signed_txn_eq(self):

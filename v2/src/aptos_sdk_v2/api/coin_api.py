@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from ..account.account import Account
 from ..bcs import Serializer
 from ..config import AptosConfig
@@ -63,7 +61,7 @@ class CoinApi:
         coin_type: str = APT_COIN_TYPE,
     ) -> int:
         """Get the balance of a coin type for an address using a view function."""
-        result: Any = await self._client.post(
+        result = await self._client.post_view(
             f"{self._config.node_url}/view",
             json={
                 "function": "0x1::coin::balance",
