@@ -1,16 +1,38 @@
 [project]
-name = "aptos-python-sdk-v2"
+name = "aptos-sdk-v2"
 version = "0.1.0"
 description = "Aptos Python SDK v2 — async-first client for the Aptos blockchain"
-readme = {text = "", content-type = "text/plain"}
+readme = "README.md"
 requires-python = ">=3.12"
-license = "Apache-2.0"
+license = {file = "LICENSE"}
+authors = [
+    { name = "Aptos Labs", email = "opensource@aptoslabs.com" },
+]
+keywords = ["aptos", "blockchain", "web3", "sdk", "async"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+    "Framework :: AsyncIO",
+]
 dependencies = [
     "aiohttp>=3.9,<4",
     "PyNaCl>=1.5,<2",
     "coincurve>=20,<21",
     "bip-utils>=2.9,<3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/aptos-labs/aptos-python-sdk"
+Documentation = "https://aptos.dev/sdks/python-sdk"
+Repository = "https://github.com/aptos-labs/aptos-python-sdk"
+Issues = "https://github.com/aptos-labs/aptos-python-sdk/issues"
+Changelog = "https://github.com/aptos-labs/aptos-python-sdk/releases"
 
 [project.optional-dependencies]
 dev = [
