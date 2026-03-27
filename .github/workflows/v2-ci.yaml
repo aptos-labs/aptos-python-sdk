@@ -1,56 +1,33 @@
+# v2 is now part of the main aptos-sdk package.
+# This workflow validates the v2 subpackage can be imported and its
+# standalone test suite (under v2/tests/) still passes.
+
 name: "V2 SDK CI"
 permissions:
   contents: read
 on:
   pull_request:
     paths:
+      - "aptos_sdk/v2/**"
       - "v2/**"
   push:
     branches:
       - main
     paths:
+      - "aptos_sdk/v2/**"
       - "v2/**"
 
-defaults:
-  run:
-    working-directory: v2
-
 jobs:
-  lint-format:
-    name: Lint & Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "v2/uv.lock"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: uv sync --extra dev
-
-      - name: Check formatting
-        run: uv run ruff format --check src/ tests/
-
-      - name: Check linting
-        run: uv run ruff check src/ tests/
-
-      - name: Check types
-        run: uv run mypy src/
-
-  test:
-    name: Test (Python ${{ matrix.python-version }})
+  test-v2-standalone:
+    name: V2 standalone tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.12", "3.13"]
+    defaults:
+      run:
+        working-directory: v2
     steps:
       - uses: actions/checkout@v5
 
@@ -70,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
-      - name: Run tests with coverage
+      - name: Run v2 standalone tests
         run: uv run pytest tests/unit --cov=aptos_sdk_v2 --cov-report=term-missing --cov-report=xml:coverage.xml
 
       - name: Upload to Codecov
@@ -80,3 +57,25 @@ jobs:
           files: v2/coverage.xml
           flags: v2-sdk
           fail_ci_if_error: false
+
+  test-v2-integrated:
+    name: V2 integrated import test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/python-setup
+        with:
+          pyproject_directory: .
+
+      - name: Verify v2 imports from main package
+        run: |
+          poetry run python -c "
+          from aptos_sdk.v2 import Account, Aptos, AptosConfig, Network
+          from aptos_sdk.v2.bcs import Serializer, Deserializer
+          from aptos_sdk.v2.crypto.ed25519 import Ed25519PrivateKey
+          from aptos_sdk.v2.crypto.secp256k1 import Secp256k1PrivateKey
+          from aptos_sdk.v2.transactions import EntryFunction, TransactionPayload
+          from aptos_sdk.v2.types import AccountAddress, TypeTag, StructTag
+          print('All v2 imports OK')
+          "
