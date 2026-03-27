@@ -7,19 +7,54 @@ import hashlib
 import unittest
 from dataclasses import dataclass
 
+import importlib.util as _importlib_util
+import os as _os
+import sys as _sys
+import types as _types
+
 from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
 from .bcs import Deserializer, Serializer
 from .errors import InvalidKeyError
 
+# ---------------------------------------------------------------------------
+# Import v2 AccountAddress directly from the file to avoid triggering the heavy
+# v2/types/__init__.py and v2/crypto/__init__.py which cause circular imports.
+# ---------------------------------------------------------------------------
+_v2_dir = _os.path.join(_os.path.dirname(__file__), "v2")
+_types_dir = _os.path.join(_v2_dir, "types")
 
-class AuthKeyScheme:
-    Ed25519: bytes = b"\x00"
-    MultiEd25519: bytes = b"\x01"
-    SingleKey: bytes = b"\x02"
-    MultiKey: bytes = b"\x03"
-    DeriveObjectAddressFromGuid: bytes = b"\xfd"
-    DeriveObjectAddressFromSeed: bytes = b"\xfe"
-    DeriveResourceAccountAddress: bytes = b"\xff"
+# Ensure the v2.types namespace package stub exists so relative imports inside
+# the module resolve correctly.
+if "aptos_sdk.v2.types" not in _sys.modules:
+    _types_pkg = _types.ModuleType("aptos_sdk.v2.types")
+    _types_pkg.__path__ = [_types_dir]  # type: ignore[attr-defined]
+    _types_pkg.__package__ = "aptos_sdk.v2.types"
+    _sys.modules["aptos_sdk.v2.types"] = _types_pkg
+
+
+def _load_v2_module(fqn: str, filepath: str) -> _types.ModuleType:
+    """Load a single .py file as *fqn* without running any package __init__."""
+    if fqn in _sys.modules:
+        return _sys.modules[fqn]
+    spec = _importlib_util.spec_from_file_location(fqn, filepath)
+    mod = _importlib_util.module_from_spec(spec)  # type: ignore[arg-type]
+    _sys.modules[fqn] = mod
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod
+
+
+_v2_aa_mod = _load_v2_module(
+    "aptos_sdk.v2.types.account_address",
+    _os.path.join(_types_dir, "account_address.py"),
+)
+_V2AccountAddress = _v2_aa_mod.AccountAddress
+AuthKeyScheme = _v2_aa_mod.AuthKeyScheme
+
+# Populate the v2.types stub so that ``from aptos_sdk.v2.types import AccountAddress``
+# works for code that imports after us.
+_types_stub = _sys.modules["aptos_sdk.v2.types"]
+_types_stub.AccountAddress = _V2AccountAddress  # type: ignore[attr-defined]
+_types_stub.AuthKeyScheme = AuthKeyScheme  # type: ignore[attr-defined]
 
 
 class ParseAddressError(Exception):
@@ -28,60 +63,10 @@ class ParseAddressError(Exception):
     """
 
 
-class AccountAddress:
-    address: bytes
+class AccountAddress(_V2AccountAddress):
+    """v1 AccountAddress wrapping v2 implementation."""
+
     LENGTH: int = 32
-
-    def __init__(self, address: bytes):
-        self.address = address
-
-        if len(address) != AccountAddress.LENGTH:
-            raise ParseAddressError("Expected address of length 32")
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, AccountAddress):
-            return NotImplemented
-        return self.address == other.address
-
-    def __str__(self):
-        """
-        Represent an account address in a way that is compliant with the v1 address
-        standard. The standard is defined as part of AIP-40, read more here:
-        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md
-
-        In short, all special addresses SHOULD be represented in SHORT form, e.g.
-
-        0x1
-
-        All other addresses MUST be represented in LONG form, e.g.
-
-        0x002098630cfad4734812fa37dc18d9b8d59242feabe49259e26318d468a99584
-
-        For an explanation of what defines a "special" address, see `is_special`.
-
-        All string representations of addresses MUST be prefixed with 0x.
-        """
-        suffix = self.address.hex()
-        if self.is_special():
-            suffix = suffix.lstrip("0") or "0"
-        return f"0x{suffix}"
-
-    def __repr__(self):
-        return self.__str__()
-
-    def is_special(self):
-        """
-        Returns whether the address is a "special" address. Addresses are considered
-        special if the first 63 characters of the hex string are zero. In other words,
-        an address is special if the first 31 bytes are zero and the last byte is
-        smaller than `0b10000` (16). In other words, special is defined as an address
-        that matches the following regex: `^0x0{63}[0-9a-f]$`. In short form this means
-        the addresses in the range from `0x0` to `0xf` (inclusive) are special.
-
-        For more details see the v1 address standard defined as part of AIP-40:
-        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md
-        """
-        return all(b == 0 for b in self.address[:-1]) and self.address[-1] < 0b10000
 
     @staticmethod
     def from_str(address: str) -> AccountAddress:
@@ -204,13 +189,13 @@ class AccountAddress:
         hasher.update(key.to_crypto_bytes())
 
         if isinstance(key, ed25519.PublicKey):
-            hasher.update(AuthKeyScheme.Ed25519)
+            hasher.update(AuthKeyScheme.ED25519)
         elif isinstance(key, ed25519.MultiPublicKey):
-            hasher.update(AuthKeyScheme.MultiEd25519)
+            hasher.update(AuthKeyScheme.MULTI_ED25519)
         elif isinstance(key, asymmetric_crypto_wrapper.PublicKey):
-            hasher.update(AuthKeyScheme.SingleKey)
+            hasher.update(AuthKeyScheme.SINGLE_KEY)
         elif isinstance(key, asymmetric_crypto_wrapper.MultiPublicKey):
-            hasher.update(AuthKeyScheme.MultiKey)
+            hasher.update(AuthKeyScheme.MULTI_KEY)
         else:
             raise InvalidKeyError("Unsupported asymmetric_crypto.PublicKey key type.")
 
@@ -221,7 +206,7 @@ class AccountAddress:
         hasher = hashlib.sha3_256()
         hasher.update(creator.address)
         hasher.update(seed)
-        hasher.update(AuthKeyScheme.DeriveResourceAccountAddress)
+        hasher.update(AuthKeyScheme.DERIVE_RESOURCE_ACCOUNT)
         return AccountAddress(hasher.digest())
 
     @staticmethod
@@ -231,7 +216,7 @@ class AccountAddress:
         serializer.u64(creation_num)
         hasher.update(serializer.output())
         hasher.update(creator.address)
-        hasher.update(AuthKeyScheme.DeriveObjectAddressFromGuid)
+        hasher.update(AuthKeyScheme.DERIVE_OBJECT_FROM_GUID)
         return AccountAddress(hasher.digest())
 
     @staticmethod
@@ -239,7 +224,7 @@ class AccountAddress:
         hasher = hashlib.sha3_256()
         hasher.update(creator.address)
         hasher.update(seed)
-        hasher.update(AuthKeyScheme.DeriveObjectAddressFromSeed)
+        hasher.update(AuthKeyScheme.DERIVE_OBJECT_FROM_SEED)
         return AccountAddress(hasher.digest())
 
     @staticmethod
