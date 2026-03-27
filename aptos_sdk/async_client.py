@@ -24,6 +24,8 @@ from .transactions import (
     TransactionPayload,
 )
 from .type_tag import StructTag, TypeTag
+from .v2.aptos import Aptos
+from .v2.config import AptosConfig, Network
 
 U64_MAX = 18446744073709551615
 
@@ -58,21 +60,33 @@ class IndexerClient:
 
 
 class RestClient:
-    """A wrapper around the Aptos-core Rest API"""
+    """A wrapper around the Aptos-core Rest API, backed by the v2 Aptos facade."""
 
     _chain_id: Optional[int]
-    client: httpx.AsyncClient
     client_config: ClientConfig
     base_url: str
 
     def __init__(self, base_url: str, client_config: ClientConfig = ClientConfig()):
         self.base_url = base_url
-        # Default limits
+        self.client_config = client_config
+        self._chain_id = None
+
+        # Build the v2 AptosConfig from the v1 parameters.
+        v2_config = AptosConfig(
+            network=Network.CUSTOM,
+            fullnode_url=base_url,
+            max_gas_amount=client_config.max_gas_amount,
+            gas_unit_price=client_config.gas_unit_price,
+            expiration_ttl=client_config.expiration_ttl,
+            transaction_wait_secs=client_config.transaction_wait_in_seconds,
+            api_key=client_config.api_key,
+        )
+        self._v2 = Aptos(v2_config)
+
+        # Keep a legacy httpx client for methods that need raw httpx.Response objects
+        # (simulate, view_bcs_payload, and other endpoints not yet covered by v2).
         limits = httpx.Limits()
-        # Default timeouts but do not set a pool timeout, since the idea is that jobs will wait as
-        # long as progress is being made.
         timeout = httpx.Timeout(60.0, pool=None)
-        # Default headers
         headers = {Metadata.APTOS_HEADER: Metadata.get_aptos_header_val()}
         self.client = httpx.AsyncClient(
             http2=client_config.http2,
@@ -80,20 +94,18 @@ class RestClient:
             timeout=timeout,
             headers=headers,
         )
-        self.client_config = client_config
-        self._chain_id = None
         if client_config.api_key:
             self.client.headers["Authorization"] = f"Bearer {client_config.api_key}"
 
     async def close(self) -> None:
         """Close the underlying HTTP client connection."""
+        await self._v2.close()
         await self.client.aclose()
 
     async def chain_id(self) -> int:
         """Return the chain ID, fetching from the node if not yet cached."""
         if not self._chain_id:
-            info = await self.info()
-            self._chain_id = int(info["chain_id"])
+            self._chain_id = await self._v2.general.get_chain_id()
         return self._chain_id
 
     #
@@ -110,13 +122,21 @@ class RestClient:
         :param ledger_version: Ledger version to get state of account. If not provided, it will be the latest version.
         :return: The authentication key and sequence number for the specified address.
         """
-        response = await self._get(
-            endpoint=f"accounts/{account_address}",
-            params={"ledger_version": ledger_version},
-        )
-        if response.status_code >= 400:
-            raise ApiError(f"{response.text} - {account_address}", response.status_code)
-        return response.json()
+        if ledger_version is not None:
+            # v2 API doesn't support ledger_version param; fall back to raw HTTP.
+            response = await self._get(
+                endpoint=f"accounts/{account_address}",
+                params={"ledger_version": ledger_version},
+            )
+            if response.status_code >= 400:
+                raise ApiError(
+                    f"{response.text} - {account_address}", response.status_code
+                )
+            return response.json()
+        try:
+            return await self._v2.account.get_info(account_address)
+        except self._v2_api_error() as e:
+            raise ApiError(str(e), e.status_code) from e
 
     async def account_balance(
         self,
@@ -133,14 +153,20 @@ class RestClient:
         :return: The Aptos coin balance associated with the account
         """
         coin_type = coin_type or "0x1::aptos_coin::AptosCoin"
-        result = await self.view_bcs_payload(
-            "0x1::coin",
-            "balance",
-            [TypeTag(StructTag.from_str(coin_type))],
-            [TransactionArgument(account_address, Serializer.struct)],
-            ledger_version,
-        )
-        return int(result[0])
+        if ledger_version is not None:
+            # Fall back to BCS view for ledger_version support.
+            result = await self.view_bcs_payload(
+                "0x1::coin",
+                "balance",
+                [TypeTag(StructTag.from_str(coin_type))],
+                [TransactionArgument(account_address, Serializer.struct)],
+                ledger_version,
+            )
+            return int(result[0])
+        try:
+            return await self._v2.coin.balance(account_address, coin_type=coin_type)
+        except self._v2_api_error() as e:
+            raise ApiError(str(e), e.status_code) from e
 
     async def account_sequence_number(
         self, account_address: AccountAddress, ledger_version: Optional[int] = None
@@ -177,15 +203,24 @@ class RestClient:
         :param ledger_version: Ledger version to get state of account. If not provided, it will be the latest version.
         :return: An individual resource from a given account and at a specific ledger version.
         """
-        response = await self._get(
-            endpoint=f"accounts/{account_address}/resource/{resource_type}",
-            params={"ledger_version": ledger_version},
-        )
-        if response.status_code == 404:
-            raise ResourceNotFound(resource_type, resource_type)
-        if response.status_code >= 400:
-            raise ApiError(f"{response.text} - {account_address}", response.status_code)
-        return response.json()
+        if ledger_version is not None:
+            response = await self._get(
+                endpoint=f"accounts/{account_address}/resource/{resource_type}",
+                params={"ledger_version": ledger_version},
+            )
+            if response.status_code == 404:
+                raise ResourceNotFound(resource_type, resource_type)
+            if response.status_code >= 400:
+                raise ApiError(
+                    f"{response.text} - {account_address}", response.status_code
+                )
+            return response.json()
+        try:
+            return await self._v2.account.get_resource(account_address, resource_type)
+        except self._v2_api_error() as e:
+            if e.status_code == 404:
+                raise ResourceNotFound(resource_type, resource_type) from e
+            raise ApiError(str(e), e.status_code) from e
 
     async def account_resources(
         self,
@@ -202,15 +237,24 @@ class RestClient:
         :param ledger_version: Ledger version to get state of account. If not provided, it will be the latest version.
         :return: All account resources for a given account and a specific ledger version.
         """
-        response = await self._get(
-            endpoint=f"accounts/{account_address}/resources",
-            params={"ledger_version": ledger_version},
-        )
-        if response.status_code == 404:
-            raise AccountNotFound(f"{account_address}", account_address)
-        if response.status_code >= 400:
-            raise ApiError(f"{response.text} - {account_address}", response.status_code)
-        return response.json()
+        if ledger_version is not None:
+            response = await self._get(
+                endpoint=f"accounts/{account_address}/resources",
+                params={"ledger_version": ledger_version},
+            )
+            if response.status_code == 404:
+                raise AccountNotFound(f"{account_address}", account_address)
+            if response.status_code >= 400:
+                raise ApiError(
+                    f"{response.text} - {account_address}", response.status_code
+                )
+            return response.json()
+        try:
+            return await self._v2.account.get_resources(account_address)
+        except self._v2_api_error() as e:
+            if e.status_code == 404:
+                raise AccountNotFound(f"{account_address}", account_address) from e
+            raise ApiError(str(e), e.status_code) from e
 
     async def account_module(
         self,
@@ -234,7 +278,9 @@ class RestClient:
             params={"ledger_version": ledger_version},
         )
         if response.status_code >= 400:
-            raise ApiError(f"{response.text} - {account_address}", response.status_code)
+            raise ApiError(
+                f"{response.text} - {account_address}", response.status_code
+            )
 
         return response.json()
 
@@ -268,7 +314,9 @@ class RestClient:
         if response.status_code == 404:
             raise AccountNotFound(f"{account_address}", account_address)
         if response.status_code >= 400:
-            raise ApiError(f"{response.text} - {account_address}", response.status_code)
+            raise ApiError(
+                f"{response.text} - {account_address}", response.status_code
+            )
 
         return response.json()
 
@@ -292,16 +340,12 @@ class RestClient:
         :param with_transactions: If set to true, include all transactions in the block.
         :returns: Block information.
         """
-        response = await self._get(
-            endpoint=f"blocks/by_height/{block_height}",
-            params={
-                "with_transactions": with_transactions,
-            },
-        )
-        if response.status_code >= 400:
-            raise ApiError(f"{response.text}", response.status_code)
-
-        return response.json()
+        try:
+            return await self._v2.general.get_block_by_height(
+                block_height, with_transactions=with_transactions
+            )
+        except self._v2_api_error() as e:
+            raise ApiError(str(e), e.status_code) from e
 
     async def blocks_by_version(
         self,
@@ -319,16 +363,12 @@ class RestClient:
         :param with_transactions: If set to true, include all transactions in the block.
         :returns: Block information.
         """
-        response = await self._get(
-            endpoint=f"blocks/by_version/{version}",
-            params={
-                "with_transactions": with_transactions,
-            },
-        )
-        if response.status_code >= 400:
-            raise ApiError(f"{response.text}", response.status_code)
-
-        return response.json()
+        try:
+            return await self._v2.general.get_block_by_version(
+                version, with_transactions=with_transactions
+            )
+        except self._v2_api_error() as e:
+            raise ApiError(str(e), e.status_code) from e
 
     #
     # Events
@@ -362,7 +402,9 @@ class RestClient:
             },
         )
         if response.status_code >= 400:
-            raise ApiError(f"{response.text} - {account_address}", response.status_code)
+            raise ApiError(
+                f"{response.text} - {account_address}", response.status_code
+            )
 
         return response.json()
 
@@ -392,7 +434,9 @@ class RestClient:
             },
         )
         if response.status_code >= 400:
-            raise ApiError(f"{response.text} - {account_address}", response.status_code)
+            raise ApiError(
+                f"{response.text} - {account_address}", response.status_code
+            )
 
         return response.json()
 
@@ -419,18 +463,26 @@ class RestClient:
         :param ledger_version: Ledger version to get the table item. If not provided, defaults to latest.
         :returns: The table item value rendered in JSON.
         """
-        response = await self._post(
-            endpoint=f"tables/{handle}/item",
-            data={
-                "key_type": key_type,
-                "value_type": value_type,
-                "key": key,
-            },
-            params={"ledger_version": ledger_version},
-        )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        return response.json()
+        if ledger_version is not None:
+            # v2 API doesn't support ledger_version for table items; fall back.
+            response = await self._post(
+                endpoint=f"tables/{handle}/item",
+                data={
+                    "key_type": key_type,
+                    "value_type": value_type,
+                    "key": key,
+                },
+                params={"ledger_version": ledger_version},
+            )
+            if response.status_code >= 400:
+                raise ApiError(response.text, response.status_code)
+            return response.json()
+        try:
+            return await self._v2.general.get_table_item(
+                handle, key_type, value_type, key
+            )
+        except self._v2_api_error() as e:
+            raise ApiError(str(e), e.status_code) from e
 
     async def aggregator_value(
         self,
@@ -477,10 +529,10 @@ class RestClient:
     #
 
     async def info(self) -> Dict[str, str]:
-        response = await self.client.get(self.base_url)
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        return response.json()
+        try:
+            return await self._v2.general.get_ledger_info()
+        except self._v2_api_error() as e:
+            raise ApiError(str(e), e.status_code) from e
 
     #
     # Transactions
@@ -948,6 +1000,13 @@ class RestClient:
             url=f"{self.base_url}/{endpoint}",
             params=params,
         )
+
+    @staticmethod
+    def _v2_api_error():
+        """Return the v2 ApiError class for use in except clauses."""
+        from .v2.errors import ApiError as V2ApiError
+
+        return V2ApiError
 
 
 class FaucetClient:
