@@ -1,4 +1,7 @@
-name: "Publish aptos-sdk-v2 to PyPI"
+# DEPRECATED: v2 is now part of the main aptos-sdk package.
+# Publishing is handled by .github/workflows/publish.yaml.
+
+name: "[DEPRECATED] Publish aptos-sdk-v2 to PyPI"
 
 on:
   release:
@@ -6,25 +9,11 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
-    name: Build and publish to PyPI
-    if: startsWith(github.event.release.tag_name, 'v2-')
+  skip:
+    name: Skipped (v2 now published as part of aptos-sdk)
+    if: false
     runs-on: ubuntu-latest
-    environment: pypi
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Build package
-        working-directory: v2
-        run: uv build
-
-      - name: Publish to PyPI
-        working-directory: v2
-        run: uv publish
+      - run: echo "no-op"
