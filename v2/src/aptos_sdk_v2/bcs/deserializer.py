@@ -55,6 +55,26 @@ class Deserializer:
     def u256(self) -> int:
         return self._read_int(32)
 
+    # --- Signed integer types ---
+
+    def i8(self) -> int:
+        return self._read_signed_int(1)
+
+    def i16(self) -> int:
+        return self._read_signed_int(2)
+
+    def i32(self) -> int:
+        return self._read_signed_int(4)
+
+    def i64(self) -> int:
+        return self._read_signed_int(8)
+
+    def i128(self) -> int:
+        return self._read_signed_int(16)
+
+    def i256(self) -> int:
+        return self._read_signed_int(32)
+
     # --- Variable-length encoding ---
 
     def uleb128(self) -> int:
@@ -123,3 +143,6 @@ class Deserializer:
 
     def _read_int(self, length: int) -> int:
         return int.from_bytes(self._read(length), byteorder="little", signed=False)
+
+    def _read_signed_int(self, length: int) -> int:
+        return int.from_bytes(self._read(length), byteorder="little", signed=True)

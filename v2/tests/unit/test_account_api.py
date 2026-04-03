@@ -46,22 +46,20 @@ class TestAccountApi:
             assert isinstance(result, int)
 
     async def test_get_balance(self, api):
-        coin_store = "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>"
         with aioresponses() as m:
-            m.get(
-                f"{NODE}/accounts/{ADDR}/resource/{coin_store}",
-                payload={"data": {"coin": {"value": "1000000"}}},
+            m.post(
+                f"{NODE}/view",
+                payload=["1000000"],
             )
             result = await api.get_balance(ADDR)
             assert result == 1_000_000
             assert isinstance(result, int)
 
     async def test_get_balance_custom_coin(self, api):
-        custom = "0x1::coin::CoinStore<0xdead::my_coin::MyCoin>"
         with aioresponses() as m:
-            m.get(
-                f"{NODE}/accounts/{ADDR}/resource/{custom}",
-                payload={"data": {"coin": {"value": "500"}}},
+            m.post(
+                f"{NODE}/view",
+                payload=["500"],
             )
             result = await api.get_balance(ADDR, coin_type="0xdead::my_coin::MyCoin")
             assert result == 500
