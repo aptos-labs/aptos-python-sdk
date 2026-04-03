@@ -123,15 +123,33 @@ async def main():
         # ── Demonstration: building with different argument types ───────
         print("\n── ScriptArgument Types ──")
         print("The following ScriptArgument variants are available:")
-        print(f"  U8         (variant {ScriptArgument.U8})   — ScriptArgument(ScriptArgument.U8, 255)")
-        print(f"  U16        (variant {ScriptArgument.U16})   — ScriptArgument(ScriptArgument.U16, 65535)")
-        print(f"  U32        (variant {ScriptArgument.U32})   — ScriptArgument(ScriptArgument.U32, 100)")
-        print(f"  U64        (variant {ScriptArgument.U64})   — ScriptArgument(ScriptArgument.U64, 1000)")
-        print(f"  U128       (variant {ScriptArgument.U128})   — ScriptArgument(ScriptArgument.U128, 1000)")
-        print(f"  U256       (variant {ScriptArgument.U256})   — ScriptArgument(ScriptArgument.U256, 1000)")
-        print(f"  ADDRESS    (variant {ScriptArgument.ADDRESS})   — ScriptArgument(ScriptArgument.ADDRESS, addr)")
-        print(f"  U8_VECTOR  (variant {ScriptArgument.U8_VECTOR})   — ScriptArgument(ScriptArgument.U8_VECTOR, b'\\x01\\x02')")
-        print(f"  BOOL       (variant {ScriptArgument.BOOL})   — ScriptArgument(ScriptArgument.BOOL, True)")
+        print(
+            f"  U8         (variant {ScriptArgument.U8})   — ScriptArgument(ScriptArgument.U8, 255)"
+        )
+        print(
+            f"  U16        (variant {ScriptArgument.U16})   — ScriptArgument(ScriptArgument.U16, 65535)"
+        )
+        print(
+            f"  U32        (variant {ScriptArgument.U32})   — ScriptArgument(ScriptArgument.U32, 100)"
+        )
+        print(
+            f"  U64        (variant {ScriptArgument.U64})   — ScriptArgument(ScriptArgument.U64, 1000)"
+        )
+        print(
+            f"  U128       (variant {ScriptArgument.U128})   — ScriptArgument(ScriptArgument.U128, 1000)"
+        )
+        print(
+            f"  U256       (variant {ScriptArgument.U256})   — ScriptArgument(ScriptArgument.U256, 1000)"
+        )
+        print(
+            f"  ADDRESS    (variant {ScriptArgument.ADDRESS})   — ScriptArgument(ScriptArgument.ADDRESS, addr)"
+        )
+        print(
+            f"  U8_VECTOR  (variant {ScriptArgument.U8_VECTOR})   — ScriptArgument(ScriptArgument.U8_VECTOR, b'\\x01\\x02')"
+        )
+        print(
+            f"  BOOL       (variant {ScriptArgument.BOOL})   — ScriptArgument(ScriptArgument.BOOL, True)"
+        )
 
 
 if __name__ == "__main__":
