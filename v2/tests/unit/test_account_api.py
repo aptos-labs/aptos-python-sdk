@@ -47,9 +47,9 @@ class TestAccountApi:
 
     async def test_get_balance(self, api):
         with aioresponses() as m:
-            m.post(
-                f"{NODE}/view",
-                payload=["1000000"],
+            m.get(
+                f"{NODE}/accounts/{ADDR}/balance/0x1::aptos_coin::AptosCoin",
+                payload=1_000_000,
             )
             result = await api.get_balance(ADDR)
             assert result == 1_000_000
@@ -57,11 +57,11 @@ class TestAccountApi:
 
     async def test_get_balance_custom_coin(self, api):
         with aioresponses() as m:
-            m.post(
-                f"{NODE}/view",
-                payload=["500"],
+            m.get(
+                f"{NODE}/accounts/{ADDR}/balance/0xdead::my_coin::MyCoin",
+                payload=500,
             )
-            result = await api.get_balance(ADDR, coin_type="0xdead::my_coin::MyCoin")
+            result = await api.get_balance(ADDR, asset_type="0xdead::my_coin::MyCoin")
             assert result == 500
 
     async def test_get_resource(self, api):
