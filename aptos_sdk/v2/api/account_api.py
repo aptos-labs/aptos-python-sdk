@@ -27,18 +27,16 @@ class AccountApi:
         return int(info["sequence_number"])
 
     async def get_balance(
-        self, address: AccountAddress, coin_type: str = "0x1::aptos_coin::AptosCoin"
+        self, address: AccountAddress, asset_type: str = "0x1::aptos_coin::AptosCoin"
     ) -> int:
-        url = f"{self._config.node_url}/view"
-        result = await self._client.post_view(
-            url,
-            json={
-                "function": "0x1::coin::balance",
-                "type_arguments": [coin_type],
-                "arguments": [str(address)],
-            },
-        )
-        return int(result[0])
+        """Get the balance of a coin or fungible asset for an address.
+
+        Uses the /accounts/{address}/balance/{asset_type} REST endpoint
+        which handles both legacy coins and fungible assets.
+        """
+        url = f"{self._config.node_url}/accounts/{address}/balance/{asset_type}"
+        result = await self._client.get(url)
+        return int(result)
 
     async def get_resource(self, address: AccountAddress, resource_type: str) -> dict[str, Any]:
         url = f"{self._config.node_url}/accounts/{address}/resource/{resource_type}"
