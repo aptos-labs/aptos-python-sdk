@@ -165,9 +165,9 @@ async def main():
     # Check the authentication key for Alice's address on-chain
     alice_new_account_info = await rest_client.account(alice.address())
     # Ensure that Alice's authentication key matches bob's
-    assert (
-        alice_new_account_info["authentication_key"] == bob.auth_key()
-    ), "Authentication key doesn't match Bob's"
+    assert alice_new_account_info["authentication_key"] == bob.auth_key(), (
+        "Authentication key doesn't match Bob's"
+    )
 
     # Construct a new Account object that reflects alice's original address with the new private key
     original_alice_key = alice.private_key
