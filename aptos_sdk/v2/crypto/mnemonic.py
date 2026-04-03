@@ -10,7 +10,6 @@ from bip_utils import (
     Bip44,
     Bip44Changes,
     Bip44Coins,
-    Bip44Levels,
 )
 
 from ..errors import InvalidMnemonicError

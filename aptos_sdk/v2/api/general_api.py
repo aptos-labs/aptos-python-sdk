@@ -88,8 +88,7 @@ class GeneralApi:
         difficult to represent as JSON strings.
         """
         from ..bcs import Serializer
-        from ..transactions.payload import EntryFunction, ModuleId
-        from ..types.account_address import AccountAddress
+        from ..transactions.payload import ModuleId
         from ..types.type_tag import TypeTag
 
         # Build the BCS payload for the view request
