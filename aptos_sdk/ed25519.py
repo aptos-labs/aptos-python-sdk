@@ -3,10 +3,6 @@
 
 from __future__ import annotations
 
-import importlib.util
-import os
-import sys
-import types
 import unittest
 from typing import List, Tuple, cast
 
@@ -16,60 +12,19 @@ from . import asymmetric_crypto
 from .bcs import Deserializer, Serializer
 from .errors import InvalidKeyError, InvalidSignatureError
 
-# ---------------------------------------------------------------------------
-# Bootstrap v2 crypto modules without triggering the heavy v2/__init__.py
-# or v2/crypto/__init__.py.  The v2 package stub and v2.bcs/v2.errors are
-# already registered by aptos_sdk.bcs (imported above).
-# ---------------------------------------------------------------------------
-
-_v2_dir = os.path.join(os.path.dirname(__file__), "v2")
-_crypto_dir = os.path.join(_v2_dir, "crypto")
-
-
-def _load_module(fqn: str, filepath: str) -> types.ModuleType:
-    """Load a single .py file as *fqn* without running any package __init__."""
-    if fqn in sys.modules:
-        return sys.modules[fqn]
-    spec = importlib.util.spec_from_file_location(fqn, filepath)
-    mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-    sys.modules[fqn] = mod
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
-    return mod
-
-
-# Ensure the v2.crypto namespace package stub exists.
-if "aptos_sdk.v2.crypto" not in sys.modules:
-    _crypto_pkg = types.ModuleType("aptos_sdk.v2.crypto")
-    _crypto_pkg.__path__ = [_crypto_dir]  # type: ignore[attr-defined]
-    _crypto_pkg.__package__ = "aptos_sdk.v2.crypto"
-    sys.modules["aptos_sdk.v2.crypto"] = _crypto_pkg
-
-_load_module("aptos_sdk.v2.crypto.keys", os.path.join(_crypto_dir, "keys.py"))
-_ed25519_mod = _load_module(
-    "aptos_sdk.v2.crypto.ed25519", os.path.join(_crypto_dir, "ed25519.py")
-)
-
-_V2PrivateKey = _ed25519_mod.Ed25519PrivateKey
-_V2PublicKey = _ed25519_mod.Ed25519PublicKey
-_V2Signature = _ed25519_mod.Ed25519Signature
-
 
 class PrivateKey(asymmetric_crypto.PrivateKey):
     LENGTH: int = 32
 
-    _inner: _V2PrivateKey
+    key: SigningKey
 
     def __init__(self, key: SigningKey):
-        self._inner = _V2PrivateKey(key)
-
-    @property
-    def key(self) -> SigningKey:
-        return self._inner._key
+        self.key = key
 
     def __eq__(self, other: object):
         if not isinstance(other, PrivateKey):
             return NotImplemented
-        return self._inner == other._inner
+        return self.key == other.key
 
     def __str__(self):
         return self.aip80()
@@ -83,10 +38,13 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         :param strict: If true, the value MUST be compliant with AIP-80.
         :return: Parsed Ed25519 private key.
         """
-        v2 = _V2PrivateKey.from_hex(value, strict)
-        pk = PrivateKey.__new__(PrivateKey)
-        pk._inner = v2
-        return pk
+        return PrivateKey(
+            SigningKey(
+                PrivateKey.parse_hex_input(
+                    value, asymmetric_crypto.PrivateKeyVariant.Ed25519, strict
+                )
+            )
+        )
 
     @staticmethod
     def from_str(value: str, strict: bool | None = None) -> PrivateKey:
@@ -100,7 +58,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         return PrivateKey.from_hex(value, strict)
 
     def hex(self) -> str:
-        return self._inner.hex()
+        return f"0x{self.key.encode().hex()}"
 
     def aip80(self) -> str:
         return PrivateKey.format_private_key(
@@ -108,82 +66,70 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         )
 
     def public_key(self) -> PublicKey:
-        v2_pub = self._inner.public_key()
-        pub = PublicKey.__new__(PublicKey)
-        pub._inner = v2_pub
-        return pub
+        return PublicKey(self.key.verify_key)
 
     @staticmethod
     def random() -> PrivateKey:
-        v2 = _V2PrivateKey.generate()
-        pk = PrivateKey.__new__(PrivateKey)
-        pk._inner = v2
-        return pk
+        return PrivateKey(SigningKey.generate())
 
     def sign(self, data: bytes) -> Signature:
-        v2_sig = self._inner.sign(data)
-        sig = Signature.__new__(Signature)
-        sig._inner = v2_sig
-        return sig
+        return Signature(self.key.sign(data).signature)
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> PrivateKey:
-        v2 = _V2PrivateKey.deserialize(deserializer)
-        pk = PrivateKey.__new__(PrivateKey)
-        pk._inner = v2
-        return pk
+        key = deserializer.to_bytes()
+        if len(key) != PrivateKey.LENGTH:
+            raise InvalidKeyError("Length mismatch")
+
+        return PrivateKey(SigningKey(key))
 
     def serialize(self, serializer: Serializer):
-        self._inner.serialize(serializer)
+        serializer.to_bytes(self.key.encode())
 
 
 class PublicKey(asymmetric_crypto.PublicKey):
     LENGTH: int = 32
 
-    _inner: _V2PublicKey
+    key: VerifyKey
 
     def __init__(self, key: VerifyKey):
-        self._inner = _V2PublicKey(key)
-
-    @property
-    def key(self) -> VerifyKey:
-        return self._inner._key
+        self.key = key
 
     def __eq__(self, other: object):
         if not isinstance(other, PublicKey):
             return NotImplemented
-        return self._inner == other._inner
+        return self.key == other.key
 
     def __str__(self) -> str:
-        return str(self._inner)
+        return f"0x{self.key.encode().hex()}"
 
     @staticmethod
     def from_str(value: str) -> PublicKey:
-        v2_pub = _V2PublicKey.from_str(value)
-        pub = PublicKey.__new__(PublicKey)
-        pub._inner = v2_pub
-        return pub
+        if value[0:2] == "0x":
+            value = value[2:]
+        return PublicKey(VerifyKey(bytes.fromhex(value)))
 
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         try:
             signature = cast(Signature, signature)
-            self._inner._key.verify(data, signature.data())
+            self.key.verify(data, signature.data())
         except Exception:
             return False
         return True
 
     def to_crypto_bytes(self) -> bytes:
-        return self._inner.to_crypto_bytes()
+        return self.key.encode()
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> PublicKey:
-        v2_pub = _V2PublicKey.deserialize(deserializer)
-        pub = PublicKey.__new__(PublicKey)
-        pub._inner = v2_pub
-        return pub
+        key = deserializer.to_bytes()
+        if len(key) != PublicKey.LENGTH:
+            raise InvalidKeyError("Length mismatch")
+
+        return PublicKey(VerifyKey(key))
 
     def serialize(self, serializer: Serializer):
-        self._inner.serialize(serializer)
+        serializer.to_bytes(self.key.encode())
 
 
 class MultiPublicKey(asymmetric_crypto.PublicKey):
@@ -255,42 +201,38 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
 class Signature(asymmetric_crypto.Signature):
     LENGTH: int = 64
 
-    _inner: _V2Signature
+    signature: bytes
 
     def __init__(self, signature: bytes):
-        self._inner = _V2Signature(signature)
-
-    @property
-    def signature(self) -> bytes:
-        return self._inner._signature
+        self.signature = signature
 
     def __eq__(self, other: object):
         if not isinstance(other, Signature):
             return NotImplemented
-        return self._inner == other._inner
+        return self.signature == other.signature
 
     def __str__(self) -> str:
-        return str(self._inner)
+        return f"0x{self.signature.hex()}"
 
     def data(self) -> bytes:
-        return self._inner.data()
+        return self.signature
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> Signature:
-        v2_sig = _V2Signature.deserialize(deserializer)
-        sig = Signature.__new__(Signature)
-        sig._inner = v2_sig
-        return sig
+        signature = deserializer.to_bytes()
+        if len(signature) != Signature.LENGTH:
+            raise InvalidSignatureError("Length mismatch")
+
+        return Signature(signature)
 
     @staticmethod
     def from_str(value: str) -> Signature:
-        v2_sig = _V2Signature.from_str(value)
-        sig = Signature.__new__(Signature)
-        sig._inner = v2_sig
-        return sig
+        if value[0:2] == "0x":
+            value = value[2:]
+        return Signature(bytes.fromhex(value))
 
     def serialize(self, serializer: Serializer):
-        self._inner.serialize(serializer)
+        serializer.to_bytes(self.signature)
 
 
 class MultiSignature(asymmetric_crypto.Signature):

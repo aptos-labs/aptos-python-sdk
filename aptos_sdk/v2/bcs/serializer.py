@@ -18,6 +18,19 @@ MAX_U64 = 2**64 - 1
 MAX_U128 = 2**128 - 1
 MAX_U256 = 2**256 - 1
 
+MIN_I8 = -(2**7)
+MAX_I8 = 2**7 - 1
+MIN_I16 = -(2**15)
+MAX_I16 = 2**15 - 1
+MIN_I32 = -(2**31)
+MAX_I32 = 2**31 - 1
+MIN_I64 = -(2**63)
+MAX_I64 = 2**63 - 1
+MIN_I128 = -(2**127)
+MAX_I128 = 2**127 - 1
+MIN_I256 = -(2**255)
+MAX_I256 = 2**255 - 1
+
 
 class Serializer:
     __slots__ = ("_output",)
@@ -64,6 +77,38 @@ class Serializer:
         if value < 0 or value > MAX_U256:
             raise BcsSerializationError(f"Cannot encode {value} into u256")
         self._write_int(value, 32)
+
+    # --- Signed integer types ---
+
+    def i8(self, value: int) -> None:
+        if value < MIN_I8 or value > MAX_I8:
+            raise BcsSerializationError(f"Cannot encode {value} into i8")
+        self._write_signed_int(value, 1)
+
+    def i16(self, value: int) -> None:
+        if value < MIN_I16 or value > MAX_I16:
+            raise BcsSerializationError(f"Cannot encode {value} into i16")
+        self._write_signed_int(value, 2)
+
+    def i32(self, value: int) -> None:
+        if value < MIN_I32 or value > MAX_I32:
+            raise BcsSerializationError(f"Cannot encode {value} into i32")
+        self._write_signed_int(value, 4)
+
+    def i64(self, value: int) -> None:
+        if value < MIN_I64 or value > MAX_I64:
+            raise BcsSerializationError(f"Cannot encode {value} into i64")
+        self._write_signed_int(value, 8)
+
+    def i128(self, value: int) -> None:
+        if value < MIN_I128 or value > MAX_I128:
+            raise BcsSerializationError(f"Cannot encode {value} into i128")
+        self._write_signed_int(value, 16)
+
+    def i256(self, value: int) -> None:
+        if value < MIN_I256 or value > MAX_I256:
+            raise BcsSerializationError(f"Cannot encode {value} into i256")
+        self._write_signed_int(value, 32)
 
     # --- Variable-length encoding ---
 
@@ -136,6 +181,9 @@ class Serializer:
 
     def _write_int(self, value: int, length: int) -> None:
         self._output.write(value.to_bytes(length, "little", signed=False))
+
+    def _write_signed_int(self, value: int, length: int) -> None:
+        self._output.write(value.to_bytes(length, "little", signed=True))
 
 
 def _encode(value: Any, encoder: Callable[[Serializer, Any], None]) -> bytes:

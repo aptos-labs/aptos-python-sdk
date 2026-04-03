@@ -7,6 +7,7 @@ import hashlib
 from ..types.account_address import AccountAddress, AuthKeyScheme
 from .ed25519 import Ed25519PublicKey
 from .keys import PublicKey
+from .secp256k1 import Secp256k1PublicKey
 from .single_key import AnyPublicKey
 
 
@@ -20,6 +21,10 @@ class AuthenticationKey:
 
     @staticmethod
     def from_public_key(key: PublicKey) -> AuthenticationKey:
+        # Auto-wrap non-Ed25519 keys into AnyPublicKey for single-key auth
+        if isinstance(key, Secp256k1PublicKey):
+            key = AnyPublicKey(key)
+
         hasher = hashlib.sha3_256()
         hasher.update(key.to_crypto_bytes())
 

@@ -48,13 +48,16 @@ def derive_ed25519_private_key(
 
     seed = Bip39SeedGenerator(phrase).Generate()
 
-    # Parse the derivation path to extract account/change/address indices
+    # Parse the BIP-44 derivation path: m/purpose'/coin'/account'/change'/address'
     parts = path.replace("'", "").split("/")
-    if len(parts) < 5 or parts[0] != "m":
-        raise InvalidMnemonicError(f"Invalid derivation path: {path}")
+    if len(parts) < 6 or parts[0] != "m":
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. "
+            "Expected BIP-44 format: m/44'/637'/account'/change'/address'"
+        )
 
     account_idx = int(parts[3])
-    address_idx = int(parts[4])
+    address_idx = int(parts[5])
 
     bip44_ctx = (
         Bip44.FromSeed(seed, Bip44Coins.APTOS)
@@ -62,10 +65,8 @@ def derive_ed25519_private_key(
         .Coin()
         .Account(account_idx)
         .Change(Bip44Changes.CHAIN_EXT)
+        .AddressIndex(address_idx)
     )
-
-    if bip44_ctx.IsLevel(Bip44Levels.CHANGE):
-        bip44_ctx = bip44_ctx.AddressIndex(address_idx)
 
     raw_key = bip44_ctx.PrivateKey().Raw().ToBytes()
     return Ed25519PrivateKey.from_hex(raw_key)
@@ -81,12 +82,16 @@ def derive_secp256k1_private_key(
 
     seed = Bip39SeedGenerator(phrase).Generate()
 
+    # Parse the BIP-44 derivation path: m/purpose'/coin'/account'/change'/address'
     parts = path.replace("'", "").split("/")
-    if len(parts) < 5 or parts[0] != "m":
-        raise InvalidMnemonicError(f"Invalid derivation path: {path}")
+    if len(parts) < 6 or parts[0] != "m":
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. "
+            "Expected BIP-44 format: m/44'/637'/account'/change'/address'"
+        )
 
     account_idx = int(parts[3])
-    address_idx = int(parts[4])
+    address_idx = int(parts[5])
 
     bip44_ctx = (
         Bip44.FromSeed(seed, Bip44Coins.APTOS)
@@ -94,10 +99,8 @@ def derive_secp256k1_private_key(
         .Coin()
         .Account(account_idx)
         .Change(Bip44Changes.CHAIN_EXT)
+        .AddressIndex(address_idx)
     )
-
-    if bip44_ctx.IsLevel(Bip44Levels.CHANGE):
-        bip44_ctx = bip44_ctx.AddressIndex(address_idx)
 
     raw_key = bip44_ctx.PrivateKey().Raw().ToBytes()
     return Secp256k1PrivateKey.from_hex(raw_key)

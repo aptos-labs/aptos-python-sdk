@@ -15,12 +15,7 @@ from .transactions import RawTransactionInternal
 
 
 class Account:
-    """Represents an account as well as the private, public key-pair for the Aptos blockchain.
-
-    This v1 Account keeps the original constructor signature ``(account_address, private_key)``
-    and public attribute names for backward compatibility, while delegating key generation to
-    the v2 implementation where possible.
-    """
+    """Represents an account as well as the private, public key-pair for the Aptos blockchain."""
 
     account_address: AccountAddress
     private_key: asymmetric_crypto.PrivateKey
@@ -43,8 +38,6 @@ class Account:
     def generate() -> Account:
         """Generate a new Ed25519 account with a random private key.
 
-        Delegates key generation to the v2 Ed25519PrivateKey implementation.
-
         :returns: A new Account with a freshly generated Ed25519 key pair.
         """
         private_key = ed25519.PrivateKey.random()
@@ -54,8 +47,6 @@ class Account:
     @staticmethod
     def generate_secp256k1_ecdsa() -> Account:
         """Generate a new Secp256k1 ECDSA account with a random private key.
-
-        Delegates key generation to the v2 Secp256k1PrivateKey implementation.
 
         :returns: A new Account with a freshly generated Secp256k1 key pair.
         """
