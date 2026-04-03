@@ -70,7 +70,7 @@ jobs:
 
       - name: Verify v2 imports from main package
         run: |
-          poetry run python -c "
+          uv run python -c "
           from aptos_sdk.v2 import Account, Aptos, AptosConfig, Network
           from aptos_sdk.v2.bcs import Serializer, Deserializer
           from aptos_sdk.v2.crypto.ed25519 import Ed25519PrivateKey
