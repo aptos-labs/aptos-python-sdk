@@ -26,7 +26,7 @@ jobs:
           pyproject_directory: .
 
       - name: Run unit tests
-        run: poetry run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
+        run: uv run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
 
   build:
     name: Build distribution
@@ -38,7 +38,7 @@ jobs:
       - uses: ./.github/actions/python-setup
 
       - name: Build package
-        run: poetry build
+        run: uv build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
