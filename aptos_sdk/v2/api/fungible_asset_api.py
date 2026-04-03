@@ -30,17 +30,24 @@ class FungibleAssetApi:
     async def transfer(
         self,
         sender: Account,
-        fa_address: AccountAddress,
+        metadata_address: AccountAddress,
         recipient: AccountAddress,
         amount: int,
     ) -> str:
-        """Transfer a fungible asset and return the transaction hash."""
+        """Transfer a fungible asset and return the transaction hash.
+
+        Args:
+            sender: The sending account.
+            metadata_address: The address of the fungible asset metadata object.
+            recipient: The recipient account address.
+            amount: The amount to transfer.
+        """
         payload = EntryFunction.natural(
             "0x1::primary_fungible_store",
             "transfer",
             [],
             [
-                TransactionArgument(fa_address, Serializer.struct),
+                TransactionArgument(metadata_address, Serializer.struct),
                 TransactionArgument(recipient, Serializer.struct),
                 TransactionArgument(amount, Serializer.u64),
             ],
@@ -54,15 +61,20 @@ class FungibleAssetApi:
     async def balance(
         self,
         address: AccountAddress,
-        fa_address: AccountAddress,
+        metadata_address: AccountAddress,
     ) -> int:
-        """Get the balance of a fungible asset for an address."""
+        """Get the balance of a fungible asset for an address.
+
+        Args:
+            address: The account to query.
+            metadata_address: The address of the fungible asset metadata object.
+        """
         result = await self._client.post_view(
             f"{self._config.node_url}/view",
             json={
                 "function": "0x1::primary_fungible_store::balance",
                 "type_arguments": [],
-                "arguments": [str(address), str(fa_address)],
+                "arguments": [str(address), str(metadata_address)],
             },
         )
         return int(result[0])

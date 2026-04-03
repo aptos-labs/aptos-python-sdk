@@ -64,7 +64,7 @@ class GeneralApi:
         ty_args: list[str],
         args: list[str],
     ) -> list[Any]:
-        """Execute a view function (read-only)."""
+        """Execute a view function (read-only) using JSON arguments."""
         url = f"{self._config.node_url}/view"
         return await self._client.post_view(
             url,
@@ -74,3 +74,51 @@ class GeneralApi:
                 "arguments": args,
             },
         )
+
+    async def view_bcs(
+        self,
+        module: str,
+        function: str,
+        ty_args: list[str],
+        args: bytes,
+    ) -> bytes:
+        """Execute a view function with BCS-encoded arguments and return BCS bytes.
+
+        This is useful for complex argument types (vectors, options) that are
+        difficult to represent as JSON strings.
+        """
+        from ..bcs import Serializer
+        from ..transactions.payload import EntryFunction, ModuleId
+        from ..types.account_address import AccountAddress
+        from ..types.type_tag import TypeTag
+
+        # Build the BCS payload for the view request
+        module_id = ModuleId.from_str(module)
+        parsed_ty_args = [TypeTag.from_str(t) for t in ty_args] if ty_args else []
+
+        ser = Serializer()
+        module_id.serialize(ser)
+        ser.str(function)
+        ser.uleb128(len(parsed_ty_args))
+        for ty in parsed_ty_args:
+            ty.serialize(ser)
+        ser.to_bytes(args)
+        bcs_body = ser.output()
+
+        url = f"{self._config.node_url}/view"
+        session = self._client._ensure_session()
+        async with session.request(
+            "POST",
+            url,
+            data=bcs_body,
+            headers={
+                "Content-Type": "application/x.aptos.view_function+bcs",
+                "Accept": "application/x-bcs",
+            },
+        ) as resp:
+            if resp.status >= 400:
+                from ..errors import ApiError
+
+                body = await resp.text()
+                raise ApiError(body, resp.status)
+            return await resp.read()

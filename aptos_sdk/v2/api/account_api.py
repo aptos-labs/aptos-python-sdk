@@ -27,10 +27,11 @@ class AccountApi:
         return int(info["sequence_number"])
 
     async def get_balance(
-        self, address: AccountAddress, coin_type: str = "0x1::aptos_coin::AptosCoin"
+        self, address: AccountAddress, asset_type: str = "0x1::aptos_coin::AptosCoin"
     ) -> int:
-        resource = await self.get_resource(address, f"0x1::coin::CoinStore<{coin_type}>")
-        return int(resource["data"]["coin"]["value"])
+        url = f"{self._config.node_url}/accounts/{address}/balance/{asset_type}"
+        result = await self._client.get(url)
+        return int(result)
 
     async def get_resource(self, address: AccountAddress, resource_type: str) -> dict[str, Any]:
         url = f"{self._config.node_url}/accounts/{address}/resource/{resource_type}"

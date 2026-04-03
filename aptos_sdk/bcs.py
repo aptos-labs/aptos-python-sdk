@@ -2,106 +2,271 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-BCS serializer/deserializer — v1 compatibility wrapper around v2 implementation.
-
-This module re-exports the v2 ``Serializer``, ``Deserializer``, ``Serializable``,
-and ``Deserializable`` classes so that existing v1 code continues to work without
-modification.  The v1 ``encoder`` helper is also provided (it wraps the v2
-``_encode`` function).
+This is a simple BCS serializer and deserializer. Learn more at https://github.com/diem/bcs
 """
 
 from __future__ import annotations
 
-import importlib.util
-import os
-import sys
-import types
+import io
+import typing
 import unittest
+from typing import Dict, List
+
+from typing_extensions import Protocol
 
 from .errors import DeserializationError, SerializationError
 
-# ---------------------------------------------------------------------------
-# Bootstrap v2 sub-packages without triggering the heavy v2/__init__.py.
-#
-# The v2 BCS modules use relative imports like ``from ..errors import ...``
-# which require ``aptos_sdk.v2`` and ``aptos_sdk.v2.errors`` to exist in
-# ``sys.modules``.  We register lightweight stand-ins so that the normal
-# import machinery can resolve those references.
-# ---------------------------------------------------------------------------
-
-_v2_dir = os.path.join(os.path.dirname(__file__), "v2")
+MAX_U8 = 2**8 - 1
+MAX_U16 = 2**16 - 1
+MAX_U32 = 2**32 - 1
+MAX_U64 = 2**64 - 1
+MAX_U128 = 2**128 - 1
+MAX_U256 = 2**256 - 1
 
 
-def _load_module(fqn: str, filepath: str) -> types.ModuleType:
-    """Load a single .py file as *fqn* without running any package __init__."""
-    if fqn in sys.modules:
-        return sys.modules[fqn]
-    spec = importlib.util.spec_from_file_location(fqn, filepath)
-    mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-    sys.modules[fqn] = mod
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
-    return mod
+class Deserializable(Protocol):
+    # The following class can be deserialized from a bcs stream.
+
+    @classmethod
+    def from_bytes(cls, indata: bytes) -> Deserializable:
+        der = Deserializer(indata)
+        return der.struct(cls)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> Deserializable: ...
 
 
-# Ensure the v2 *package* entry exists (as a namespace package) so relative
-# imports inside v2 sub-modules resolve correctly.
-if "aptos_sdk.v2" not in sys.modules:
-    _v2_pkg = types.ModuleType("aptos_sdk.v2")
-    _v2_pkg.__path__ = [_v2_dir]  # type: ignore[attr-defined]
-    _v2_pkg.__package__ = "aptos_sdk.v2"
-    sys.modules["aptos_sdk.v2"] = _v2_pkg
+class Serializable(Protocol):
+    # The following class can be serialized into a bcs stream.
 
-# Load v2.errors so ``from ..errors import ...`` works inside v2.bcs.*
-_load_module("aptos_sdk.v2.errors", os.path.join(_v2_dir, "errors.py"))
+    def to_bytes(self) -> bytes:
+        ser = Serializer()
+        ser.struct(self)
+        return ser.output()
 
-# Load v2.bcs package
-_bcs_dir = os.path.join(_v2_dir, "bcs")
-if "aptos_sdk.v2.bcs" not in sys.modules:
-    _bcs_pkg = types.ModuleType("aptos_sdk.v2.bcs")
-    _bcs_pkg.__path__ = [_bcs_dir]  # type: ignore[attr-defined]
-    _bcs_pkg.__package__ = "aptos_sdk.v2.bcs"
-    sys.modules["aptos_sdk.v2.bcs"] = _bcs_pkg
-
-_serializer_mod = _load_module(
-    "aptos_sdk.v2.bcs.serializer", os.path.join(_bcs_dir, "serializer.py")
-)
-_deserializer_mod = _load_module(
-    "aptos_sdk.v2.bcs.deserializer", os.path.join(_bcs_dir, "deserializer.py")
-)
-_protocols_mod = _load_module(
-    "aptos_sdk.v2.bcs.protocols", os.path.join(_bcs_dir, "protocols.py")
-)
-
-# Populate the v2.bcs package stub so that ``from ..bcs import Serializer``
-# etc. works inside v2 sub-modules that are loaded via _load_module.
-_bcs_stub = sys.modules["aptos_sdk.v2.bcs"]
-_bcs_stub.Serializer = _serializer_mod.Serializer  # type: ignore[attr-defined]
-_bcs_stub.Deserializer = _deserializer_mod.Deserializer  # type: ignore[attr-defined]
-_bcs_stub.Serializable = _protocols_mod.Serializable  # type: ignore[attr-defined]
-_bcs_stub.Deserializable = _protocols_mod.Deserializable  # type: ignore[attr-defined]
-
-# ---------------------------------------------------------------------------
-# Public re-exports
-# ---------------------------------------------------------------------------
-
-Serializer = _serializer_mod.Serializer
-Deserializer = _deserializer_mod.Deserializer
-Serializable = _protocols_mod.Serializable
-Deserializable = _protocols_mod.Deserializable
-
-encoder = _serializer_mod._encode
-
-MAX_U8 = _serializer_mod.MAX_U8
-MAX_U16 = _serializer_mod.MAX_U16
-MAX_U32 = _serializer_mod.MAX_U32
-MAX_U64 = _serializer_mod.MAX_U64
-MAX_U128 = _serializer_mod.MAX_U128
-MAX_U256 = _serializer_mod.MAX_U256
+    def serialize(self, serializer: Serializer): ...
 
 
-# ---------------------------------------------------------------------------
-# Test suite (preserved from v1)
-# ---------------------------------------------------------------------------
+class Deserializer:
+    _input: io.BytesIO
+    _length: int
+
+    def __init__(self, data: bytes):
+        self._length = len(data)
+        self._input = io.BytesIO(data)
+
+    def remaining(self) -> int:
+        return self._length - self._input.tell()
+
+    def bool(self) -> bool:
+        value = int.from_bytes(self._read(1), byteorder="little", signed=False)
+        if value == 0:
+            return False
+        elif value == 1:
+            return True
+        else:
+            raise DeserializationError(f"Unexpected boolean value: {value}")
+
+    def to_bytes(self) -> bytes:
+        return self._read(self.uleb128())
+
+    def fixed_bytes(self, length: int) -> bytes:
+        return self._read(length)
+
+    def map(
+        self,
+        key_decoder: typing.Callable[[Deserializer], typing.Any],
+        value_decoder: typing.Callable[[Deserializer], typing.Any],
+    ) -> Dict[typing.Any, typing.Any]:
+        length = self.uleb128()
+        values: Dict = {}
+        while len(values) < length:
+            key = key_decoder(self)
+            value = value_decoder(self)
+            values[key] = value
+        return values
+
+    def sequence(
+        self,
+        value_decoder: typing.Callable[[Deserializer], typing.Any],
+    ) -> List[typing.Any]:
+        length = self.uleb128()
+        values: List = []
+        while len(values) < length:
+            values.append(value_decoder(self))
+        return values
+
+    def str(self) -> str:
+        return self.to_bytes().decode()
+
+    def struct(self, struct: typing.Any) -> typing.Any:
+        return struct.deserialize(self)
+
+    def u8(self) -> int:
+        return self._read_int(1)
+
+    def u16(self) -> int:
+        return self._read_int(2)
+
+    def u32(self) -> int:
+        return self._read_int(4)
+
+    def u64(self) -> int:
+        return self._read_int(8)
+
+    def u128(self) -> int:
+        return self._read_int(16)
+
+    def u256(self) -> int:
+        return self._read_int(32)
+
+    def uleb128(self) -> int:
+        value = 0
+        shift = 0
+
+        while value <= MAX_U32:
+            byte = self._read_int(1)
+            value |= (byte & 0x7F) << shift
+            if byte & 0x80 == 0:
+                break
+            shift += 7
+
+        if value > MAX_U32:
+            raise DeserializationError("Unexpectedly large uleb128 value")
+
+        return value
+
+    def _read(self, length: int) -> bytes:
+        value = self._input.read(length)
+        if value is None or len(value) < length:
+            actual_length = 0 if value is None else len(value)
+            error = (
+                f"Unexpected end of input. Requested: {length}, found: {actual_length}"
+            )
+            raise DeserializationError(error)
+        return value
+
+    def _read_int(self, length: int) -> int:
+        return int.from_bytes(self._read(length), byteorder="little", signed=False)
+
+
+class Serializer:
+    _output: io.BytesIO
+
+    def __init__(self):
+        self._output = io.BytesIO()
+
+    def output(self) -> bytes:
+        return self._output.getvalue()
+
+    def bool(self, value: bool):
+        self._write_int(int(value), 1)
+
+    def to_bytes(self, value: bytes):
+        self.uleb128(len(value))
+        self._output.write(value)
+
+    def fixed_bytes(self, value):
+        self._output.write(value)
+
+    def map(
+        self,
+        values: typing.Dict[typing.Any, typing.Any],
+        key_encoder: typing.Callable[[Serializer, typing.Any], None],
+        value_encoder: typing.Callable[[Serializer, typing.Any], None],
+    ):
+        encoded_values = []
+        for key, value in values.items():
+            encoded_values.append(
+                (encoder(key, key_encoder), encoder(value, value_encoder))
+            )
+        encoded_values.sort(key=lambda item: item[0])
+
+        self.uleb128(len(encoded_values))
+        for key, value in encoded_values:
+            self.fixed_bytes(key)
+            self.fixed_bytes(value)
+
+    @staticmethod
+    def sequence_serializer(
+        value_encoder: typing.Callable[[Serializer, typing.Any], None],
+    ):
+        return lambda self, values: self.sequence(values, value_encoder)
+
+    def sequence(
+        self,
+        values: typing.List[typing.Any],
+        value_encoder: typing.Callable[[Serializer, typing.Any], None],
+    ):
+        self.uleb128(len(values))
+        for value in values:
+            self.fixed_bytes(encoder(value, value_encoder))
+
+    def str(self, value: str):
+        self.to_bytes(value.encode())
+
+    def struct(self, value: typing.Any):
+        value.serialize(self)
+
+    def u8(self, value: int):
+        if value > MAX_U8:
+            raise SerializationError(f"Cannot encode {value} into u8")
+
+        self._write_int(value, 1)
+
+    def u16(self, value: int):
+        if value > MAX_U16:
+            raise SerializationError(f"Cannot encode {value} into u16")
+
+        self._write_int(value, 2)
+
+    def u32(self, value: int):
+        if value > MAX_U32:
+            raise SerializationError(f"Cannot encode {value} into u32")
+
+        self._write_int(value, 4)
+
+    def u64(self, value: int):
+        if value > MAX_U64:
+            raise SerializationError(f"Cannot encode {value} into u64")
+
+        self._write_int(value, 8)
+
+    def u128(self, value: int):
+        if value > MAX_U128:
+            raise SerializationError(f"Cannot encode {value} into u128")
+
+        self._write_int(value, 16)
+
+    def u256(self, value: int):
+        if value > MAX_U256:
+            raise SerializationError(f"Cannot encode {value} into u256")
+
+        self._write_int(value, 32)
+
+    def uleb128(self, value: int):
+        if value > MAX_U32:
+            raise SerializationError(f"Cannot encode {value} into uleb128")
+
+        while value >= 0x80:
+            # Write 7 (lowest) bits of data and set the 8th bit to 1.
+            byte = value & 0x7F
+            self.u8(byte | 0x80)
+            value >>= 7
+
+        # Write the remaining bits of data and set the highest bit to 0.
+        self.u8(value & 0x7F)
+
+    def _write_int(self, value: int, length: int):
+        self._output.write(value.to_bytes(length, "little", signed=False))
+
+
+def encoder(
+    value: typing.Any, encoder: typing.Callable[[Serializer, typing.Any], typing.Any]
+) -> bytes:
+    ser = Serializer()
+    encoder(ser, value)
+    return ser.output()
 
 
 class Test(unittest.TestCase):
