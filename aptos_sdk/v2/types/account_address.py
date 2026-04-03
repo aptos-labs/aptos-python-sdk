@@ -110,7 +110,9 @@ class AccountAddress:
         return AccountAddress(hasher.digest())
 
     @staticmethod
-    def for_named_collection(creator: AccountAddress, collection_name: str) -> AccountAddress:
+    def for_named_collection(
+        creator: AccountAddress, collection_name: str
+    ) -> AccountAddress:
         return AccountAddress.for_named_object(creator, collection_name.encode())
 
     @staticmethod

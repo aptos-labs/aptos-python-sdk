@@ -222,7 +222,9 @@ class StructTag:
         if not tags:  # pragma: no cover — parser always appends via _make_struct_tag
             raise InvalidTypeTagError(f"Cannot parse type tag: {type_tag}")
         inner = tags[0].value
-        if not isinstance(inner, StructTag):  # pragma: no cover — parser only creates StructTags
+        if not isinstance(
+            inner, StructTag
+        ):  # pragma: no cover — parser only creates StructTags
             raise InvalidTypeTagError(f"Expected StructTag, got {type(inner).__name__}")
         return inner
 
@@ -286,7 +288,9 @@ class TypeTag:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeTag):
             return NotImplemented
-        return self.value.variant() == other.value.variant() and self.value == other.value
+        return (
+            self.value.variant() == other.value.variant() and self.value == other.value
+        )
 
     def __str__(self) -> str:
         return str(self.value)
