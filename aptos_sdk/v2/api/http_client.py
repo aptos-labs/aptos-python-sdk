@@ -55,7 +55,9 @@ class HttpClient:
             headers={"Content-Type": "application/x.aptos.signed_transaction+bcs"},
         )
 
-    async def post_bcs_for_simulation(self, url: str, data: bytes) -> list[dict[str, Any]]:
+    async def post_bcs_for_simulation(
+        self, url: str, data: bytes
+    ) -> list[dict[str, Any]]:
         """POST BCS-encoded bytes for simulation (returns a list)."""
         return await self._request(
             "POST",

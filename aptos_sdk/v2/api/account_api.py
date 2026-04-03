@@ -38,7 +38,9 @@ class AccountApi:
         result = await self._client.get(url)
         return int(result)
 
-    async def get_resource(self, address: AccountAddress, resource_type: str) -> dict[str, Any]:
+    async def get_resource(
+        self, address: AccountAddress, resource_type: str
+    ) -> dict[str, Any]:
         url = f"{self._config.node_url}/accounts/{address}/resource/{resource_type}"
         return await self._client.get(url)
 
