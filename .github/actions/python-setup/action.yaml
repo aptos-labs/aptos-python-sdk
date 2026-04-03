@@ -2,11 +2,11 @@ name: "Python setup"
 description: |
   Runs an opinionated and unified python setup action. It does the following:
   * Installs python
-  * Installs poetry
-  * Installs a specified poetry project, if given
+  * Installs uv
+  * Installs a specified project, if given
 inputs:
   pyproject_directory:
-    description: "Optional path to a poetry project"
+    description: "Optional path to a project with pyproject.toml"
     required: false
 
 runs:
@@ -17,16 +17,16 @@ runs:
       with:
         python-version: "3.12"
 
-    # Install Poetry.
-    - uses: snok/install-poetry@d45b6d76012debf457ab49dffc7fb7b2efe8071d # pin@v1.3.3
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
       with:
-        version: 2.1.3
+        enable-cache: true
 
     - name: Setup AikidoSec Safe Chain
       uses: aptos-labs/actions/akidosec-safe-chain@main
 
-    - name: Install poetry project
+    - name: Install project
       if: inputs.pyproject_directory != ''
-      run: poetry install
+      run: uv sync --extra dev
       shell: bash
       working-directory: ${{ inputs.pyproject_directory }}
