@@ -29,8 +29,16 @@ class AccountApi:
     async def get_balance(
         self, address: AccountAddress, coin_type: str = "0x1::aptos_coin::AptosCoin"
     ) -> int:
-        resource = await self.get_resource(address, f"0x1::coin::CoinStore<{coin_type}>")
-        return int(resource["data"]["coin"]["value"])
+        url = f"{self._config.node_url}/view"
+        result = await self._client.post_view(
+            url,
+            json={
+                "function": "0x1::coin::balance",
+                "type_arguments": [coin_type],
+                "arguments": [str(address)],
+            },
+        )
+        return int(result[0])
 
     async def get_resource(self, address: AccountAddress, resource_type: str) -> dict[str, Any]:
         url = f"{self._config.node_url}/accounts/{address}/resource/{resource_type}"

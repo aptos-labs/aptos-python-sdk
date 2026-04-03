@@ -108,7 +108,7 @@ class RawTransaction:
     def sign_simulated(self, public_key: PublicKey) -> AccountAuthenticator:
         return _sign_simulated(self.keyed(), public_key)
 
-    def verify(self, key: Ed25519PublicKey, signature: Signature) -> bool:
+    def verify(self, key: PublicKey, signature: Signature) -> bool:
         return key.verify(self.keyed(), signature)
 
     @staticmethod

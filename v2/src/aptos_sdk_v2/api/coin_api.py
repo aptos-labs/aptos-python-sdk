@@ -38,10 +38,15 @@ class CoinApi:
         *,
         coin_type: str = APT_COIN_TYPE,
     ) -> str:
-        """Transfer coins and return the transaction hash."""
+        """Transfer coins and return the transaction hash.
+
+        Uses aptos_account::transfer_coins which handles recipient account
+        creation automatically, unlike coin::transfer which requires the
+        recipient to already have a CoinStore registered.
+        """
         payload = EntryFunction.natural(
-            "0x1::coin",
-            "transfer",
+            "0x1::aptos_account",
+            "transfer_coins",
             [TypeTag(StructTag.from_str(coin_type))],
             [
                 TransactionArgument(recipient, Serializer.struct),
