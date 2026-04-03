@@ -2,22 +2,21 @@
 
 This guide covers migrating from the v1 API (`aptos_sdk`) to the v2 API (`aptos_sdk.v2`).
 
-Both APIs are available in the same package — you can migrate incrementally.
+Both APIs are available in the same package — you can migrate incrementally. The v1 SDK remains fully functional and unchanged; v2 is shipped as a subpackage with its own independent implementation.
 
 ## Requirements
 
 - **Python 3.12+** (was 3.10+ in v1)
-- New dependencies: `coincurve`, `bip-utils`, `aiohttp`
-- `cryptography` is no longer needed for Secp256k1 (replaced by `coincurve`)
+- New v2 dependencies: `coincurve`, `bip-utils`, `aiohttp`
+- v1 retains its own dependencies (`cryptography`, `httpx`) — no changes needed
 
 ## Quick comparison
 
 ```python
 # ── v1 ──
-from aptos_sdk.async_client import RestClient, ClientConfig
+from aptos_sdk.async_client import RestClient
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
-from aptos_sdk import ed25519
 
 client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
 alice = Account.generate()
@@ -29,7 +28,7 @@ from aptos_sdk.v2 import Aptos, AptosConfig, Network, Account
 
 async with Aptos(AptosConfig(network=Network.DEVNET)) as aptos:
     alice = Account.generate()
-    balance = await aptos.coin.balance(alice.address)
+    balance = await aptos.account.get_balance(alice.address)
 ```
 
 ## Step-by-step migration
@@ -41,8 +40,8 @@ async with Aptos(AptosConfig(network=Network.DEVNET)) as aptos:
 | `from aptos_sdk.async_client import RestClient` | `from aptos_sdk.v2 import Aptos, AptosConfig` |
 | `from aptos_sdk.account import Account` | `from aptos_sdk.v2 import Account` |
 | `from aptos_sdk.account_address import AccountAddress` | `from aptos_sdk.v2 import AccountAddress` |
-| `from aptos_sdk.ed25519 import PrivateKey` | `from aptos_sdk.v2.crypto.ed25519 import Ed25519PrivateKey` |
-| `from aptos_sdk.secp256k1_ecdsa import PrivateKey` | `from aptos_sdk.v2.crypto.secp256k1 import Secp256k1PrivateKey` |
+| `from aptos_sdk.ed25519 import PrivateKey` | `from aptos_sdk.v2.crypto import Ed25519PrivateKey` |
+| `from aptos_sdk.secp256k1_ecdsa import PrivateKey` | `from aptos_sdk.v2.crypto import Secp256k1PrivateKey` |
 | `from aptos_sdk.bcs import Serializer, Deserializer` | `from aptos_sdk.v2.bcs import Serializer, Deserializer` |
 | `from aptos_sdk.transactions import EntryFunction, ...` | `from aptos_sdk.v2.transactions import EntryFunction, ...` |
 | `from aptos_sdk.type_tag import TypeTag, StructTag` | `from aptos_sdk.v2.types import TypeTag, StructTag` |
@@ -122,7 +121,7 @@ table_item = await client.get_table_item(handle, key_type, value_type, key)
 **v2** — domain-specific API accessors on `Aptos`:
 ```python
 info = await aptos.account.get_info(address)
-balance = await aptos.coin.balance(address)
+balance = await aptos.account.get_balance(address)
 seq = await aptos.account.get_sequence_number(address)
 resource = await aptos.account.get_resource(address, "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>")
 resources = await aptos.account.get_resources(address)
@@ -132,6 +131,8 @@ ledger = await aptos.general.get_ledger_info()
 block = await aptos.general.get_block_by_height(100, with_transactions=True)
 table_item = await aptos.general.get_table_item(handle, key_type, value_type, key)
 ```
+
+> **Note:** v2 uses the `/accounts/{address}/balance/{asset_type}` endpoint for balances instead of the deprecated `CoinStore` resource lookup. This works with both legacy coins and fungible assets.
 
 ### 6. Submitting transactions
 
@@ -161,7 +162,7 @@ await aptos.transaction.wait_for_transaction(txn_hash)
 
 # Or manual pipeline with automatic sequence number / chain ID:
 payload = EntryFunction.natural(
-    "0x1::coin", "transfer",
+    "0x1::aptos_account", "transfer_coins",
     [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
     [TransactionArgument(recipient.address, Serializer.struct),
      TransactionArgument(amount, Serializer.u64)],
@@ -174,7 +175,26 @@ txn_hash = await aptos.transaction.sign_and_submit(raw_txn, sender)
 await aptos.transaction.wait_for_transaction(txn_hash)
 ```
 
-### 7. Simulating transactions
+> **Note:** v2 uses `aptos_account::transfer_coins` instead of `coin::transfer`. This automatically creates the recipient's `CoinStore` if it doesn't exist, avoiding `ECOIN_STORE_NOT_PUBLISHED` errors.
+
+### 7. Fungible asset transfers
+
+v2 provides a dedicated `FungibleAssetApi` for working with the Fungible Asset (FA) standard:
+
+```python
+# Transfer a fungible asset
+txn_hash = await aptos.fungible_asset.transfer(
+    sender=alice,
+    metadata_address=fa_metadata_addr,  # address of the FA metadata object
+    recipient=bob.address,
+    amount=1_000,
+)
+
+# Check balance
+balance = await aptos.fungible_asset.balance(bob.address, fa_metadata_addr)
+```
+
+### 8. Simulating transactions
 
 **v1:**
 ```python
@@ -186,7 +206,42 @@ result = await client.simulate_transaction(raw_txn, sender)
 result = await aptos.transaction.simulate(raw_txn, sender.public_key)
 ```
 
-### 8. Faucet
+### 9. View functions
+
+**v1:**
+```python
+result = await client.view(
+    "0x1::coin::balance",
+    ["0x1::aptos_coin::AptosCoin"],
+    [str(address)],
+)
+```
+
+**v2** — JSON arguments:
+```python
+result = await aptos.general.view(
+    "0x1::coin", "balance",
+    ["0x1::aptos_coin::AptosCoin"],
+    [str(address)],
+)
+```
+
+**v2** — BCS-encoded arguments (for complex types like vectors, options):
+```python
+from aptos_sdk.v2.bcs import Serializer
+
+ser = Serializer()
+ser.sequence([1, 2, 3], Serializer.u64)
+bcs_args = ser.output()
+
+result_bytes = await aptos.general.view_bcs(
+    "0x1::some_module", "some_function",
+    [],       # type arguments
+    bcs_args, # BCS-encoded arguments
+)
+```
+
+### 10. Faucet
 
 **v1:**
 ```python
@@ -200,7 +255,7 @@ await faucet.fund_account(address, 100_000_000)
 await aptos.faucet.fund_account(address, 100_000_000)
 ```
 
-### 9. Error handling
+### 11. Error handling
 
 | v1 | v2 |
 |----|-----|
@@ -217,16 +272,23 @@ await aptos.faucet.fund_account(address, 100_000_000)
 v2 has a structured error hierarchy — catch `AptosError` to catch everything, or be specific:
 ```python
 from aptos_sdk.v2.errors import (
-    AptosError,                # base for all
+    AptosError,                # base for all SDK errors
     ApiError,                  # HTTP errors (has .status_code)
     AccountNotFoundError,      # 404 for account
     ResourceNotFoundError,     # 404 for resource
     TransactionTimeoutError,   # wait exceeded timeout
     TransactionFailedError,    # committed but VM failed (has .vm_status)
+    BcsSerializationError,     # BCS encoding error
+    BcsDeserializationError,   # BCS decoding error
+    InvalidKeyError,           # bad key format
+    InvalidSignatureError,     # bad signature
+    InvalidMnemonicError,      # bad mnemonic phrase
+    InvalidAddressError,       # malformed address
+    InvalidTypeTagError,       # unparseable type tag
 )
 ```
 
-### 10. Address derivation
+### 12. Address derivation
 
 **v1:**
 ```python
@@ -238,7 +300,7 @@ object_addr = AccountAddress.for_named_object(creator, seed)
 
 **v2:**
 ```python
-from aptos_sdk.v2.crypto.authentication_key import AuthenticationKey
+from aptos_sdk.v2.crypto import AuthenticationKey
 from aptos_sdk.v2.types import AccountAddress
 
 auth_key = AuthenticationKey.from_public_key(public_key)
@@ -248,29 +310,38 @@ resource_addr = AccountAddress.for_resource_account(creator, seed)
 object_addr = AccountAddress.for_named_object(creator, seed)
 ```
 
-### 11. BIP-39 mnemonic (v2 only)
+> **Note:** `AuthenticationKey.from_public_key` accepts Ed25519, Secp256k1, and AnyPublicKey types. Secp256k1 keys are automatically wrapped in `AnyPublicKey` for single-key authentication.
+
+### 13. BIP-39 mnemonic (v2 only)
 
 ```python
-from aptos_sdk.v2.crypto.mnemonic import (
+from aptos_sdk.v2.crypto import (
     generate_mnemonic,
     validate_mnemonic,
     derive_ed25519_private_key,
     derive_secp256k1_private_key,
 )
+from aptos_sdk.v2 import Account
 
-phrase = generate_mnemonic()
+# Generate a mnemonic
+phrase = generate_mnemonic()       # 12 words
+phrase = generate_mnemonic(24)     # 24 words
 assert validate_mnemonic(phrase)
 
-# Derive account from mnemonic
+# Derive account from mnemonic (default: Ed25519)
 account = Account.from_mnemonic(phrase)
 
-# Or derive raw keys with custom path
+# Derive Secp256k1 account
+account = Account.from_mnemonic(phrase, secp256k1=True)
+
+# Derive raw keys with custom BIP-44 path
 key = derive_ed25519_private_key(phrase, "m/44'/637'/0'/0'/0'")
+key = derive_ed25519_private_key(phrase, "m/44'/637'/1'/0'/0'")  # account index 1
 ```
 
-### 12. BCS serialization
+### 14. BCS serialization
 
-The `Serializer` and `Deserializer` APIs are identical between v1 and v2. No changes needed for BCS code — just update the import path:
+The `Serializer` and `Deserializer` APIs are mostly identical between v1 and v2. Update the import path:
 
 ```python
 # v1
@@ -280,11 +351,28 @@ from aptos_sdk.bcs import Serializer, Deserializer
 from aptos_sdk.v2.bcs import Serializer, Deserializer
 ```
 
-### 13. Secp256k1 library change
+**New in v2** — signed integer support:
+```python
+ser = Serializer()
+ser.i8(-1)
+ser.i16(-256)
+ser.i32(-100_000)
+ser.i64(-1_000_000_000)
+ser.i128(-1)
+ser.i256(-1)
 
-v1 used the `cryptography` library for Secp256k1. v2 uses `coincurve` (a Python binding for libsecp256k1). This is faster and produces identical signatures.
+deser = Deserializer(ser.output())
+assert deser.i8() == -1
+assert deser.i16() == -256
+assert deser.i32() == -100_000
+assert deser.i64() == -1_000_000_000
+assert deser.i128() == -1
+assert deser.i256() == -1
+```
 
-If you were constructing `secp256k1_ecdsa.PrivateKey` directly with a `cryptography` key object, update to use `coincurve.PrivateKey` or the factory methods:
+### 15. Secp256k1 library change
+
+v1 uses the `cryptography` library for Secp256k1. v2 uses `coincurve` (a Python binding for libsecp256k1). This is faster and produces identical signatures.
 
 ```python
 # v1 (cryptography)
@@ -293,11 +381,12 @@ key = ec.generate_private_key(ec.SECP256K1())
 pk = secp256k1_ecdsa.PrivateKey(key)
 
 # v2 (coincurve)
-from aptos_sdk.v2.crypto.secp256k1 import Secp256k1PrivateKey
+from aptos_sdk.v2.crypto import Secp256k1PrivateKey
 pk = Secp256k1PrivateKey.generate()
 
-# Or from hex (works in both v1 and v2):
-pk = Secp256k1PrivateKey.from_str("0x...")
+# Or from hex/AIP-80 (v2):
+pk = Secp256k1PrivateKey.from_str("0xdead...")
+pk = Secp256k1PrivateKey.from_str("secp256k1-priv-0xdead...")
 ```
 
 ## Features only in v2
@@ -310,8 +399,9 @@ pk = Secp256k1PrivateKey.from_str("0x...")
 - `coincurve` for faster Secp256k1
 - Structured error hierarchy with `AptosError` base
 - HTTP retry with exponential backoff (configurable `max_retries`)
+- BCS-encoded view functions (`view_bcs`) for complex parameter types
+- Signed integer BCS support (`i8`–`i256`)
 - Orderless transactions (`TransactionInnerPayload` with replay-protection nonce)
-- Frozen dataclasses for immutable value types (`AccountAddress`, `TypeTag`, etc.)
 
 ## Features only in v1
 
@@ -344,4 +434,4 @@ async with Aptos(AptosConfig(network=Network.DEVNET)) as aptos:
     # ...
 ```
 
-v1 types and v2 types produce identical BCS bytes, so they can be used interchangeably for serialization.
+v1 and v2 are fully independent — they do not share runtime state, so there are no cross-version side effects.
