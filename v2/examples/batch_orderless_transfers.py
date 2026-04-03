@@ -67,15 +67,11 @@ async def main():
 
         # Submit all concurrently
         print(f"\nSubmitting {BATCH_SIZE} transactions concurrently...")
-        hashes = await asyncio.gather(
-            *[aptos.transaction.submit(signed) for signed in signed_txns]
-        )
+        hashes = await asyncio.gather(*[aptos.transaction.submit(signed) for signed in signed_txns])
 
         # Wait for all to complete
         print("Waiting for all transactions...")
-        results = await asyncio.gather(
-            *[aptos.transaction.wait_for_transaction(h) for h in hashes]
-        )
+        results = await asyncio.gather(*[aptos.transaction.wait_for_transaction(h) for h in hashes])
 
         for i, result in enumerate(results):
             print(f"  Transaction {i + 1}: success={result['success']}, gas={result['gas_used']}")

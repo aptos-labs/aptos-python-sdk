@@ -70,9 +70,7 @@ async def main():
         # fa_address is the metadata object address of the fungible asset.
         # For APT, this is always 0xa. For a custom FA, it would be the
         # address of the metadata object created when the FA was initialized.
-        txn_hash = await aptos.fungible_asset.transfer(
-            alice, APT_FA_ADDRESS, bob.address, 3_000
-        )
+        txn_hash = await aptos.fungible_asset.transfer(alice, APT_FA_ADDRESS, bob.address, 3_000)
         result = await aptos.transaction.wait_for_transaction(txn_hash)
         print(f"Transaction: {txn_hash}")
         print(f"Success: {result['success']}")
