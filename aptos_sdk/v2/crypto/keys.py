@@ -107,7 +107,9 @@ def parse_hex_input(
                 hex_part = hex_part[2:]
             return bytes.fromhex(hex_part)
         elif strict:
-            raise ValueError("Invalid HexString input. Must be AIP-80 compliant string.")
+            raise ValueError(
+                "Invalid HexString input. Must be AIP-80 compliant string."
+            )
         else:
             if value.startswith("0x"):
                 value = value[2:]
