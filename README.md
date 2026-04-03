@@ -54,11 +54,11 @@ asyncio.run(main())
 ## Development
 
 ### Requirements
-This SDK uses [Poetry](https://python-poetry.org/docs/#installation) for packaging and dependency management:
+This SDK uses [uv](https://docs.astral.sh/uv/) for packaging and dependency management:
 
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
-poetry install
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --extra dev
 ```
 
 ### Unit testing
@@ -120,7 +120,7 @@ make lint
 
 * Download the [Aptos CLI](https://aptos.dev/tools/aptos-cli/install-cli/).
 * Set the environment variable `APTOS_CLI_PATH` to the full path of the CLI.
-* `poetry run python -m aptos_sdk.cli` and set the appropriate command-line parameters
+* `uv run python -m aptos_sdk.cli` and set the appropriate command-line parameters
 
 ## Semantic versioning
 This project follows [semver](https://semver.org/) as closely as possible

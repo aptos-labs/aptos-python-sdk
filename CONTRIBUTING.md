@@ -4,15 +4,13 @@ To publish the SDK, follow these steps.
 
 First, make sure you have updated the changelog and bumped the SDK version if necessary.
 
-Configure Poetry with the PyPi credentials:
-
+Build and publish (via GitHub Actions with OIDC trusted publishing):
 ```
-poetry config pypi-token.pypi <token>
+git tag v<version>
+git push origin v<version>
 ```
 
-You can get the token from our credential management system, search for PyPi.
-
-Build and publish:
+Or manually build:
 ```
-poetry publish --build
+uv build
 ```
