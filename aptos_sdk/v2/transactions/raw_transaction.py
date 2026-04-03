@@ -44,10 +44,16 @@ def _sign_internal(keyed_data: bytes, key: PrivateKey) -> AccountAuthenticator:
 def _sign_simulated(keyed_data: bytes, key: PublicKey) -> AccountAuthenticator:
     """Create a zero-signature authenticator for simulation."""
     if isinstance(key, Ed25519PublicKey):
-        return AccountAuthenticator(Ed25519Authenticator(key, Ed25519Signature(b"\x00" * 64)))
+        return AccountAuthenticator(
+            Ed25519Authenticator(key, Ed25519Signature(b"\x00" * 64))
+        )
     elif isinstance(key, Secp256k1PublicKey):
-        return AccountAuthenticator(SingleKeyAuthenticator(key, Secp256k1Signature(b"\x00" * 64)))
-    raise NotImplementedError(f"Unsupported key type for simulation: {type(key).__name__}")
+        return AccountAuthenticator(
+            SingleKeyAuthenticator(key, Secp256k1Signature(b"\x00" * 64))
+        )
+    raise NotImplementedError(
+        f"Unsupported key type for simulation: {type(key).__name__}"
+    )
 
 
 class RawTransaction:
@@ -208,7 +214,11 @@ class FeePayerRawTransaction:
         serializer.u8(1)
         serializer.struct(self.raw_transaction)
         serializer.sequence(self.secondary_signers, Serializer.struct)
-        fee_payer = self.fee_payer if self.fee_payer is not None else AccountAddress.from_str("0x0")
+        fee_payer = (
+            self.fee_payer
+            if self.fee_payer is not None
+            else AccountAddress.from_str("0x0")
+        )
         serializer.struct(fee_payer)
 
     @staticmethod
