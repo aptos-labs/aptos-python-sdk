@@ -27,6 +27,10 @@ jobs:
           repository: aptos-labs/aptos-core
           path: './aptos-core'
 
+      - name: Install safe-chain
+        run: curl -fsSL https://github.com/AikidoSec/safe-chain/releases/download/1.4.7/install-safe-chain.sh | sh -s -- --ci
+        shell: bash
+
       - name: Run a localnet
         uses: aptos-labs/actions/run-local-testnet@main
         with:
