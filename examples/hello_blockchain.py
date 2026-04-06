@@ -68,26 +68,18 @@ async def publish_contract(package_dir: str) -> AccountAddress:
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
     await faucet_client.fund_account(contract_publisher.address(), 100_000_000)
 
-    AptosCLIWrapper.compile_package(
-        package_dir, {"hello_blockchain": contract_publisher.address()}
-    )
+    AptosCLIWrapper.compile_package(package_dir, {"hello_blockchain": contract_publisher.address()})
 
-    module_path = os.path.join(
-        package_dir, "build", "Examples", "bytecode_modules", "message.mv"
-    )
+    module_path = os.path.join(package_dir, "build", "Examples", "bytecode_modules", "message.mv")
     with open(module_path, "rb") as f:
         module = f.read()
 
-    metadata_path = os.path.join(
-        package_dir, "build", "Examples", "package-metadata.bcs"
-    )
+    metadata_path = os.path.join(package_dir, "build", "Examples", "package-metadata.bcs")
     with open(metadata_path, "rb") as f:
         metadata = f.read()
 
     package_publisher = PackagePublisher(rest_client)
-    txn_hash = await package_publisher.publish_package(
-        contract_publisher, metadata, [module]
-    )
+    txn_hash = await package_publisher.publish_package(contract_publisher, metadata, [module])
     await rest_client.wait_for_transaction(txn_hash)
 
     await rest_client.close()
@@ -112,9 +104,7 @@ async def main(contract_address: AccountAddress):
 
     a_alice_balance = rest_client.account_balance(alice.address())
     a_bob_balance = rest_client.account_balance(bob.address())
-    [alice_balance, bob_balance] = await asyncio.gather(
-        *[a_alice_balance, a_bob_balance]
-    )
+    [alice_balance, bob_balance] = await asyncio.gather(*[a_alice_balance, a_bob_balance])
 
     print("\n=== Initial Balances ===")
     print(f"Alice: {alice_balance}")
@@ -124,9 +114,7 @@ async def main(contract_address: AccountAddress):
     message = await rest_client.get_message(contract_address, alice.address())
     print(f"Initial value: {message}")
     print('Setting the message to "Hello, Blockchain"')
-    txn_hash = await rest_client.set_message(
-        contract_address, alice, "Hello, Blockchain"
-    )
+    txn_hash = await rest_client.set_message(contract_address, alice, "Hello, Blockchain")
     await rest_client.wait_for_transaction(txn_hash)
 
     message = await rest_client.get_message(contract_address, alice.address())

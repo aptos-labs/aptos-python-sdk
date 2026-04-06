@@ -92,9 +92,7 @@ class AnySignature(Signature):
             self._inner = inner
             self._variant = AnyPublicKeyVariant.SECP256K1
         else:
-            raise InvalidSignatureError(
-                f"Unsupported signature type: {type(inner).__name__}"
-            )
+            raise InvalidSignatureError(f"Unsupported signature type: {type(inner).__name__}")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AnySignature):

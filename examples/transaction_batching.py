@@ -64,9 +64,7 @@ class TransactionGenerator:
         self._lock = asyncio.Lock()
         self._remaining_transactions = 0
 
-    async def next_transaction(
-        self, sender: Account, sequence_number: int
-    ) -> SignedTransaction:
+    async def next_transaction(self, sender: Account, sequence_number: int) -> SignedTransaction:
         while self._remaining_transactions == 0:
             await self._waiting_for_more.wait()
 
@@ -76,9 +74,7 @@ class TransactionGenerator:
                 self._waiting_for_more.clear()
                 self._complete.set()
 
-        return await transfer_transaction(
-            self._client, sender, sequence_number, self._recipient, 0
-        )
+        return await transfer_transaction(self._client, sender, sequence_number, self._recipient, 0)
 
     async def increase_transaction_count(self, number: int):
         if number <= 0:
@@ -99,9 +95,7 @@ class WorkerContainer:
 
     def __init__(self, node_url: str, account: Account, recipient: AccountAddress):
         self._conn, conn = Pipe()
-        self._process = Process(
-            target=Worker.run, args=(conn, node_url, account, recipient)
-        )
+        self._process = Process(target=Worker.run, args=(conn, node_url, account, recipient))
 
     def get(self) -> Any:
         self._conn.recv()
@@ -141,9 +135,7 @@ class Worker:
         )
 
     @staticmethod
-    def run(
-        queue: Connection, node_url: str, account: Account, recipient: AccountAddress
-    ):
+    def run(queue: Connection, node_url: str, account: Account, recipient: AccountAddress):
         worker = Worker(queue, node_url, account, recipient)
         asyncio.run(worker.async_run())
 
@@ -163,9 +155,7 @@ class Worker:
             txn_hashes = []
             while num_txns != 0:
                 if num_txns % 100 == 0:
-                    logging.info(
-                        f"{self._txn_worker.address()} remaining transactions {num_txns}"
-                    )
+                    logging.info(f"{self._txn_worker.address()} remaining transactions {num_txns}")
                 num_txns -= 1
                 (
                     sequence_number,
@@ -331,18 +321,14 @@ async def distribute(
     txn_hashes: List[str] = []
 
     for account, fund in all_accounts:
-        sequence_number = await account_sequence_number.next_sequence_number(
-            block=False
-        )
+        sequence_number = await account_sequence_number.next_sequence_number(block=False)
         if sequence_number is None:
             txn_hashes.extend(await asyncio.gather(*txns))
             txns = []
             sequence_number = await account_sequence_number.next_sequence_number()
         assert sequence_number is not None
         amount = per_node_amount if fund else 0
-        txn = await transfer_transaction(
-            rest_client, source, sequence_number, account, amount
-        )
+        txn = await transfer_transaction(rest_client, source, sequence_number, account, amount)
         txns.append(rest_client.submit_bcs_transaction(txn))
 
     txn_hashes.extend(await asyncio.gather(*txns))
@@ -405,9 +391,7 @@ async def main():
     print(f"Workers started at {time.time() - start} {time.time() - last}")
     last = time.time()
 
-    to_take = (transactions // num_accounts) + (
-        1 if transactions % num_accounts != 0 else 0
-    )
+    to_take = (transactions // num_accounts) + (1 if transactions % num_accounts != 0 else 0)
     remaining_transactions = transactions
     for worker in workers:
         taking = min(to_take, remaining_transactions)

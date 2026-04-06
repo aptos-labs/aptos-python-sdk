@@ -135,9 +135,7 @@ class Serializer:
 
     # --- Option ---
 
-    def option(
-        self, value: Any | None, encoder: Callable[[Serializer, Any], None]
-    ) -> None:
+    def option(self, value: Any | None, encoder: Callable[[Serializer, Any], None]) -> None:
         if value is None:
             self.bool(False)
         else:
@@ -165,8 +163,7 @@ class Serializer:
         value_encoder: Callable[[Serializer, Any], None],
     ) -> None:
         encoded_values = [
-            (_encode(key, key_encoder), _encode(val, value_encoder))
-            for key, val in values.items()
+            (_encode(key, key_encoder), _encode(val, value_encoder)) for key, val in values.items()
         ]
         encoded_values.sort(key=lambda item: item[0])
         self.uleb128(len(encoded_values))

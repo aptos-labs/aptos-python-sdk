@@ -54,9 +54,7 @@ async def main():
     # Create API and faucet clients.
     # :!:>section_1a
     rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
-    faucet_client = FaucetClient(
-        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
-    )  # <:!:section_1a
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)  # <:!:section_1a
 
     # Create client for working with the token module.
     # :!:>section_1b
@@ -78,9 +76,7 @@ async def main():
 
     # :!:>section_3
     bob_fund = faucet_client.fund_account(alice.address(), 1_000_000_000)
-    alice_fund = faucet_client.fund_account(
-        bob.address(), 1_000_000_000
-    )  # <:!:section_3
+    alice_fund = faucet_client.fund_account(bob.address(), 1_000_000_000)  # <:!:section_3
     await asyncio.gather(*[bob_fund, alice_fund])
 
     print("\n=== Initial Coin Balances ===")
@@ -113,9 +109,7 @@ async def main():
     )  # <:!:section_4
     await rest_client.wait_for_transaction(txn_hash)
 
-    collection_addr = AccountAddress.for_named_collection(
-        alice.address(), collection_name
-    )
+    collection_addr = AccountAddress.for_named_collection(alice.address(), collection_name)
 
     collection_data = await get_collection_data(token_client, collection_addr)
     print(
@@ -147,9 +141,7 @@ async def main():
     token_data = await get_token_data(token_client, token_addr)
     print(
         "Token data: "
-        + json.dumps(
-            {"address": str(token_addr), "owner": owner, **token_data}, indent=4
-        )
+        + json.dumps({"address": str(token_addr), "owner": owner, **token_data}, indent=4)
     )
 
     # Transfer the token to Bob

@@ -140,9 +140,7 @@ class Deserializer:
         value = self._input.read(length)
         if value is None or len(value) < length:
             actual_length = 0 if value is None else len(value)
-            error = (
-                f"Unexpected end of input. Requested: {length}, found: {actual_length}"
-            )
+            error = f"Unexpected end of input. Requested: {length}, found: {actual_length}"
             raise DeserializationError(error)
         return value
 
@@ -177,9 +175,7 @@ class Serializer:
     ):
         encoded_values = []
         for key, value in values.items():
-            encoded_values.append(
-                (encoder(key, key_encoder), encoder(value, value_encoder))
-            )
+            encoded_values.append((encoder(key, key_encoder), encoder(value, value_encoder)))
         encoded_values.sort(key=lambda item: item[0])
 
         self.uleb128(len(encoded_values))

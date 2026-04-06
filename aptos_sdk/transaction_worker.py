@@ -36,9 +36,7 @@ class TransactionWorker:
     _account: Account
     _account_sequence_number: AccountSequenceNumber
     _rest_client: RestClient
-    _transaction_generator: typing.Callable[
-        [Account, int], typing.Awaitable[SignedTransaction]
-    ]
+    _transaction_generator: typing.Callable[[Account, int], typing.Awaitable[SignedTransaction]]
     _started: bool
     _stopped: bool
     _outstanding_transactions: asyncio.Queue
@@ -50,14 +48,10 @@ class TransactionWorker:
         self,
         account: Account,
         rest_client: RestClient,
-        transaction_generator: typing.Callable[
-            [Account, int], typing.Awaitable[SignedTransaction]
-        ],
+        transaction_generator: typing.Callable[[Account, int], typing.Awaitable[SignedTransaction]],
     ):
         self._account = account
-        self._account_sequence_number = AccountSequenceNumber(
-            rest_client, account.address()
-        )
+        self._account_sequence_number = AccountSequenceNumber(rest_client, account.address())
         self._account_sequence_number._maximum_wait_time = (
             rest_client.client_config.transaction_wait_in_seconds
         )
@@ -75,18 +69,10 @@ class TransactionWorker:
     async def _submit_transactions(self):
         try:
             while True:
-                sequence_number = (
-                    await self._account_sequence_number.next_sequence_number()
-                )
-                transaction = await self._transaction_generator(
-                    self._account, sequence_number
-                )
-                txn_hash_awaitable = self._rest_client.submit_bcs_transaction(
-                    transaction
-                )
-                await self._outstanding_transactions.put(
-                    (txn_hash_awaitable, sequence_number)
-                )
+                sequence_number = await self._account_sequence_number.next_sequence_number()
+                transaction = await self._transaction_generator(self._account, sequence_number)
+                txn_hash_awaitable = self._rest_client.submit_bcs_transaction(transaction)
+                await self._outstanding_transactions.put((txn_hash_awaitable, sequence_number))
         except asyncio.CancelledError:
             return
         except Exception as e:
@@ -117,13 +103,9 @@ class TransactionWorker:
 
                 for output, sequence_number in zip(outputs, sequence_numbers):
                     if isinstance(output, BaseException):
-                        await self._processed_transactions.put(
-                            (sequence_number, None, output)
-                        )
+                        await self._processed_transactions.put((sequence_number, None, output))
                     else:
-                        await self._processed_transactions.put(
-                            (sequence_number, output, None)
-                        )
+                        await self._processed_transactions.put((sequence_number, output, None))
         except asyncio.CancelledError:
             return
         except Exception as e:
@@ -152,12 +134,8 @@ class TransactionWorker:
             raise TransactionWorkerError("Already started")
         self._started = True
 
-        self._submit_transactions_task = asyncio.create_task(
-            self._submit_transactions()
-        )
-        self._process_transactions_task = asyncio.create_task(
-            self._process_transactions()
-        )
+        self._submit_transactions_task = asyncio.create_task(self._submit_transactions())
+        self._process_transactions_task = asyncio.create_task(self._process_transactions())
 
 
 class TransactionQueue:

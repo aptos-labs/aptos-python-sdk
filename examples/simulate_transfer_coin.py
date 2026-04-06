@@ -19,9 +19,7 @@ from .common import CLIENT_CONFIG, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 
 async def main():
     rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
-    faucet_client = FaucetClient(
-        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
-    )  # <:!:section_1
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)  # <:!:section_1
 
     alice = Account.generate()
     bob = Account.generate()
@@ -41,9 +39,7 @@ async def main():
             TransactionArgument(100_000, Serializer.u64),
         ],
     )
-    transaction = await rest_client.create_bcs_transaction(
-        alice, TransactionPayload(payload)
-    )
+    transaction = await rest_client.create_bcs_transaction(alice, TransactionPayload(payload))
 
     print("\n=== Simulate after creating Bob's Account ===")
     await faucet_client.fund_account(bob.address(), 1)

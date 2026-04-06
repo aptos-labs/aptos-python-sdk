@@ -73,9 +73,7 @@ class AptosTokenV1Client:
                 Serializer.sequence_serializer(Serializer.bool),
             ),
             TransactionArgument([], Serializer.sequence_serializer(Serializer.str)),
-            TransactionArgument(
-                [], Serializer.sequence_serializer(Serializer.to_bytes)
-            ),
+            TransactionArgument([], Serializer.sequence_serializer(Serializer.to_bytes)),
             TransactionArgument([], Serializer.sequence_serializer(Serializer.str)),
         ]
 
@@ -227,9 +225,7 @@ class AptosTokenV1Client:
         token_name: str,
         property_version: int,
     ) -> str:
-        info = await self.get_token(
-            owner, creator, collection_name, token_name, property_version
-        )
+        info = await self.get_token(owner, creator, collection_name, token_name, property_version)
         return info["amount"]
 
     async def get_token_data(
@@ -239,9 +235,7 @@ class AptosTokenV1Client:
         token_name: str,
         property_version: int,
     ) -> Any:
-        resource = await self._client.account_resource(
-            creator, "0x3::token::Collections"
-        )
+        resource = await self._client.account_resource(creator, "0x3::token::Collections")
         token_data_handle = resource["data"]["token_data"]["handle"]
 
         token_data_id = {
@@ -257,12 +251,8 @@ class AptosTokenV1Client:
             token_data_id,
         )  # <:!:read_token_data_table
 
-    async def get_collection(
-        self, creator: AccountAddress, collection_name: str
-    ) -> Any:
-        resource = await self._client.account_resource(
-            creator, "0x3::token::Collections"
-        )
+    async def get_collection(self, creator: AccountAddress, collection_name: str) -> Any:
+        resource = await self._client.account_resource(creator, "0x3::token::Collections")
         token_data = resource["data"]["collection_data"]["handle"]
 
         return await self._client.get_table_item(

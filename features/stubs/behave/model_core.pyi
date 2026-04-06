@@ -25,9 +25,7 @@ class Argument:
     original: Incomplete
     value: Incomplete
     name: Incomplete
-    def __init__(
-        self, start, end, original, value, name: Incomplete | None = None
-    ) -> None: ...
+    def __init__(self, start, end, original, value, name: Incomplete | None = None) -> None: ...
 
 class FileLocation:
     __pychecker__: str

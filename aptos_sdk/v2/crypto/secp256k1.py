@@ -200,6 +200,4 @@ def _rs_to_der(r: int, s: int) -> bytes:
     s_len = len(s_bytes)
     total_len = 2 + r_len + 2 + s_len
 
-    return (
-        bytes([0x30, total_len, 0x02, r_len]) + r_bytes + bytes([0x02, s_len]) + s_bytes
-    )
+    return bytes([0x30, total_len, 0x02, r_len]) + r_bytes + bytes([0x02, s_len]) + s_bytes

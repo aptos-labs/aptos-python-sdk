@@ -126,9 +126,7 @@ class AptosInstance:
     def __del__(self):
         self.stop()
 
-    def __init__(
-        self, node_runner: subprocess.Popen, temp_dir: tempfile.TemporaryDirectory
-    ):
+    def __init__(self, node_runner: subprocess.Popen, temp_dir: tempfile.TemporaryDirectory):
         self._node_runner = node_runner
         self._temp_dir = temp_dir
 
@@ -142,15 +140,11 @@ class AptosInstance:
                 target.append(line)
             pipe.close()
 
-        err_thread = threading.Thread(
-            target=queue_lines, args=(node_runner.stderr, self._error)
-        )
+        err_thread = threading.Thread(target=queue_lines, args=(node_runner.stderr, self._error))
         err_thread.daemon = True
         err_thread.start()
 
-        out_thread = threading.Thread(
-            target=queue_lines, args=(node_runner.stdout, self._output)
-        )
+        out_thread = threading.Thread(target=queue_lines, args=(node_runner.stdout, self._output))
         out_thread.daemon = True
         out_thread.start()
 
@@ -188,11 +182,7 @@ class AptosInstance:
         start = time.time()
         last = start
 
-        while (
-            not self.is_stopped()
-            and not operational
-            and start + MAXIMUM_WAIT_TIME_SEC > last
-        ):
+        while not self.is_stopped() and not operational and start + MAXIMUM_WAIT_TIME_SEC > last:
             await asyncio.sleep(0.1)
             operational = await self.is_operational()
             last = time.time()

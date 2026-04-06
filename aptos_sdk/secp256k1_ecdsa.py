@@ -31,10 +31,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def __eq__(self, other: object):
         if not isinstance(other, PrivateKey):
             return NotImplemented
-        return (
-            self.key.private_numbers().private_value
-            == other.key.private_numbers().private_value
-        )
+        return self.key.private_numbers().private_value == other.key.private_numbers().private_value
 
     def __str__(self):
         return self.aip80()
@@ -70,9 +67,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         return PrivateKey.from_hex(value, strict)
 
     def hex(self) -> str:
-        raw = self.key.private_numbers().private_value.to_bytes(
-            PrivateKey.LENGTH, "big"
-        )
+        raw = self.key.private_numbers().private_value.to_bytes(PrivateKey.LENGTH, "big")
         return f"0x{raw.hex()}"
 
     def aip80(self) -> str:
@@ -108,9 +103,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     def serialize(self, serializer: Serializer):
-        raw = self.key.private_numbers().private_value.to_bytes(
-            PrivateKey.LENGTH, "big"
-        )
+        raw = self.key.private_numbers().private_value.to_bytes(PrivateKey.LENGTH, "big")
         serializer.to_bytes(raw)
 
 
@@ -148,9 +141,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             raw = b"\x04" + raw
         elif raw[0] != 0x04:
             raise InvalidKeyError("Invalid uncompressed point prefix")
-        return PublicKey(
-            ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), raw)
-        )
+        return PublicKey(ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), raw))
 
     def _raw_bytes(self) -> bytes:
         nums = self.key.public_numbers()
@@ -249,9 +240,7 @@ class Test(unittest.TestCase):
             True,
         )
         private_key_bytes = PrivateKey.from_hex(
-            bytes.fromhex(
-                "306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
-            ),
+            bytes.fromhex("306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"),
             False,
         )
         self.assertEqual(
@@ -261,14 +250,18 @@ class Test(unittest.TestCase):
         )
 
     def test_private_key_aip80_formatting(self):
-        private_key_with_prefix = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+        private_key_with_prefix = (
+            "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+        )
         self.assertEqual(
             str(PrivateKey.from_str(private_key_with_prefix, True)),
             private_key_with_prefix,
         )
 
     def test_vectors(self):
-        private_key_hex = "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+        private_key_hex = (
+            "secp256k1-priv-0x306fa009600e27c09d2659145ce1785249360dd5fb992da01a578fe67ed607f4"
+        )
         public_key_hex = "0x04210c9129e35337ff5d6488f90f18d842cf985f06e0baeff8df4bfb2ac4221863e2631b971a237b5db0aa71188e33250732dd461d56ee623cbe0426a5c2db79ef"
         signature_hex = "0xa539b0973e76fa99b2a864eebd5da950b4dfb399c7afe57ddb34130e454fc9db04dceb2c3d4260b8cc3d3952ab21b5d36c7dc76277fe3747764e6762d12bd9a9"
         data = b"Hello world"

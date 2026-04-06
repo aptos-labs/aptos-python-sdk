@@ -18,9 +18,7 @@ class Ed25519Authenticator:
 
     __slots__ = ("public_key", "signature")
 
-    def __init__(
-        self, public_key: Ed25519PublicKey, signature: Ed25519Signature
-    ) -> None:
+    def __init__(self, public_key: Ed25519PublicKey, signature: Ed25519Signature) -> None:
         self.public_key = public_key
         self.signature = signature
 
@@ -50,14 +48,10 @@ class SingleKeyAuthenticator:
 
     def __init__(self, public_key: Any, signature: Any) -> None:
         self.public_key = (
-            public_key
-            if isinstance(public_key, AnyPublicKey)
-            else AnyPublicKey(public_key)
+            public_key if isinstance(public_key, AnyPublicKey) else AnyPublicKey(public_key)
         )
         self.signature = (
-            signature
-            if isinstance(signature, AnySignature)
-            else AnySignature(signature)
+            signature if isinstance(signature, AnySignature) else AnySignature(signature)
         )
 
     def __eq__(self, other: object) -> bool:
@@ -120,10 +114,7 @@ class MultiAgentAuthenticator:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, MultiAgentAuthenticator):
             return NotImplemented
-        return (
-            self.sender == other.sender
-            and self.secondary_signers == other.secondary_signers
-        )
+        return self.sender == other.sender and self.secondary_signers == other.secondary_signers
 
     def secondary_addresses(self) -> list[AccountAddress]:
         return [addr for addr, _ in self.secondary_signers]
@@ -142,12 +133,8 @@ class MultiAgentAuthenticator:
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.struct(self.sender)
-        serializer.sequence(
-            [addr for addr, _ in self.secondary_signers], Serializer.struct
-        )
-        serializer.sequence(
-            [auth for _, auth in self.secondary_signers], Serializer.struct
-        )
+        serializer.sequence([addr for addr, _ in self.secondary_signers], Serializer.struct)
+        serializer.sequence([auth for _, auth in self.secondary_signers], Serializer.struct)
 
 
 class FeePayerAuthenticator:
@@ -202,12 +189,8 @@ class FeePayerAuthenticator:
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.struct(self.sender)
-        serializer.sequence(
-            [addr for addr, _ in self.secondary_signers], Serializer.struct
-        )
-        serializer.sequence(
-            [auth for _, auth in self.secondary_signers], Serializer.struct
-        )
+        serializer.sequence([addr for addr, _ in self.secondary_signers], Serializer.struct)
+        serializer.sequence([auth for _, auth in self.secondary_signers], Serializer.struct)
         serializer.struct(self.fee_payer[0])
         serializer.struct(self.fee_payer[1])
 
@@ -225,25 +208,19 @@ class AccountAuthenticator:
 
     __slots__ = ("variant", "authenticator")
 
-    def __init__(
-        self, authenticator: Ed25519Authenticator | SingleKeyAuthenticator
-    ) -> None:
+    def __init__(self, authenticator: Ed25519Authenticator | SingleKeyAuthenticator) -> None:
         if isinstance(authenticator, Ed25519Authenticator):
             self.variant = AccountAuthenticator.ED25519
         elif isinstance(authenticator, SingleKeyAuthenticator):
             self.variant = AccountAuthenticator.SINGLE_KEY
         else:
-            raise TypeError(
-                f"Invalid authenticator type: {type(authenticator).__name__}"
-            )
+            raise TypeError(f"Invalid authenticator type: {type(authenticator).__name__}")
         self.authenticator = authenticator
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AccountAuthenticator):
             return NotImplemented
-        return (
-            self.variant == other.variant and self.authenticator == other.authenticator
-        )
+        return self.variant == other.variant and self.authenticator == other.authenticator
 
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
@@ -253,17 +230,11 @@ class AccountAuthenticator:
         variant = deserializer.uleb128()
         match variant:
             case AccountAuthenticator.ED25519:
-                return AccountAuthenticator(
-                    Ed25519Authenticator.deserialize(deserializer)
-                )
+                return AccountAuthenticator(Ed25519Authenticator.deserialize(deserializer))
             case AccountAuthenticator.SINGLE_KEY:
-                return AccountAuthenticator(
-                    SingleKeyAuthenticator.deserialize(deserializer)
-                )
+                return AccountAuthenticator(SingleKeyAuthenticator.deserialize(deserializer))
             case _:
-                raise BcsDeserializationError(
-                    f"Unknown AccountAuthenticator variant: {variant}"
-                )
+                raise BcsDeserializationError(f"Unknown AccountAuthenticator variant: {variant}")
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(self.variant)
@@ -299,17 +270,13 @@ class Authenticator:
         elif isinstance(authenticator, SingleSenderAuthenticator):
             self.variant = Authenticator.SINGLE_SENDER
         else:
-            raise TypeError(
-                f"Invalid authenticator type: {type(authenticator).__name__}"
-            )
+            raise TypeError(f"Invalid authenticator type: {type(authenticator).__name__}")
         self.authenticator = authenticator
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Authenticator):
             return NotImplemented
-        return (
-            self.variant == other.variant and self.authenticator == other.authenticator
-        )
+        return self.variant == other.variant and self.authenticator == other.authenticator
 
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
@@ -325,13 +292,9 @@ class Authenticator:
             case Authenticator.FEE_PAYER:
                 return Authenticator(FeePayerAuthenticator.deserialize(deserializer))
             case Authenticator.SINGLE_SENDER:
-                return Authenticator(
-                    SingleSenderAuthenticator.deserialize(deserializer)
-                )
+                return Authenticator(SingleSenderAuthenticator.deserialize(deserializer))
             case _:
-                raise BcsDeserializationError(
-                    f"Unknown Authenticator variant: {variant}"
-                )
+                raise BcsDeserializationError(f"Unknown Authenticator variant: {variant}")
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(self.variant)

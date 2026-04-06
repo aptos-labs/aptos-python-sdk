@@ -25,9 +25,7 @@ class FeatureReportData:
     counts_errors: int
     counts_failed: int
     counts_skipped: int
-    def __init__(
-        self, feature, filename, classname: Incomplete | None = None
-    ) -> None: ...
+    def __init__(self, feature, filename, classname: Incomplete | None = None) -> None: ...
     def reset(self) -> None: ...
 
 class JUnitReporter(Reporter):
