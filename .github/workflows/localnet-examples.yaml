@@ -34,8 +34,8 @@ jobs:
       - name: Run a localnet
         uses: aptos-labs/actions/run-local-testnet@main
         with:
-          node_version: v20.12.2
-          pnpm_version: 8.15.6
+          node_version: v22.14.0
+          pnpm_version: 9.15.4
 
       - uses: ./.github/actions/python-setup
         with:
