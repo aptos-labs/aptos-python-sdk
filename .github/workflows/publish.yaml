@@ -28,6 +28,9 @@ jobs:
       - name: Run unit tests
         run: uv run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
 
+      - name: Run BDD tests
+        run: uv run behave
+
   build:
     name: Build distribution
     needs: test
