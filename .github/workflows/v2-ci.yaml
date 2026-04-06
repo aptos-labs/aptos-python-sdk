@@ -32,9 +32,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install safe-chain
-        uses: ./.github/actions/safe-chain
-
       - name: Install dependencies
         run: uv sync --extra dev
 
@@ -67,8 +64,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install safe-chain
-        uses: ./.github/actions/safe-chain
+      - name: Setup AikidoSec Safe Chain
+        uses: aptos-labs/actions/akidosec-safe-chain@main
 
       - name: Install dependencies
         run: uv sync --extra dev
