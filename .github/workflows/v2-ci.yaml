@@ -17,6 +17,10 @@ on:
       - "aptos_sdk/v2/**"
       - "v2/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-v2-standalone:
     name: V2 standalone tests (Python ${{ matrix.python-version }})
