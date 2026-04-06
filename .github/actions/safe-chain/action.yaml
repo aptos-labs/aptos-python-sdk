@@ -1,0 +1,14 @@
+name: "Install safe-chain"
+description: "Installs AikidoSec safe-chain in CI mode to monitor dependency installs"
+inputs:
+  version:
+    description: "safe-chain release version to install"
+    required: false
+    default: "1.4.7"
+
+runs:
+  using: composite
+  steps:
+    - name: Install safe-chain
+      run: curl -fsSL https://github.com/AikidoSec/safe-chain/releases/download/${{ inputs.version }}/install-safe-chain.sh | sh -s -- --ci
+      shell: bash
