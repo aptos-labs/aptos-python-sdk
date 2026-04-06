@@ -23,7 +23,7 @@ runs:
         enable-cache: true
 
     - name: Setup AikidoSec Safe Chain
-      uses: aptos-labs/actions/akidosec-safe-chain@main
+      uses: aptos-labs/actions/aikidosec-safe-chain@main
 
     - name: Install project
       if: inputs.pyproject_directory != ''
