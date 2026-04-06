@@ -8,6 +8,10 @@ inputs:
   pyproject_directory:
     description: "Optional path to a project with pyproject.toml"
     required: false
+  python_version:
+    description: "Python version to install"
+    required: false
+    default: "3.12"
 
 runs:
   using: composite
@@ -15,12 +19,13 @@ runs:
     - name: Setup python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.12"
+        python-version: ${{ inputs.python_version }}
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
+        cache-dependency-glob: "**/uv.lock"
 
     - name: Setup AikidoSec Safe Chain
       uses: aptos-labs/actions/aikidosec-safe-chain@main
