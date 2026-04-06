@@ -11,6 +11,10 @@ on:
 jobs:
   lints:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
 
@@ -18,6 +22,7 @@ jobs:
         uses: ./.github/actions/python-setup
         with:
           pyproject_directory: .
+          python_version: ${{ matrix.python-version }}
 
       - name: Check for formatting
         run: make fmt && ./.github/scripts/fail_if_modified_files.sh
