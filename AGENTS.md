@@ -21,6 +21,16 @@ All `make` targets use `uv run`. See `Makefile` for the full list.
 | Autoformat | `make fmt` |
 | Test coverage | `make test-coverage` |
 
+### Pre-commit hook
+
+A git pre-commit hook is provided in `.githooks/`. To enable it:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This runs `make fmt`, `make lint`, and v2 ruff/mypy checks before each commit, failing if formatting produces any changes. **Always run `make fmt` and `make lint` (and `cd v2 && uv run ruff check --fix src/ tests/ && uv run ruff format src/ tests/`) before committing or pushing.**
+
 ### Caveats
 
 - `make fmt` reformats files via `ruff`. After running it, check `git diff` — the existing codebase may not be fully formatted, so `make fmt` can produce changes even on a clean checkout. Do not commit those unless the PR is specifically about formatting.

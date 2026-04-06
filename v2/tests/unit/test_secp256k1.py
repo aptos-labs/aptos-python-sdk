@@ -220,9 +220,9 @@ class TestDerRoundTrip:
 
     def test_round_trip_with_cryptography(self):
         """DER output must be parseable by the cryptography library."""
+        from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import ec
         from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
-        from cryptography.hazmat.primitives import hashes
 
         key = Secp256k1PrivateKey.generate()
         sig = key.sign(b"der_test")
