@@ -45,4 +45,7 @@ examples_cli:
 integration_test:
 	uv run python -m unittest -b examples.integration_test
 
-.PHONY: examples fmt lint test test-coverage test-spec
+pre-commit: fmt lint
+	@./.github/scripts/fail_if_modified_files.sh
+
+.PHONY: examples fmt lint pre-commit test test-coverage test-spec

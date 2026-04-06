@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
-
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature, encode_dss_signature
+from cryptography.hazmat.primitives.asymmetric.utils import (
+    decode_dss_signature,
+    encode_dss_signature,
+)
 
 from ..bcs import Deserializer, Serializer
 from ..errors import InvalidKeyError, InvalidSignatureError
@@ -32,8 +33,7 @@ class Secp256k1PrivateKey(PrivateKeyBase):
         if not isinstance(other, Secp256k1PrivateKey):
             return NotImplemented
         return (
-            self._key.private_numbers().private_value
-            == other._key.private_numbers().private_value
+            self._key.private_numbers().private_value == other._key.private_numbers().private_value
         )
 
     def _variant(self) -> PrivateKeyVariant:
