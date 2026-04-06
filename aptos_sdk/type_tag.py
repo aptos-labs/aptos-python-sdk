@@ -34,9 +34,7 @@ class TypeTag(Deserializable, Serializable):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeTag):
             return NotImplemented
-        return (
-            self.value.variant() == other.value.variant() and self.value == other.value
-        )
+        return self.value.variant() == other.value.variant() and self.value == other.value
 
     def __str__(self):
         return self.value.__str__()

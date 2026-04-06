@@ -142,13 +142,9 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
 
     def __init__(self, keys: List[PublicKey], threshold: int):
         if not (self.MIN_KEYS <= len(keys) <= self.MAX_KEYS):
-            raise ValueError(
-                f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
-            )
+            raise ValueError(f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys.")
         if not (self.MIN_THRESHOLD <= threshold <= len(keys)):
-            raise ValueError(
-                f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}."
-            )
+            raise ValueError(f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}.")
 
         self.keys = keys
         self.threshold = threshold
@@ -268,9 +264,7 @@ class MultiSignature(asymmetric_crypto.Signature):
     def deserialize(deserializer: Deserializer) -> MultiSignature:
         signature_bytes = deserializer.to_bytes()
         count = len(signature_bytes) // Signature.LENGTH
-        if count * Signature.LENGTH + MultiSignature.BITMAP_NUM_OF_BYTES != len(
-            signature_bytes
-        ):
+        if count * Signature.LENGTH + MultiSignature.BITMAP_NUM_OF_BYTES != len(signature_bytes):
             raise ValueError("MultiSignature length is invalid")
 
         bitmap = int.from_bytes(signature_bytes[-4:], "big")
@@ -298,9 +292,7 @@ class MultiSignature(asymmetric_crypto.Signature):
             bitmap = bitmap | (1 << shift)
             signature_bytes.extend(signature[1].data())
 
-        signature_bytes.extend(
-            bitmap.to_bytes(MultiSignature.BITMAP_NUM_OF_BYTES, "big")
-        )
+        signature_bytes.extend(bitmap.to_bytes(MultiSignature.BITMAP_NUM_OF_BYTES, "big"))
         serializer.to_bytes(signature_bytes)
 
 
@@ -314,9 +306,7 @@ class Test(unittest.TestCase):
             True,
         )
         private_key_bytes = PrivateKey.from_hex(
-            bytes.fromhex(
-                "4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
-            ),
+            bytes.fromhex("4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"),
             False,
         )
         self.assertEqual(
@@ -326,7 +316,9 @@ class Test(unittest.TestCase):
         )
 
     def test_private_key_aip80_formatting(self):
-        private_key_with_prefix = "ed25519-priv-0x4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
+        private_key_with_prefix = (
+            "ed25519-priv-0x4e5e3be60f4bbd5e98d086d932f3ce779ff4b58da99bf9e5241ae1212a29e5fe"
+        )
         self.assertEqual(
             str(PrivateKey.from_str(private_key_with_prefix, True)),
             private_key_with_prefix,
@@ -425,9 +417,7 @@ class Test(unittest.TestCase):
 
     def test_multisig_range_checks(self):
         # Generate public keys.
-        keys = [
-            PrivateKey.random().public_key() for x in range(MultiPublicKey.MAX_KEYS + 1)
-        ]
+        keys = [PrivateKey.random().public_key() for x in range(MultiPublicKey.MAX_KEYS + 1)]
         # Verify failure for initializing multisig instance with too few keys.
         with self.assertRaisesRegex(ValueError, "Must have between 2 and 32 keys."):
             MultiPublicKey([keys[0]], 1)

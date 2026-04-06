@@ -20,9 +20,7 @@ class Account:
     account_address: AccountAddress
     private_key: asymmetric_crypto.PrivateKey
 
-    def __init__(
-        self, account_address: AccountAddress, private_key: asymmetric_crypto.PrivateKey
-    ):
+    def __init__(self, account_address: AccountAddress, private_key: asymmetric_crypto.PrivateKey):
         self.account_address = account_address
         self.private_key = private_key
 
@@ -30,8 +28,7 @@ class Account:
         if not isinstance(other, Account):
             return NotImplemented
         return (
-            self.account_address == other.account_address
-            and self.private_key == other.private_key
+            self.account_address == other.account_address and self.private_key == other.private_key
         )
 
     @staticmethod
@@ -119,9 +116,7 @@ class Account:
         """
         return transaction.sign_simulated(self.private_key.public_key())
 
-    def sign_transaction(
-        self, transaction: RawTransactionInternal
-    ) -> AccountAuthenticator:
+    def sign_transaction(self, transaction: RawTransactionInternal) -> AccountAuthenticator:
         """Sign a transaction with this account's private key.
 
         :param transaction: The raw transaction to sign.

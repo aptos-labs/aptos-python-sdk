@@ -130,9 +130,7 @@ class TransactionApi:
                     await asyncio.sleep(1)
                     continue
                 if not result.get("success", False):
-                    raise TransactionFailedError(
-                        txn_hash, result.get("vm_status", "unknown")
-                    )
+                    raise TransactionFailedError(txn_hash, result.get("vm_status", "unknown"))
                 return result
             except Exception as e:
                 if isinstance(e, TransactionFailedError):
@@ -154,11 +152,7 @@ class TransactionApi:
         return await self.wait_for_transaction(txn_hash)
 
     async def get_by_hash(self, txn_hash: str) -> dict[str, Any]:
-        return await self._client.get(
-            f"{self._config.node_url}/transactions/by_hash/{txn_hash}"
-        )
+        return await self._client.get(f"{self._config.node_url}/transactions/by_hash/{txn_hash}")
 
     async def get_by_version(self, version: int) -> dict[str, Any]:
-        return await self._client.get(
-            f"{self._config.node_url}/transactions/by_version/{version}"
-        )
+        return await self._client.get(f"{self._config.node_url}/transactions/by_version/{version}")

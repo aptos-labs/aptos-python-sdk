@@ -21,9 +21,7 @@ from .common import CLIENT_CONFIG, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
-    faucet_client = FaucetClient(
-        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
-    )  # <:!:section_1
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)  # <:!:section_1
 
     # :!:>section_2
     alice = Account.generate()
@@ -64,19 +62,13 @@ async def main():
     )
     fee_payer_transaction = FeePayerRawTransaction(raw_transaction, [], None)
     sender_authenticator = alice.sign_transaction(fee_payer_transaction)
-    fee_payer_transaction = FeePayerRawTransaction(
-        raw_transaction, [], sponsor.address()
-    )
+    fee_payer_transaction = FeePayerRawTransaction(raw_transaction, [], sponsor.address())
     sponsor_authenticator = sponsor.sign_transaction(fee_payer_transaction)
     fee_payer_authenticator = FeePayerAuthenticator(
         sender_authenticator, [], (sponsor.address(), sponsor_authenticator)
     )
-    signed_transaction = SignedTransaction(
-        raw_transaction, Authenticator(fee_payer_authenticator)
-    )
-    txn_hash = await rest_client.submit_bcs_transaction(
-        signed_transaction
-    )  # <:!:section_5
+    signed_transaction = SignedTransaction(raw_transaction, Authenticator(fee_payer_authenticator))
+    txn_hash = await rest_client.submit_bcs_transaction(signed_transaction)  # <:!:section_5
     # :!:>section_6
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6
 

@@ -12,9 +12,7 @@ from .common import CLIENT_CONFIG, FAUCET_AUTH_TOKEN, FAUCET_URL, NODE_URL
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
-    faucet_client = FaucetClient(
-        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
-    )  # <:!:section_1
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)  # <:!:section_1
 
     # :!:>section_2
     alice = Account.generate_secp256k1_ecdsa()
@@ -39,9 +37,7 @@ async def main():
 
     # Have Alice give Bob 1_000 coins
     # :!:>section_5
-    txn_hash = await rest_client.bcs_transfer(
-        alice, bob.address(), 1_000
-    )  # <:!:section_5
+    txn_hash = await rest_client.bcs_transfer(alice, bob.address(), 1_000)  # <:!:section_5
     # :!:>section_6
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6
 

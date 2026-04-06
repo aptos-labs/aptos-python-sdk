@@ -38,10 +38,7 @@ class SignedTransaction:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SignedTransaction):
             return NotImplemented
-        return (
-            self.transaction == other.transaction
-            and self.authenticator == other.authenticator
-        )
+        return self.transaction == other.transaction and self.authenticator == other.authenticator
 
     def to_bytes(self) -> bytes:
         ser = Serializer()

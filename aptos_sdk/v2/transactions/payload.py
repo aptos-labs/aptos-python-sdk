@@ -124,9 +124,7 @@ class Script:
 
     __slots__ = ("code", "ty_args", "args")
 
-    def __init__(
-        self, code: bytes, ty_args: list[TypeTag], args: list[ScriptArgument]
-    ) -> None:
+    def __init__(self, code: bytes, ty_args: list[TypeTag], args: list[ScriptArgument]) -> None:
         self.code = code
         self.ty_args = ty_args
         self.args = args
@@ -134,11 +132,7 @@ class Script:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Script):
             return NotImplemented
-        return (
-            self.code == other.code
-            and self.ty_args == other.ty_args
-            and self.args == other.args
-        )
+        return self.code == other.code and self.ty_args == other.ty_args and self.args == other.args
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> Script:
@@ -201,9 +195,7 @@ class ScriptArgument:
             case ScriptArgument.BOOL:
                 value = deserializer.bool()
             case _:
-                raise BcsDeserializationError(
-                    f"Invalid ScriptArgument variant: {variant}"
-                )
+                raise BcsDeserializationError(f"Invalid ScriptArgument variant: {variant}")
         return ScriptArgument(variant, value)
 
     def serialize(self, serializer: Serializer) -> None:
@@ -228,9 +220,7 @@ class ScriptArgument:
             case ScriptArgument.BOOL:
                 serializer.bool(self.value)
             case _:
-                raise BcsSerializationError(
-                    f"Invalid ScriptArgument variant: {self.variant}"
-                )
+                raise BcsSerializationError(f"Invalid ScriptArgument variant: {self.variant}")
 
 
 class TransactionExecutable:
@@ -265,9 +255,7 @@ class TransactionExecutable:
             case TransactionExecutable.ENTRY_FUNCTION:
                 return TransactionExecutable(EntryFunction.deserialize(deserializer))
             case _:
-                raise BcsDeserializationError(
-                    f"Invalid TransactionExecutable variant: {variant}"
-                )
+                raise BcsDeserializationError(f"Invalid TransactionExecutable variant: {variant}")
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(self.variant)
@@ -300,14 +288,10 @@ class TransactionExtraConfig:
     def deserialize(deserializer: Deserializer) -> TransactionExtraConfig:
         variant = deserializer.uleb128()
         if variant != 0:
-            raise BcsDeserializationError(
-                f"Invalid TransactionExtraConfig variant: {variant}"
-            )
+            raise BcsDeserializationError(f"Invalid TransactionExtraConfig variant: {variant}")
         multisig = deserializer.option(AccountAddress.deserialize)
         nonce = deserializer.option(Deserializer.u64)
-        return TransactionExtraConfig(
-            multisig_address=multisig, replay_protection_nonce=nonce
-        )
+        return TransactionExtraConfig(multisig_address=multisig, replay_protection_nonce=nonce)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(0)  # V1
@@ -331,18 +315,13 @@ class TransactionInnerPayload:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TransactionInnerPayload):
             return NotImplemented
-        return (
-            self.executable == other.executable
-            and self.extra_config == other.extra_config
-        )
+        return self.executable == other.executable and self.extra_config == other.extra_config
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> TransactionInnerPayload:
         variant = deserializer.uleb128()
         if variant != 0:
-            raise BcsDeserializationError(
-                f"Invalid TransactionInnerPayload variant: {variant}"
-            )
+            raise BcsDeserializationError(f"Invalid TransactionInnerPayload variant: {variant}")
         executable = TransactionExecutable.deserialize(deserializer)
         extra_config = TransactionExtraConfig.deserialize(deserializer)
         return TransactionInnerPayload(executable, extra_config)
@@ -362,9 +341,7 @@ class TransactionPayload:
 
     __slots__ = ("variant", "value")
 
-    def __init__(
-        self, payload: Script | EntryFunction | TransactionInnerPayload
-    ) -> None:
+    def __init__(self, payload: Script | EntryFunction | TransactionInnerPayload) -> None:
         if isinstance(payload, Script):
             self.variant = TransactionPayload.SCRIPT
         elif isinstance(payload, EntryFunction):
@@ -392,13 +369,9 @@ class TransactionPayload:
             case TransactionPayload.ENTRY_FUNCTION:
                 return TransactionPayload(EntryFunction.deserialize(deserializer))
             case TransactionPayload.PAYLOAD:
-                return TransactionPayload(
-                    TransactionInnerPayload.deserialize(deserializer)
-                )
+                return TransactionPayload(TransactionInnerPayload.deserialize(deserializer))
             case _:
-                raise BcsDeserializationError(
-                    f"Invalid TransactionPayload variant: {variant}"
-                )
+                raise BcsDeserializationError(f"Invalid TransactionPayload variant: {variant}")
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(self.variant)

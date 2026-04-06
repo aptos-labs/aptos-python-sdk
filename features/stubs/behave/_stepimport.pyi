@@ -22,9 +22,7 @@ class StepMatchersModule(FakeModule):
 
 class BehaveModule(FakeModule):
     use_default_step_matcher: Incomplete
-    def __init__(
-        self, step_registry, matcher_factory: Incomplete | None = None
-    ) -> None: ...
+    def __init__(self, step_registry, matcher_factory: Incomplete | None = None) -> None: ...
 
 class StepImportModuleContext:
     step_registry: Incomplete

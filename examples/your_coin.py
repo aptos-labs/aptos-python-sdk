@@ -106,9 +106,7 @@ async def main(moon_coin_path: str):
     with open(module_path, "rb") as f:
         module = f.read()
 
-    metadata_path = os.path.join(
-        moon_coin_path, "build", "Examples", "package-metadata.bcs"
-    )
+    metadata_path = os.path.join(moon_coin_path, "build", "Examples", "package-metadata.bcs")
     with open(metadata_path, "rb") as f:
         metadata = f.read()
 
@@ -148,8 +146,6 @@ async def main(moon_coin_path: str):
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 2, (
-        "Expecting an argument that points to the moon_coin directory."
-    )
+    assert len(sys.argv) == 2, "Expecting an argument that points to the moon_coin directory."
 
     asyncio.run(main(sys.argv[1]))

@@ -49,9 +49,7 @@ class IndexerClient:
         headers = {}
         if bearer_token:
             headers["Authorization"] = f"Bearer {bearer_token}"
-        self.client = python_graphql_client.GraphqlClient(
-            endpoint=indexer_url, headers=headers
-        )
+        self.client = python_graphql_client.GraphqlClient(endpoint=indexer_url, headers=headers)
 
     async def query(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
         return await self.client.execute_async(query, variables)
@@ -444,9 +442,7 @@ class RestClient:
         while len(aggregator_path) > 0:
             key = aggregator_path.pop()
             if key not in data:
-                raise ApiError(
-                    f"aggregator path not found in data: {source_data}", source_data
-                )
+                raise ApiError(f"aggregator path not found in data: {source_data}", source_data)
             data = data[key]
 
         if "vec" not in data:
@@ -523,9 +519,7 @@ class RestClient:
             estimate_gas_usage=estimate_gas_usage,
         )
 
-    async def submit_bcs_transaction(
-        self, signed_transaction: SignedTransaction
-    ) -> str:
+    async def submit_bcs_transaction(self, signed_transaction: SignedTransaction) -> str:
         """
         Submit a BCS-serialized signed transaction to the blockchain.
 
@@ -744,9 +738,7 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> SignedTransaction:
-        raw_transaction = await self.create_bcs_transaction(
-            sender, payload, sequence_number
-        )
+        raw_transaction = await self.create_bcs_transaction(sender, payload, sequence_number)
         authenticator = sender.sign_transaction(raw_transaction)
         return SignedTransaction(raw_transaction, authenticator)
 
@@ -914,9 +906,7 @@ class RestClient:
         ser = Serializer()
         view_data.serialize(ser)
         headers = {"Content-Type": "application/x.aptos.view_function+bcs"}
-        response = await self.client.post(
-            request, headers=headers, content=ser.output()
-        )
+        response = await self.client.post(request, headers=headers, content=ser.output())
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
         return response.json()
@@ -938,9 +928,7 @@ class RestClient:
             json=data,
         )
 
-    async def _get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None
-    ) -> httpx.Response:
+    async def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> httpx.Response:
         # format params:
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
@@ -961,9 +949,7 @@ class FaucetClient:
     rest_client: RestClient
     headers: Dict[str, str]
 
-    def __init__(
-        self, base_url: str, rest_client: RestClient, auth_token: Optional[str] = None
-    ):
+    def __init__(self, base_url: str, rest_client: RestClient, auth_token: Optional[str] = None):
         self.base_url = base_url
         self.rest_client = rest_client
         self.headers = {"Content-Type": "application/json"}

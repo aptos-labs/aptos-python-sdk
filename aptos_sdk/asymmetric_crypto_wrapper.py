@@ -42,9 +42,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
         variant = deserializer.uleb128()
 
         if variant == PublicKey.ED25519:
-            public_key: asymmetric_crypto.PublicKey = ed25519.PublicKey.deserialize(
-                deserializer
-            )
+            public_key: asymmetric_crypto.PublicKey = ed25519.PublicKey.deserialize(deserializer)
         elif variant == Signature.SECP256K1_ECDSA:
             public_key = secp256k1_ecdsa.PublicKey.deserialize(deserializer)
         else:
@@ -78,9 +76,7 @@ class Signature(asymmetric_crypto.Signature):
         variant = deserializer.uleb128()
 
         if variant == Signature.ED25519:
-            signature: asymmetric_crypto.Signature = ed25519.Signature.deserialize(
-                deserializer
-            )
+            signature: asymmetric_crypto.Signature = ed25519.Signature.deserialize(deserializer)
         elif variant == Signature.SECP256K1_ECDSA:
             signature = secp256k1_ecdsa.Signature.deserialize(deserializer)
         else:
@@ -103,13 +99,9 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
 
     def __init__(self, keys: List[asymmetric_crypto.PublicKey], threshold: int):
         if not (self.MIN_KEYS <= len(keys) <= self.MAX_KEYS):
-            raise ValueError(
-                f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
-            )
+            raise ValueError(f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys.")
         if not (self.MIN_THRESHOLD <= threshold <= len(keys)):
-            raise ValueError(
-                f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}."
-            )
+            raise ValueError(f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}.")
 
         # Ensure keys are wrapped
         self.keys = []

@@ -35,9 +35,7 @@ class PrivateKey(Deserializable, Serializable, Protocol):
     }
 
     @staticmethod
-    def format_private_key(
-        private_key: bytes | str, key_type: PrivateKeyVariant
-    ) -> str:
+    def format_private_key(private_key: bytes | str, key_type: PrivateKeyVariant) -> str:
         """
         Format a HexInput to an AIP-80 compliant string.
 
@@ -96,9 +94,7 @@ class PrivateKey(Deserializable, Serializable, Protocol):
                 return bytes.fromhex(value)
             else:
                 if strict:
-                    raise ValueError(
-                        "Invalid HexString input. Must be AIP-80 compliant string."
-                    )
+                    raise ValueError("Invalid HexString input. Must be AIP-80 compliant string.")
                 raise ValueError("Invalid HexString input.")
         elif isinstance(value, bytes):
             return value
