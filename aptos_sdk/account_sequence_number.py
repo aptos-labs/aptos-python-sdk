@@ -89,8 +89,10 @@ class AccountSequenceNumber:
                     if not block:
                         return None
                     await self._resync(
-                        lambda acn: acn._current_number - acn._last_uncommitted_number
-                        >= acn._maximum_in_flight
+                        lambda acn: (
+                            acn._current_number - acn._last_uncommitted_number
+                            >= acn._maximum_in_flight
+                        )
                     )
 
             next_number = self._current_number
