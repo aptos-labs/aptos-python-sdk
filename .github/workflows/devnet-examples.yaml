@@ -25,8 +25,5 @@ jobs:
           pyproject_directory: .
 
       - name: Run examples on devnet
-        uses: nick-fields/retry@v3
-        with:
-          max_attempts: 1
-          timeout_minutes: 20
-          command: make examples
+        run: make examples
+        timeout-minutes: 20
