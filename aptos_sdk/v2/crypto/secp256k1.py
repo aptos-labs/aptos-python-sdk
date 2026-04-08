@@ -44,20 +44,23 @@ class Secp256k1PrivateKey(PrivateKeyBase):
         return Secp256k1PrivateKey(ec.generate_private_key(ec.SECP256K1()))
 
     @staticmethod
-    def from_str(value: str, strict: bool | None = None) -> Secp256k1PrivateKey:
-        raw = parse_hex_input(value, PrivateKeyVariant.SECP256K1, strict)
+    def _from_raw(raw: bytes) -> Secp256k1PrivateKey:
         if len(raw) != Secp256k1PrivateKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
         private_int = int.from_bytes(raw, "big")
+        if not (1 <= private_int < _N):
+            raise InvalidKeyError("Secp256k1 private key scalar must be in [1, N)")
         return Secp256k1PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
+
+    @staticmethod
+    def from_str(value: str, strict: bool | None = None) -> Secp256k1PrivateKey:
+        raw = parse_hex_input(value, PrivateKeyVariant.SECP256K1, strict)
+        return Secp256k1PrivateKey._from_raw(raw)
 
     @staticmethod
     def from_hex(value: str | bytes, strict: bool | None = None) -> Secp256k1PrivateKey:
         raw = parse_hex_input(value, PrivateKeyVariant.SECP256K1, strict)
-        if len(raw) != Secp256k1PrivateKey.LENGTH:
-            raise InvalidKeyError("Length mismatch")
-        private_int = int.from_bytes(raw, "big")
-        return Secp256k1PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
+        return Secp256k1PrivateKey._from_raw(raw)
 
     def hex(self) -> str:
         raw = self._key.private_numbers().private_value.to_bytes(self.LENGTH, "big")
@@ -81,10 +84,7 @@ class Secp256k1PrivateKey(PrivateKeyBase):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> Secp256k1PrivateKey:
         key = deserializer.to_bytes()
-        if len(key) != Secp256k1PrivateKey.LENGTH:
-            raise InvalidKeyError("Length mismatch")
-        private_int = int.from_bytes(key, "big")
-        return Secp256k1PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
+        return Secp256k1PrivateKey._from_raw(key)
 
     def serialize(self, serializer: Serializer) -> None:
         raw = self._key.private_numbers().private_value.to_bytes(self.LENGTH, "big")
@@ -129,6 +129,8 @@ class Secp256k1PublicKey(PublicKeyBase):
     def verify(self, data: bytes, signature: SignatureBase) -> bool:
         try:
             sig_bytes = signature.data()
+            if len(sig_bytes) != 64:
+                return False
             r = int.from_bytes(sig_bytes[0:32], "big")
             s = int.from_bytes(sig_bytes[32:64], "big")
             if r == 0 or s == 0:
