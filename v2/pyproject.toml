@@ -23,7 +23,7 @@ classifiers = [
 dependencies = [
     "aiohttp>=3.9,<4",
     "PyNaCl>=1.5,<2",
-    "coincurve>=20,<21",
+    "cryptography>=44,<47",
     "bip-utils>=2.9,<3",
 ]
 
@@ -76,5 +76,5 @@ module = "bip_utils.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "coincurve.*"
+module = "cryptography.*"
 ignore_missing_imports = true

@@ -41,7 +41,7 @@ src/aptos_sdk_v2/
 │   ├── ed25519.py           # Ed25519PrivateKey/PublicKey/Signature (PyNaCl)
 │   ├── keys.py              # Abstract PrivateKey/PublicKey/Signature + AIP-80 helpers
 │   ├── mnemonic.py          # BIP-39 generate/validate + BIP-44 key derivation
-│   ├── secp256k1.py         # Secp256k1PrivateKey/PublicKey/Signature (coincurve)
+│   ├── secp256k1.py         # Secp256k1PrivateKey/PublicKey/Signature (cryptography)
 │   └── single_key.py        # AnyPublicKey/AnySignature wrappers for non-Ed25519 keys
 ├── transactions/
 │   ├── __init__.py          # Re-exports all transaction types
@@ -180,7 +180,7 @@ wait_for_transaction(hash) → poll until committed or timeout
 ## Crypto Layer
 
 - **Ed25519:** PyNaCl (`nacl.signing`). Default key type. Auth scheme byte `0x00`.
-- **Secp256k1:** coincurve. Wrapped in `AnyPublicKey` for address derivation (auth scheme `0x02`).
+- **Secp256k1:** cryptography (OpenSSL). Wrapped in `AnyPublicKey` for address derivation (auth scheme `0x02`).
 - **Mnemonic:** BIP-39 via `bip-utils`. Default path: `m/44'/637'/0'/0'/0'`. Vary index 3 (account) for multi-account. Both Ed25519 and Secp256k1 derivation supported.
 - **AIP-80 format:** private keys serialize as `ed25519-priv-0x{hex}` or `secp256k1-priv-0x{hex}`. Use `key.aip80()` to get this format.
 - **AuthenticationKey:** `SHA3-256(public_key_bytes || scheme_byte)`. For Secp256k1, the public key is first wrapped in `AnyPublicKey` (BCS-serialized with variant tag).
@@ -231,5 +231,6 @@ Internal code uses **relative imports** (`from ..config import AptosConfig`).
 ## Linting
 
 - **ruff:** `select = ["E", "F", "I", "N", "W", "UP"]`, target Python 3.12, line length 100
-- **mypy:** strict mode, `warn_return_any = false`, ignores missing imports for `bip_utils` and `coincurve`
+- **mypy:** strict mode, `warn_return_any = false`, ignores missing imports for `bip_utils` and `cryptography`
 - **Run:** `uv run ruff check src/` and `uv run mypy src/`
+- **Always run `uv run ruff check --fix src/ tests/ && uv run ruff format src/ tests/` before committing.** A pre-commit hook in `../.githooks/` enforces this.

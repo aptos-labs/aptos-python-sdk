@@ -1,11 +1,13 @@
-"""Secp256k1 ECDSA cryptography using coincurve (wraps libsecp256k1)."""
+"""Secp256k1 ECDSA cryptography using the cryptography library (OpenSSL)."""
 
 from __future__ import annotations
 
-import hashlib
-
-from coincurve import PrivateKey as CoinPrivateKey
-from coincurve import PublicKey as CoinPublicKey
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import (
+    decode_dss_signature,
+    encode_dss_signature,
+)
 
 from ..bcs import Deserializer, Serializer
 from ..errors import InvalidKeyError, InvalidSignatureError
@@ -24,54 +26,57 @@ class Secp256k1PrivateKey(PrivateKeyBase):
     LENGTH = 32
     __slots__ = ("_key",)
 
-    def __init__(self, key: CoinPrivateKey) -> None:
+    def __init__(self, key: ec.EllipticCurvePrivateKey) -> None:
         self._key = key
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Secp256k1PrivateKey):
             return NotImplemented
-        return self._key.secret == other._key.secret
+        return (
+            self._key.private_numbers().private_value == other._key.private_numbers().private_value
+        )
 
     def _variant(self) -> PrivateKeyVariant:
         return PrivateKeyVariant.SECP256K1
 
     @staticmethod
     def generate() -> Secp256k1PrivateKey:
-        return Secp256k1PrivateKey(CoinPrivateKey())
+        return Secp256k1PrivateKey(ec.generate_private_key(ec.SECP256K1()))
+
+    @staticmethod
+    def _from_raw(raw: bytes) -> Secp256k1PrivateKey:
+        if len(raw) != Secp256k1PrivateKey.LENGTH:
+            raise InvalidKeyError("Length mismatch")
+        private_int = int.from_bytes(raw, "big")
+        if not (1 <= private_int < _N):
+            raise InvalidKeyError("Secp256k1 private key scalar must be in [1, N)")
+        return Secp256k1PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     @staticmethod
     def from_str(value: str, strict: bool | None = None) -> Secp256k1PrivateKey:
         raw = parse_hex_input(value, PrivateKeyVariant.SECP256K1, strict)
-        if len(raw) != Secp256k1PrivateKey.LENGTH:
-            raise InvalidKeyError("Length mismatch")
-        return Secp256k1PrivateKey(CoinPrivateKey(raw))
+        return Secp256k1PrivateKey._from_raw(raw)
 
     @staticmethod
     def from_hex(value: str | bytes, strict: bool | None = None) -> Secp256k1PrivateKey:
         raw = parse_hex_input(value, PrivateKeyVariant.SECP256K1, strict)
-        if len(raw) != Secp256k1PrivateKey.LENGTH:
-            raise InvalidKeyError("Length mismatch")
-        return Secp256k1PrivateKey(CoinPrivateKey(raw))
+        return Secp256k1PrivateKey._from_raw(raw)
 
     def hex(self) -> str:
-        return f"0x{self._key.secret.hex()}"
+        raw = self._key.private_numbers().private_value.to_bytes(self.LENGTH, "big")
+        return f"0x{raw.hex()}"
 
     def public_key(self) -> Secp256k1PublicKey:
-        # uncompressed format: 04 || x (32 bytes) || y (32 bytes), skip the 04 prefix
-        raw_uncompressed = self._key.public_key.format(compressed=False)
-        return Secp256k1PublicKey(raw_uncompressed[1:])
+        pub = self._key.public_key()
+        nums = pub.public_numbers()
+        raw = nums.x.to_bytes(32, "big") + nums.y.to_bytes(32, "big")
+        return Secp256k1PublicKey(raw)
 
     def sign(self, data: bytes) -> Secp256k1Signature:
-        digest = hashlib.sha3_256(data).digest()
-        # coincurve sign_recoverable returns (r || s || recovery_id)
-        # We use ecdsa_sign which returns DER, so we use sign_recoverable and strip recovery
-        sig_raw = self._key.sign_recoverable(digest, hasher=None)
-        r = int.from_bytes(sig_raw[0:32], "big")
-        s = int.from_bytes(sig_raw[32:64], "big")
+        der_sig = self._key.sign(data, ec.ECDSA(hashes.SHA3_256()))
+        r, s = decode_dss_signature(der_sig)
         # Low-S normalization: if s > n/2, use n - s
-        # Note: libsecp256k1 already normalizes S in sign_recoverable, so this
-        # branch is a safety net that won't trigger in practice.
-        if s > _N // 2:  # pragma: no cover
+        if s > _N // 2:
             s = _N - s
         sig_bytes = r.to_bytes(32, "big") + s.to_bytes(32, "big")
         return Secp256k1Signature(sig_bytes)
@@ -79,12 +84,11 @@ class Secp256k1PrivateKey(PrivateKeyBase):
     @staticmethod
     def deserialize(deserializer: Deserializer) -> Secp256k1PrivateKey:
         key = deserializer.to_bytes()
-        if len(key) != Secp256k1PrivateKey.LENGTH:
-            raise InvalidKeyError("Length mismatch")
-        return Secp256k1PrivateKey(CoinPrivateKey(key))
+        return Secp256k1PrivateKey._from_raw(key)
 
     def serialize(self, serializer: Serializer) -> None:
-        serializer.to_bytes(self._key.secret)
+        raw = self._key.private_numbers().private_value.to_bytes(self.LENGTH, "big")
+        serializer.to_bytes(raw)
 
 
 class Secp256k1PublicKey(PublicKeyBase):
@@ -125,15 +129,20 @@ class Secp256k1PublicKey(PublicKeyBase):
     def verify(self, data: bytes, signature: SignatureBase) -> bool:
         try:
             sig_bytes = signature.data()
+            if len(sig_bytes) != 64:
+                return False
             r = int.from_bytes(sig_bytes[0:32], "big")
             s = int.from_bytes(sig_bytes[32:64], "big")
-            # Build DER encoding for coincurve
-            der_sig = _rs_to_der(r, s)
-            digest = hashlib.sha3_256(data).digest()
-            pub = CoinPublicKey(b"\x04" + self._raw)
-            return pub.verify(der_sig, digest, hasher=None)
+            if r == 0 or s == 0:
+                return False
+            if s > (_N // 2):
+                return False
+            der_sig = encode_dss_signature(r, s)
+            pub = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), b"\x04" + self._raw)
+            pub.verify(der_sig, data, ec.ECDSA(hashes.SHA3_256()))
         except Exception:
             return False
+        return True
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> Secp256k1PublicKey:
@@ -181,23 +190,3 @@ class Secp256k1Signature(SignatureBase):
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self._signature)
-
-
-def _rs_to_der(r: int, s: int) -> bytes:
-    """Encode r, s integers as a DER-encoded ECDSA signature."""
-
-    def _int_to_der_bytes(val: int) -> bytes:
-        length = (val.bit_length() + 7) // 8 or 1
-        b = val.to_bytes(length, "big")
-        if b[0] & 0x80:
-            b = b"\x00" + b
-        return b
-
-    r_bytes = _int_to_der_bytes(r)
-    s_bytes = _int_to_der_bytes(s)
-
-    r_len = len(r_bytes)
-    s_len = len(s_bytes)
-    total_len = 2 + r_len + 2 + s_len
-
-    return bytes([0x30, total_len, 0x02, r_len]) + r_bytes + bytes([0x02, s_len]) + s_bytes
