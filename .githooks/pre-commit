@@ -16,9 +16,9 @@ uv run ruff check --fix src/ tests/
 uv run ruff format src/ tests/
 cd ..
 
-# Fail if formatting produced unstaged changes (ignoring already-staged files)
+# Fail if formatting or linting left any unstaged changes in the working tree.
 if [[ -n $(git diff --name-only) ]]; then
-    echo "Failure: formatting produced unstaged changes. Stage them or run 'make fmt' first."
+    echo "Failure: formatting or linting left unstaged changes. Stage them or run 'make fmt' first."
     git diff --stat
     exit 1
 fi

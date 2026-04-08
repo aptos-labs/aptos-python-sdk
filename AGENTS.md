@@ -29,7 +29,7 @@ A git pre-commit hook is provided in `.githooks/`. To enable it:
 git config core.hooksPath .githooks
 ```
 
-This runs `make fmt`, `make lint`, and v2 ruff/mypy checks before each commit, failing if formatting produces any changes. **Always run `make fmt` and `make lint` (and `cd v2 && uv run ruff check --fix src/ tests/ && uv run ruff format src/ tests/`) before committing or pushing.**
+This runs `make fmt`, `make lint`, and v2 ruff checks/formatting before each commit, failing if formatting produces any changes. **Always run `make fmt` and `make lint` (and `cd v2 && uv run ruff check --fix src/ tests/ && uv run ruff format src/ tests/`) before committing or pushing.**
 
 ### Caveats
 
