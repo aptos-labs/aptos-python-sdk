@@ -36,7 +36,7 @@ Changelog = "https://github.com/aptos-labs/aptos-python-sdk/releases"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=5",
     "aioresponses>=0.7",
