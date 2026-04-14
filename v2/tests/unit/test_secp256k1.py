@@ -215,6 +215,96 @@ class TestEdgeCases:
             assert s <= curve_order // 2, "All signatures should have low-S"
 
 
+class TestSignatureHardening:
+    """Tests for verify() hardening: high-S rejection, zero r/s, and length checks."""
+
+    _N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+    def test_high_s_signature_rejected(self):
+        """A high-S variant of a valid signature must be rejected."""
+        key = Secp256k1PrivateKey.generate()
+        pub = key.public_key()
+        data = b"malleability check"
+
+        sig = key.sign(data)
+        assert pub.verify(data, sig)
+
+        sig_bytes = sig.data()
+        r = int.from_bytes(sig_bytes[:32], "big")
+        low_s = int.from_bytes(sig_bytes[32:], "big")
+        high_s = self._N - low_s
+        flipped = Secp256k1Signature(r.to_bytes(32, "big") + high_s.to_bytes(32, "big"))
+        assert not pub.verify(data, flipped)
+
+    def test_zero_r_rejected(self):
+        """A signature with r=0 must be rejected."""
+        key = Secp256k1PrivateKey.generate()
+        pub = key.public_key()
+        bad_sig = Secp256k1Signature(b"\x00" * 32 + b"\x00" * 31 + b"\x01")
+        assert not pub.verify(b"msg", bad_sig)
+
+    def test_zero_s_rejected(self):
+        """A signature with s=0 must be rejected."""
+        key = Secp256k1PrivateKey.generate()
+        pub = key.public_key()
+        bad_sig = Secp256k1Signature(b"\x00" * 31 + b"\x01" + b"\x00" * 32)
+        assert not pub.verify(b"msg", bad_sig)
+
+    def test_oversized_signature_rejected(self):
+        """A signature longer than 64 bytes must be rejected."""
+        from aptos_sdk_v2.crypto.keys import Signature
+
+        key = Secp256k1PrivateKey.generate()
+        pub = key.public_key()
+
+        class LongSig(Signature):
+            def data(self):
+                return b"\x01" * 65
+
+            def serialize(self, s):
+                pass
+
+            @staticmethod
+            def deserialize(d):
+                pass
+
+        assert not pub.verify(b"msg", LongSig())
+
+
+class TestPrivateKeyScalarValidation:
+    """Tests for private key scalar range validation."""
+
+    def test_zero_scalar_rejected(self):
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidKeyError
+
+        with pytest.raises(InvalidKeyError, match="scalar"):
+            Secp256k1PrivateKey.from_hex(b"\x00" * 32)
+
+    def test_curve_order_rejected(self):
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidKeyError
+
+        n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+        with pytest.raises(InvalidKeyError, match="scalar"):
+            Secp256k1PrivateKey.from_hex(n.to_bytes(32, "big"))
+
+    def test_above_curve_order_rejected(self):
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidKeyError
+
+        n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+        with pytest.raises(InvalidKeyError, match="scalar"):
+            Secp256k1PrivateKey.from_hex((n + 1).to_bytes(32, "big"))
+
+    def test_valid_scalar_one_accepted(self):
+        key = Secp256k1PrivateKey.from_hex(b"\x00" * 31 + b"\x01")
+        assert key.hex() == "0x" + "00" * 31 + "01"
+
+
 class TestDerRoundTrip:
     """Test that signatures can round-trip through DER encoding."""
 
