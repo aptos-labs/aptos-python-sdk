@@ -23,7 +23,7 @@ classifiers = [
 dependencies = [
     "aiohttp>=3.9,<4",
     "PyNaCl>=1.5,<2",
-    "cryptography>=44,<47",
+    "cryptography>=46.0.7,<47",
     "bip-utils>=2.9,<3",
 ]
 
