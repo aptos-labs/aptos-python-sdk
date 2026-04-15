@@ -154,7 +154,7 @@ class Serializer:
     ) -> None:
         self.uleb128(len(values))
         for value in values:
-            self.fixed_bytes(_encode(value, value_encoder))
+            value_encoder(self, value)
 
     def map(
         self,
@@ -162,14 +162,12 @@ class Serializer:
         key_encoder: Callable[[Serializer, Any], None],
         value_encoder: Callable[[Serializer, Any], None],
     ) -> None:
-        encoded_values = [
-            (_encode(key, key_encoder), _encode(val, value_encoder)) for key, val in values.items()
-        ]
-        encoded_values.sort(key=lambda item: item[0])
-        self.uleb128(len(encoded_values))
-        for key, val in encoded_values:
-            self.fixed_bytes(key)
-            self.fixed_bytes(val)
+        encoded_pairs = [(_encode(key, key_encoder), val) for key, val in values.items()]
+        encoded_pairs.sort(key=lambda item: item[0])
+        self.uleb128(len(encoded_pairs))
+        for encoded_key, val in encoded_pairs:
+            self.fixed_bytes(encoded_key)
+            value_encoder(self, val)
 
     @staticmethod
     def sequence_serializer(

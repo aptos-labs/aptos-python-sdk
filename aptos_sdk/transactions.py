@@ -28,14 +28,15 @@ from .bcs import Deserializable, Deserializer, Serializable, Serializer
 from .errors import DeserializationError, InvalidTypeError, SerializationError
 from .type_tag import StructTag, TypeTag
 
+_RAW_TXN_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransaction").digest()
+_RAW_TXN_WITH_DATA_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransactionWithData").digest()
+
 
 class RawTransactionInternal(Protocol):
     def keyed(self) -> bytes:
         ser = Serializer()
         self.serialize(ser)
-        prehash = bytearray(self.prehash())
-        prehash.extend(ser.output())
-        return bytes(prehash)
+        return self.prehash() + ser.output()
 
     def prehash(self) -> bytes: ...
 
@@ -70,9 +71,7 @@ class RawTransactionWithData(RawTransactionInternal, Protocol):
         return self.raw_transaction
 
     def prehash(self) -> bytes:
-        hasher = hashlib.sha3_256()
-        hasher.update(b"APTOS::RawTransactionWithData")
-        return hasher.digest()
+        return _RAW_TXN_WITH_DATA_PREHASH
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> RawTransactionWithData:
@@ -145,9 +144,7 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 """
 
     def prehash(self) -> bytes:
-        hasher = hashlib.sha3_256()
-        hasher.update(b"APTOS::RawTransaction")
-        return hasher.digest()
+        return _RAW_TXN_PREHASH
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> RawTransaction:

@@ -17,19 +17,8 @@ from .authenticator import (
 )
 from .payload import TransactionPayload
 
-
-def _raw_txn_prehash() -> bytes:
-    """SHA3-256 of b"APTOS::RawTransaction" — the domain separator for single-sender signing."""
-    hasher = hashlib.sha3_256()
-    hasher.update(b"APTOS::RawTransaction")
-    return hasher.digest()
-
-
-def _raw_txn_with_data_prehash() -> bytes:
-    """SHA3-256 of b"APTOS::RawTransactionWithData" — for multi-agent/fee-payer signing."""
-    hasher = hashlib.sha3_256()
-    hasher.update(b"APTOS::RawTransactionWithData")
-    return hasher.digest()
+_RAW_TXN_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransaction").digest()
+_RAW_TXN_WITH_DATA_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransactionWithData").digest()
 
 
 def _sign_internal(keyed_data: bytes, key: PrivateKey) -> AccountAuthenticator:
@@ -98,9 +87,7 @@ class RawTransaction:
         """Produce the signing message: prehash || BCS(self)."""
         ser = Serializer()
         self.serialize(ser)
-        prehash = bytearray(_raw_txn_prehash())
-        prehash.extend(ser.output())
-        return bytes(prehash)
+        return _RAW_TXN_PREHASH + ser.output()
 
     def sign(self, private_key: PrivateKey) -> AccountAuthenticator:
         return _sign_internal(self.keyed(), private_key)
@@ -150,9 +137,7 @@ class MultiAgentRawTransaction:
     def keyed(self) -> bytes:
         ser = Serializer()
         self.serialize(ser)
-        prehash = bytearray(_raw_txn_with_data_prehash())
-        prehash.extend(ser.output())
-        return bytes(prehash)
+        return _RAW_TXN_WITH_DATA_PREHASH + ser.output()
 
     def sign(self, private_key: PrivateKey) -> AccountAuthenticator:
         return _sign_internal(self.keyed(), private_key)
@@ -197,9 +182,7 @@ class FeePayerRawTransaction:
     def keyed(self) -> bytes:
         ser = Serializer()
         self.serialize(ser)
-        prehash = bytearray(_raw_txn_with_data_prehash())
-        prehash.extend(ser.output())
-        return bytes(prehash)
+        return _RAW_TXN_WITH_DATA_PREHASH + ser.output()
 
     def sign(self, private_key: PrivateKey) -> AccountAuthenticator:
         return _sign_internal(self.keyed(), private_key)

@@ -173,15 +173,15 @@ class Serializer:
         key_encoder: typing.Callable[[Serializer, typing.Any], None],
         value_encoder: typing.Callable[[Serializer, typing.Any], None],
     ):
-        encoded_values = []
+        encoded_pairs = []
         for key, value in values.items():
-            encoded_values.append((encoder(key, key_encoder), encoder(value, value_encoder)))
-        encoded_values.sort(key=lambda item: item[0])
+            encoded_pairs.append((encoder(key, key_encoder), value))
+        encoded_pairs.sort(key=lambda item: item[0])
 
-        self.uleb128(len(encoded_values))
-        for key, value in encoded_values:
-            self.fixed_bytes(key)
-            self.fixed_bytes(value)
+        self.uleb128(len(encoded_pairs))
+        for encoded_key, value in encoded_pairs:
+            self.fixed_bytes(encoded_key)
+            value_encoder(self, value)
 
     @staticmethod
     def sequence_serializer(
@@ -196,7 +196,7 @@ class Serializer:
     ):
         self.uleb128(len(values))
         for value in values:
-            self.fixed_bytes(encoder(value, value_encoder))
+            value_encoder(self, value)
 
     def str(self, value: str):
         self.to_bytes(value.encode())
