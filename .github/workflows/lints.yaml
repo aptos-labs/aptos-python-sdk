@@ -21,6 +21,8 @@ jobs:
         python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
 
       - name: Run python setup
         uses: ./.github/actions/python-setup

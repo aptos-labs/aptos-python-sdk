@@ -24,6 +24,8 @@ jobs:
       FAUCET_AUTH_TOKEN: ${{ secrets.DEVNET_FAUCET_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/python-setup
         with:

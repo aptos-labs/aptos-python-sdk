@@ -24,10 +24,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
 
       - name: Checkout aptos-core
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
+          persist-credentials: false
           repository: aptos-labs/aptos-core
           path: './aptos-core'
 
