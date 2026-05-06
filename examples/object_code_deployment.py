@@ -43,9 +43,7 @@ async def main(package_dir):
         AptosCLIWrapper.compile_package(package_dir, {module_name: code_object_address})
     else:
         print(f"Address of the object to be created: {code_object_address}")
-        input(
-            "\nUpdate the module with the derived code object address, compile, and press enter."
-        )
+        input("\nUpdate the module with the derived code object address, compile, and press enter.")
 
     # Deploy package to code object.
     print("\n=== Object Code Deployment ===")

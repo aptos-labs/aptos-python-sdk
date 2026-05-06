@@ -129,9 +129,7 @@ async def main(should_wait_input=True):
         payload=TransactionPayload(entry_function),
         max_gas_amount=rest_client.client_config.max_gas_amount,
         gas_unit_price=rest_client.client_config.gas_unit_price,
-        expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
-        ),
+        expiration_timestamps_secs=(int(time.time()) + rest_client.client_config.expiration_ttl),
         chain_id=chain_id,
     )
 
@@ -307,9 +305,7 @@ async def main(should_wait_input=True):
         payload=TransactionPayload(payload),
         max_gas_amount=rest_client.client_config.max_gas_amount,
         gas_unit_price=rest_client.client_config.gas_unit_price,
-        expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
-        ),
+        expiration_timestamps_secs=(int(time.time()) + rest_client.client_config.expiration_ttl),
         chain_id=chain_id,
     )
 
@@ -331,9 +327,7 @@ async def main(should_wait_input=True):
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
-    registry = await rest_client.account_resource(
-        deedee.address(), "0x1::code::PackageRegistry"
-    )
+    registry = await rest_client.account_resource(deedee.address(), "0x1::code::PackageRegistry")
 
     package_name = registry["data"]["packages"][0]["name"]
     n_upgrades = registry["data"]["packages"][0]["upgrade_number"]
@@ -386,9 +380,7 @@ async def main(should_wait_input=True):
         payload=TransactionPayload(payload),
         max_gas_amount=rest_client.client_config.max_gas_amount,
         gas_unit_price=rest_client.client_config.gas_unit_price,
-        expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
-        ),
+        expiration_timestamps_secs=(int(time.time()) + rest_client.client_config.expiration_ttl),
         chain_id=chain_id,
     )
 
@@ -410,9 +402,7 @@ async def main(should_wait_input=True):
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
-    registry = await rest_client.account_resource(
-        deedee.address(), "0x1::code::PackageRegistry"
-    )
+    registry = await rest_client.account_resource(deedee.address(), "0x1::code::PackageRegistry")
 
     n_upgrades = registry["data"]["packages"][0]["upgrade_number"]
 
@@ -444,9 +434,7 @@ async def main(should_wait_input=True):
         payload=TransactionPayload(payload),
         max_gas_amount=rest_client.client_config.max_gas_amount,
         gas_unit_price=rest_client.client_config.gas_unit_price,
-        expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
-        ),
+        expiration_timestamps_secs=(int(time.time()) + rest_client.client_config.expiration_ttl),
         chain_id=chain_id,
     )
 

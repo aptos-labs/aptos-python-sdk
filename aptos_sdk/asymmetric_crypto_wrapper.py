@@ -7,6 +7,7 @@ from typing import List, Tuple, cast
 
 from . import asymmetric_crypto, ed25519, secp256k1_ecdsa
 from .bcs import Deserializer, Serializer
+from .errors import InvalidTypeError
 
 
 class PublicKey(asymmetric_crypto.PublicKey):
@@ -41,13 +42,11 @@ class PublicKey(asymmetric_crypto.PublicKey):
         variant = deserializer.uleb128()
 
         if variant == PublicKey.ED25519:
-            public_key: asymmetric_crypto.PublicKey = ed25519.PublicKey.deserialize(
-                deserializer
-            )
+            public_key: asymmetric_crypto.PublicKey = ed25519.PublicKey.deserialize(deserializer)
         elif variant == Signature.SECP256K1_ECDSA:
             public_key = secp256k1_ecdsa.PublicKey.deserialize(deserializer)
         else:
-            raise Exception(f"Invalid type: {variant}")
+            raise InvalidTypeError(f"Invalid type: {variant}")
 
         return PublicKey(public_key)
 
@@ -77,13 +76,11 @@ class Signature(asymmetric_crypto.Signature):
         variant = deserializer.uleb128()
 
         if variant == Signature.ED25519:
-            signature: asymmetric_crypto.Signature = ed25519.Signature.deserialize(
-                deserializer
-            )
+            signature: asymmetric_crypto.Signature = ed25519.Signature.deserialize(deserializer)
         elif variant == Signature.SECP256K1_ECDSA:
             signature = secp256k1_ecdsa.Signature.deserialize(deserializer)
         else:
-            raise Exception(f"Invalid type: {variant}")
+            raise InvalidTypeError(f"Invalid type: {variant}")
 
         return Signature(signature)
 
@@ -101,12 +98,10 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
     MIN_THRESHOLD = 1
 
     def __init__(self, keys: List[asymmetric_crypto.PublicKey], threshold: int):
-        assert (
-            self.MIN_KEYS <= len(keys) <= self.MAX_KEYS
-        ), f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
-        assert (
-            self.MIN_THRESHOLD <= threshold <= len(keys)
-        ), f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}."
+        if not (self.MIN_KEYS <= len(keys) <= self.MAX_KEYS):
+            raise ValueError(f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys.")
+        if not (self.MIN_THRESHOLD <= threshold <= len(keys)):
+            raise ValueError(f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}.")
 
         # Ensure keys are wrapped
         self.keys = []
@@ -124,17 +119,14 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         try:
             total_sig = cast(MultiSignature, signature)
-            assert self.threshold <= len(
-                total_sig.signatures
-            ), f"Insufficient signatures, {self.threshold} > {len(total_sig.signatures)}"
+            if self.threshold > len(total_sig.signatures):
+                return False
 
             for idx, signature in total_sig.signatures:
-                assert (
-                    len(self.keys) > idx
-                ), f"Signature index exceeds available keys {len(self.keys)} < {idx}"
-                assert self.keys[idx].verify(
-                    data, signature
-                ), "Unable to verify signature"
+                if len(self.keys) <= idx:
+                    return False
+                if not self.keys[idx].verify(data, signature):
+                    return False
 
         except Exception:
             return False
@@ -170,7 +162,8 @@ class MultiSignature(asymmetric_crypto.Signature):
         # signatures.sort(key=lambda x: x[0])
         self.signatures = []
         for index, signature in signatures:
-            assert index < self.MAX_SIGNATURES, "bitmap value exceeds maximum value"
+            if index >= self.MAX_SIGNATURES:
+                raise ValueError("bitmap value exceeds maximum value")
             if isinstance(signature, Signature):
                 self.signatures.append((index, signature))
             else:

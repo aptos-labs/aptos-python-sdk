@@ -34,9 +34,7 @@ class TypeTag(Deserializable, Serializable):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeTag):
             return NotImplemented
-        return (
-            self.value.variant() == other.value.variant() and self.value == other.value
-        )
+        return self.value.variant() == other.value.variant() and self.value == other.value
 
     def __str__(self):
         return self.value.__str__()
@@ -325,7 +323,7 @@ class StructTag(Deserializable, Serializable):
                 continue
 
             if letter == "<":
-                (inner_tags, index) = StructTag._from_str_internal(type_tag, index)
+                inner_tags, index = StructTag._from_str_internal(type_tag, index)
             elif letter == ",":
                 split = name.split("::")
                 tag = TypeTag(

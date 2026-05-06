@@ -3,21 +3,30 @@ permissions:
   contents: read
 on:
   pull_request:
-    types: [labeled, opened, synchronize, reopened, auto_merge_enabled]
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lints:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run python setup
         uses: ./.github/actions/python-setup
         with:
           pyproject_directory: .
+          python_version: ${{ matrix.python-version }}
 
       - name: Check for formatting
         run: make fmt && ./.github/scripts/fail_if_modified_files.sh
@@ -27,6 +36,17 @@ jobs:
         run: make lint
         shell: bash
 
-      - name: Run integration tests
-        run: make test
+      - name: Run tests with coverage
+        run: make test-coverage
         shell: bash
+
+      - name: Run BDD tests
+        run: make test-spec
+        shell: bash
+
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false

@@ -65,12 +65,8 @@ class Test(unittest.IsolatedAsyncioTestCase):
         large_packages_dir = os.path.join(
             APTOS_CORE_PATH, "aptos-move", "move-examples", "large_packages"
         )
-        module_addr = await large_package_publisher.publish_large_packages(
-            large_packages_dir
-        )
-        large_package_example_dir = os.path.join(
-            large_packages_dir, "large_package_example"
-        )
+        module_addr = await large_package_publisher.publish_large_packages(large_packages_dir)
+        large_package_example_dir = os.path.join(large_packages_dir, "large_package_example")
         await large_package_publisher.main(large_package_example_dir, module_addr)
 
     async def test_multikey(self):
@@ -128,12 +124,8 @@ class Test(unittest.IsolatedAsyncioTestCase):
     async def test_your_coin(self):
         from . import your_coin
 
-        moon_coin_path = os.path.join(
-            APTOS_CORE_PATH, "aptos-move", "move-examples", "moon_coin"
-        )
-        AptosCLIWrapper.test_package(
-            moon_coin_path, {"MoonCoin": AccountAddress.from_str("0xa")}
-        )
+        moon_coin_path = os.path.join(APTOS_CORE_PATH, "aptos-move", "move-examples", "moon_coin")
+        AptosCLIWrapper.test_package(moon_coin_path, {"MoonCoin": AccountAddress.from_str("0xa")})
         await your_coin.main(moon_coin_path)
 
     @classmethod

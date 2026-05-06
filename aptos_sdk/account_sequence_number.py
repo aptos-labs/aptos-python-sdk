@@ -83,20 +83,16 @@ class AccountSequenceNumber:
                 await self._initialize()
             # If there are more than self._maximum_in_flight in flight, wait for a slot.
             # Or at least check to see if there is a slot and exit if in non-blocking mode.
-            if (
-                self._current_number - self._last_uncommitted_number
-                >= self._maximum_in_flight
-            ):
+            if self._current_number - self._last_uncommitted_number >= self._maximum_in_flight:
                 await self._update()
-                if (
-                    self._current_number - self._last_uncommitted_number
-                    >= self._maximum_in_flight
-                ):
+                if self._current_number - self._last_uncommitted_number >= self._maximum_in_flight:
                     if not block:
                         return None
                     await self._resync(
-                        lambda acn: acn._current_number - acn._last_uncommitted_number
-                        >= acn._maximum_in_flight
+                        lambda acn: (
+                            acn._current_number - acn._last_uncommitted_number
+                            >= acn._maximum_in_flight
+                        )
                     )
 
             next_number = self._current_number
@@ -117,9 +113,7 @@ class AccountSequenceNumber:
         """
         async with self._lock:
             await self._update()
-            await self._resync(
-                lambda acn: acn._last_uncommitted_number != acn._current_number
-            )
+            await self._resync(lambda acn: acn._last_uncommitted_number != acn._current_number)
 
     async def _resync(self, check: Callable[[AccountSequenceNumber], bool]):
         """Forces a resync with the upstream, this should be called within the lock"""
@@ -128,7 +122,7 @@ class AccountSequenceNumber:
         while check(self):
             ledger_time = await self._client.current_timestamp()
             if ledger_time - start_time > self._maximum_wait_time:
-                logging.warn(
+                logging.warning(
                     f"Waited over {self._maximum_wait_time} seconds for a transaction to commit, resyncing {self._account}"
                 )
                 failed = True
@@ -141,10 +135,8 @@ class AccountSequenceNumber:
         for seq_num in range(self._last_uncommitted_number + 1, self._current_number):
             while True:
                 try:
-                    result = (
-                        await self._client.account_transaction_sequence_number_status(
-                            self._account, seq_num
-                        )
+                    result = await self._client.account_transaction_sequence_number_status(
+                        self._account, seq_num
                     )
                     if result:
                         break
@@ -177,9 +169,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         patcher.start()
 
         rest_client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
-        account_sequence_number = AccountSequenceNumber(
-            rest_client, AccountAddress.from_str("0xf")
-        )
+        account_sequence_number = AccountSequenceNumber(rest_client, AccountAddress.from_str("0xf"))
         last_seq_num = 0
         for seq_num in range(5):
             last_seq_num = await account_sequence_number.next_sequence_number()
@@ -195,9 +185,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
             last_seq_num = await account_sequence_number.next_sequence_number()
             self.assertEqual(last_seq_num, seq_num + 5)
 
-        self.assertEqual(
-            await account_sequence_number.next_sequence_number(block=False), None
-        )
+        self.assertEqual(await account_sequence_number.next_sequence_number(block=False), None)
         next_sequence_number = last_seq_num + 1
         patcher.stop()
         patcher = unittest.mock.patch(

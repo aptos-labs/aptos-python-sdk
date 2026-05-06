@@ -25,6 +25,7 @@ from .authenticator import (
     SingleSenderAuthenticator,
 )
 from .bcs import Deserializable, Deserializer, Serializable, Serializer
+from .errors import DeserializationError, InvalidTypeError, SerializationError
 from .type_tag import StructTag, TypeTag
 
 
@@ -44,17 +45,13 @@ class RawTransactionInternal(Protocol):
         signature = key.sign(self.keyed())
         if isinstance(signature, ed25519.Signature):
             return AccountAuthenticator(
-                Ed25519Authenticator(
-                    cast(ed25519.PublicKey, key.public_key()), signature
-                )
+                Ed25519Authenticator(cast(ed25519.PublicKey, key.public_key()), signature)
             )
         return AccountAuthenticator(SingleKeyAuthenticator(key.public_key(), signature))
 
     def sign_simulated(self, key: asymmetric_crypto.PublicKey) -> AccountAuthenticator:
         if isinstance(key, ed25519.PublicKey):
-            return AccountAuthenticator(
-                Ed25519Authenticator(key, ed25519.Signature(b"\x00" * 64))
-            )
+            return AccountAuthenticator(Ed25519Authenticator(key, ed25519.Signature(b"\x00" * 64)))
         elif isinstance(key, secp256k1_ecdsa.PublicKey):
             return AccountAuthenticator(
                 SingleKeyAuthenticator(key, secp256k1_ecdsa.Signature(b"\x00" * 64))
@@ -85,7 +82,7 @@ class RawTransactionWithData(RawTransactionInternal, Protocol):
         elif enum_type == 1:
             return FeePayerRawTransaction.deserialize_inner(deserializer)
         else:
-            raise Exception("Unhandled RawTransaction enum type")
+            raise DeserializationError("Unhandled RawTransaction enum type")
 
 
 class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
@@ -177,9 +174,7 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 class MultiAgentRawTransaction(RawTransactionWithData):
     secondary_signers: List[AccountAddress]
 
-    def __init__(
-        self, raw_transaction: RawTransaction, secondary_signers: List[AccountAddress]
-    ):
+    def __init__(self, raw_transaction: RawTransaction, secondary_signers: List[AccountAddress]):
         self.raw_transaction = raw_transaction
         self.secondary_signers = secondary_signers
 
@@ -193,7 +188,7 @@ class MultiAgentRawTransaction(RawTransactionWithData):
     def deserialize(deserializer: Deserializer) -> MultiAgentRawTransaction:
         raw_txn_type = deserializer.u8()
         if raw_txn_type != 0:
-            raise Exception(f"Enum type mismatch, expected 0 got {raw_txn_type}")
+            raise DeserializationError(f"Enum type mismatch, expected 0 got {raw_txn_type}")
 
         return MultiAgentRawTransaction.deserialize_inner(deserializer)
 
@@ -223,16 +218,14 @@ class FeePayerRawTransaction(RawTransactionWithData):
         serializer.u8(1)
         serializer.struct(self.raw_transaction)
         serializer.sequence(self.secondary_signers, Serializer.struct)
-        fee_payer = (
-            AccountAddress.from_str("0x0") if self.fee_payer is None else self.fee_payer
-        )
+        fee_payer = AccountAddress.from_str("0x0") if self.fee_payer is None else self.fee_payer
         serializer.struct(fee_payer)
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> FeePayerRawTransaction:
         raw_txn_type = deserializer.u8()
         if raw_txn_type != 1:
-            raise Exception(f"Enum type mismatch, expected 1 got {raw_txn_type}")
+            raise DeserializationError(f"Enum type mismatch, expected 1 got {raw_txn_type}")
 
         return FeePayerRawTransaction.deserialize_inner(deserializer)
 
@@ -265,7 +258,7 @@ class TransactionPayload:
         elif isinstance(payload, EntryFunction):
             self.variant = TransactionPayload.SCRIPT_FUNCTION
         else:
-            raise Exception("Invalid type")
+            raise InvalidTypeError("Invalid type")
         self.value = payload
 
     def __eq__(self, other: object) -> bool:
@@ -287,7 +280,7 @@ class TransactionPayload:
         elif variant == TransactionPayload.SCRIPT_FUNCTION:
             payload = EntryFunction.deserialize(deserializer)
         else:
-            raise Exception("Invalid type")
+            raise InvalidTypeError("Invalid type")
 
         return TransactionPayload(payload)
 
@@ -333,11 +326,7 @@ class Script:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Script):
             return NotImplemented
-        return (
-            self.code == other.code
-            and self.ty_args == other.ty_args
-            and self.args == other.args
-        )
+        return self.code == other.code and self.ty_args == other.ty_args and self.args == other.args
 
     def __str__(self):
         return f"<{self.ty_args}>({self.args})"
@@ -359,7 +348,7 @@ class ScriptArgument:
 
     def __init__(self, variant: int, value: Any):
         if variant < 0 or variant > 5:
-            raise Exception("Invalid variant")
+            raise InvalidTypeError("Invalid variant")
 
         self.variant = variant
         self.value = value
@@ -386,7 +375,7 @@ class ScriptArgument:
         elif variant == ScriptArgument.BOOL:
             value = deserializer.bool()
         else:
-            raise Exception("Invalid variant")
+            raise DeserializationError("Invalid variant")
         return ScriptArgument(variant, value)
 
     def serialize(self, serializer: Serializer) -> None:
@@ -410,7 +399,7 @@ class ScriptArgument:
         elif self.variant == ScriptArgument.BOOL:
             serializer.bool(self.value)
         else:
-            raise Exception(f"Invalid ScriptArgument variant {self.variant}")
+            raise SerializationError(f"Invalid ScriptArgument variant {self.variant}")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ScriptArgument):
@@ -427,9 +416,7 @@ class EntryFunction:
     ty_args: List[TypeTag]
     args: List[bytes]
 
-    def __init__(
-        self, module: ModuleId, function: str, ty_args: List[TypeTag], args: List[bytes]
-    ):
+    def __init__(self, module: ModuleId, function: str, ty_args: List[TypeTag], args: List[bytes]):
         self.module = module
         self.function = function
         self.ty_args = ty_args
@@ -552,10 +539,7 @@ class SignedTransaction:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SignedTransaction):
             return NotImplemented
-        return (
-            self.transaction == other.transaction
-            and self.authenticator == other.authenticator
-        )
+        return self.transaction == other.transaction and self.authenticator == other.authenticator
 
     def __str__(self) -> str:
         return f"Transaction: {self.transaction}Authenticator: {self.authenticator}"
@@ -633,12 +617,8 @@ class Test(unittest.TestCase):
 
     def test_entry_function_with_corpus(self):
         # Define common inputs
-        sender_key_input = (
-            "9bf49a6a0755f953811fce125f2683d50429c3bb49e074147e0089a52eae155f"
-        )
-        receiver_key_input = (
-            "0564f879d27ae3c02ce82834acfa8c793a629f2ca0de6919610be82f411326be"
-        )
+        sender_key_input = "9bf49a6a0755f953811fce125f2683d50429c3bb49e074147e0089a52eae155f"
+        receiver_key_input = "0564f879d27ae3c02ce82834acfa8c793a629f2ca0de6919610be82f411326be"
 
         sequence_number_input = 11
         gas_unit_price_input = 1
@@ -680,9 +660,7 @@ class Test(unittest.TestCase):
         )
 
         authenticator = raw_transaction_generated.sign(sender_private_key)
-        signed_transaction_generated = SignedTransaction(
-            raw_transaction_generated, authenticator
-        )
+        signed_transaction_generated = SignedTransaction(raw_transaction_generated, authenticator)
         self.assertTrue(signed_transaction_generated.verify())
 
         # Validated corpus
@@ -699,12 +677,8 @@ class Test(unittest.TestCase):
 
     def test_entry_function_multi_agent_with_corpus(self):
         # Define common inputs
-        sender_key_input = (
-            "9bf49a6a0755f953811fce125f2683d50429c3bb49e074147e0089a52eae155f"
-        )
-        receiver_key_input = (
-            "0564f879d27ae3c02ce82834acfa8c793a629f2ca0de6919610be82f411326be"
-        )
+        sender_key_input = "9bf49a6a0755f953811fce125f2683d50429c3bb49e074147e0089a52eae155f"
+        receiver_key_input = "0564f879d27ae3c02ce82834acfa8c793a629f2ca0de6919610be82f411326be"
 
         sequence_number_input = 11
         gas_unit_price_input = 1
@@ -817,9 +791,7 @@ class Test(unittest.TestCase):
         signed_txn.serialize(ser)
         self.assertEqual(ser.output().hex(), signed_transaction_input)
 
-        self.assertTrue(
-            isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator)
-        )
+        self.assertTrue(isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator))
         self.assertTrue(signed_txn.verify())
 
     def test_deserialize_raw_transaction(self):

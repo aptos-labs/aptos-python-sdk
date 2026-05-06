@@ -1,6 +1,7 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import os
 from enum import Enum
 from typing import List, Optional
@@ -44,9 +45,7 @@ class PackagePublisher:
     ) -> str:
         transaction_arguments = [
             TransactionArgument(package_metadata, Serializer.to_bytes),
-            TransactionArgument(
-                modules, Serializer.sequence_serializer(Serializer.to_bytes)
-            ),
+            TransactionArgument(modules, Serializer.sequence_serializer(Serializer.to_bytes)),
         ]
 
         payload = EntryFunction.natural(
@@ -66,9 +65,7 @@ class PackagePublisher:
     ) -> str:
         transaction_arguments = [
             TransactionArgument(package_metadata, Serializer.to_bytes),
-            TransactionArgument(
-                modules, Serializer.sequence_serializer(Serializer.to_bytes)
-            ),
+            TransactionArgument(modules, Serializer.sequence_serializer(Serializer.to_bytes)),
         ]
 
         payload = EntryFunction.natural(
@@ -92,9 +89,7 @@ class PackagePublisher:
     ) -> str:
         transaction_arguments = [
             TransactionArgument(package_metadata, Serializer.to_bytes),
-            TransactionArgument(
-                modules, Serializer.sequence_serializer(Serializer.to_bytes)
-            ),
+            TransactionArgument(modules, Serializer.sequence_serializer(Serializer.to_bytes)),
             TransactionArgument(object_address, Serializer.struct),
         ]
 
@@ -152,21 +147,15 @@ class PackagePublisher:
         elif publish_mode == PublishMode.OBJECT_UPGRADE:
             if code_object is None:
                 raise ValueError("code_object must be provided for OBJECT_UPGRADE mode")
-            txn_hash = await self.upgrade_package_object(
-                sender, metadata, modules, code_object
-            )
+            txn_hash = await self.upgrade_package_object(sender, metadata, modules, code_object)
         else:
             raise ValueError(f"Unexpected publish mode: {publish_mode}")
 
         return [txn_hash]
 
-    async def derive_object_address(
-        self, publisher_address: AccountAddress
-    ) -> AccountAddress:
+    async def derive_object_address(self, publisher_address: AccountAddress) -> AccountAddress:
         sequence_number = await self.client.account_sequence_number(publisher_address)
-        return self.create_object_deployment_address(
-            publisher_address, sequence_number + 1
-        )
+        return self.create_object_deployment_address(publisher_address, sequence_number + 1)
 
     @staticmethod
     def create_object_deployment_address(
@@ -250,10 +239,8 @@ class PackagePublisher:
         # Submit and wait for each transaction, including publishing.
         txn_hashes = []
         for payload in payloads:
-            print("Submitting transaction...")
-            signed_txn = await self.client.create_bcs_signed_transaction(
-                sender, payload
-            )
+            logging.info("Submitting transaction...")
+            signed_txn = await self.client.create_bcs_signed_transaction(sender, payload)
             txn_hash = await self.client.submit_bcs_transaction(signed_txn)
             await self.client.wait_for_transaction(txn_hash)
             txn_hashes.append(txn_hash)
@@ -269,9 +256,7 @@ class PackagePublisher:
     ) -> TransactionPayload:
         transaction_arguments = [
             TransactionArgument(chunked_package_metadata, Serializer.to_bytes),
-            TransactionArgument(
-                modules_indices, Serializer.sequence_serializer(Serializer.u16)
-            ),
+            TransactionArgument(modules_indices, Serializer.sequence_serializer(Serializer.u16)),
             TransactionArgument(
                 chunked_modules, Serializer.sequence_serializer(Serializer.to_bytes)
             ),

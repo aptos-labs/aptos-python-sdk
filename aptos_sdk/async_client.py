@@ -49,9 +49,7 @@ class IndexerClient:
         headers = {}
         if bearer_token:
             headers["Authorization"] = f"Bearer {bearer_token}"
-        self.client = python_graphql_client.GraphqlClient(
-            endpoint=indexer_url, headers=headers
-        )
+        self.client = python_graphql_client.GraphqlClient(endpoint=indexer_url, headers=headers)
 
     async def query(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
         return await self.client.execute_async(query, variables)
@@ -85,10 +83,12 @@ class RestClient:
         if client_config.api_key:
             self.client.headers["Authorization"] = f"Bearer {client_config.api_key}"
 
-    async def close(self):
+    async def close(self) -> None:
+        """Close the underlying HTTP client connection."""
         await self.client.aclose()
 
-    async def chain_id(self):
+    async def chain_id(self) -> int:
+        """Return the chain ID, fetching from the node if not yet cached."""
         if not self._chain_id:
             info = await self.info()
             self._chain_id = int(info["chain_id"])
@@ -406,6 +406,17 @@ class RestClient:
         key: Any,
         ledger_version: Optional[int] = None,
     ) -> Any:
+        """
+        Get a table item at a specific ledger version from the table identified by the handle and
+        the key payload.
+
+        :param handle: Table handle hex encoded 32-byte string.
+        :param key_type: String representation of a MoveType for the table key.
+        :param value_type: String representation of a MoveType for the table value.
+        :param key: The value of the table key.
+        :param ledger_version: Ledger version to get the table item. If not provided, defaults to latest.
+        :returns: The table item value rendered in JSON.
+        """
         response = await self._post(
             endpoint=f"tables/{handle}/item",
             data={
@@ -431,9 +442,7 @@ class RestClient:
         while len(aggregator_path) > 0:
             key = aggregator_path.pop()
             if key not in data:
-                raise ApiError(
-                    f"aggregator path not found in data: {source_data}", source_data
-                )
+                raise ApiError(f"aggregator path not found in data: {source_data}", source_data)
             data = data[key]
 
         if "vec" not in data:
@@ -510,9 +519,13 @@ class RestClient:
             estimate_gas_usage=estimate_gas_usage,
         )
 
-    async def submit_bcs_transaction(
-        self, signed_transaction: SignedTransaction
-    ) -> str:
+    async def submit_bcs_transaction(self, signed_transaction: SignedTransaction) -> str:
+        """
+        Submit a BCS-serialized signed transaction to the blockchain.
+
+        :param signed_transaction: A BCS-serialized signed transaction.
+        :returns: The hash of the submitted transaction.
+        """
         headers = {"Content-Type": "application/x.aptos.signed_transaction+bcs"}
         response = await self.client.post(
             f"{self.base_url}/transactions",
@@ -543,20 +556,22 @@ class RestClient:
         """
         Waits up to the duration specified in client_config for a transaction to move past pending
         state.
+
+        :param txn_hash: The hash of the transaction to wait for.
+        :raises TransactionTimeout: If the transaction does not complete within the configured timeout.
+        :raises TransactionFailed: If the transaction completes but is not successful.
         """
 
         count = 0
         while await self.transaction_pending(txn_hash):
-            assert (
-                count < self.client_config.transaction_wait_in_seconds
-            ), f"transaction {txn_hash} timed out"
+            if count >= self.client_config.transaction_wait_in_seconds:
+                raise TransactionTimeout(f"transaction {txn_hash} timed out")
             await asyncio.sleep(1)
             count += 1
 
         response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
-        assert (
-            "success" in response.json() and response.json()["success"]
-        ), f"{response.text} - {txn_hash}"
+        if "success" not in response.json() or not response.json()["success"]:
+            raise TransactionFailed(f"{response.text} - {txn_hash}")
 
     async def account_transaction_sequence_number_status(
         self, address: AccountAddress, sequence_number: int
@@ -570,7 +585,7 @@ class RestClient:
             },
         )
         if response.status_code >= 400:
-            logging.info(f"k {response}")
+            logging.warning(f"Failed to retrieve account transactions: {response}")
             raise ApiError(response.text, response.status_code)
         data = response.json()
         return len(data) == 1 and data[0]["type"] != "pending_transaction"
@@ -689,6 +704,14 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> RawTransaction:
+        """
+        Create a raw transaction for BCS submission.
+
+        :param sender: The sending Account or AccountAddress.
+        :param payload: The transaction payload.
+        :param sequence_number: Optional sequence number; fetched from chain if not provided.
+        :returns: A RawTransaction ready to be signed.
+        """
         if isinstance(sender, Account):
             sender_address = sender.address()
         else:
@@ -715,9 +738,7 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> SignedTransaction:
-        raw_transaction = await self.create_bcs_transaction(
-            sender, payload, sequence_number
-        )
+        raw_transaction = await self.create_bcs_transaction(sender, payload, sequence_number)
         authenticator = sender.sign_transaction(raw_transaction)
         return SignedTransaction(raw_transaction, authenticator)
 
@@ -733,6 +754,15 @@ class RestClient:
         amount: int,
         sequence_number: Optional[int] = None,
     ) -> str:
+        """
+        Transfer APT from sender to recipient.
+
+        :param sender: The sending Account.
+        :param recipient: The recipient's AccountAddress.
+        :param amount: Amount of APT (in octas) to transfer.
+        :param sequence_number: Optional sequence number override.
+        :returns: The hash of the submitted transaction.
+        """
         transaction_arguments = [
             TransactionArgument(recipient, Serializer.struct),
             TransactionArgument(amount, Serializer.u64),
@@ -758,6 +788,16 @@ class RestClient:
         amount: int,
         sequence_number: Optional[int] = None,
     ) -> str:
+        """
+        Transfer coins of a specific type from sender to recipient.
+
+        :param sender: The sending Account.
+        :param recipient: The recipient's AccountAddress.
+        :param coin_type: Fully qualified coin type (e.g. ``0x1::aptos_coin::AptosCoin``).
+        :param amount: Amount of coins to transfer in the coin's base unit.
+        :param sequence_number: Optional sequence number override.
+        :returns: The hash of the submitted transaction.
+        """
         transaction_arguments = [
             TransactionArgument(recipient, Serializer.struct),
             TransactionArgument(amount, Serializer.u64),
@@ -866,9 +906,7 @@ class RestClient:
         ser = Serializer()
         view_data.serialize(ser)
         headers = {"Content-Type": "application/x.aptos.view_function+bcs"}
-        response = await self.client.post(
-            request, headers=headers, content=ser.output()
-        )
+        response = await self.client.post(request, headers=headers, content=ser.output())
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
         return response.json()
@@ -890,9 +928,7 @@ class RestClient:
             json=data,
         )
 
-    async def _get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None
-    ) -> httpx.Response:
+    async def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> httpx.Response:
         # format params:
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
@@ -913,21 +949,20 @@ class FaucetClient:
     rest_client: RestClient
     headers: Dict[str, str]
 
-    def __init__(
-        self, base_url: str, rest_client: RestClient, auth_token: Optional[str] = None
-    ):
+    def __init__(self, base_url: str, rest_client: RestClient, auth_token: Optional[str] = None):
         self.base_url = base_url
         self.rest_client = rest_client
         self.headers = {"Content-Type": "application/json"}
         if auth_token:
             self.headers["Authorization"] = f"Bearer {auth_token}"
 
-    async def close(self):
+    async def close(self) -> None:
+        """Close the underlying REST client connection."""
         await self.rest_client.close()
 
     async def fund_account(
         self, address: AccountAddress, amount: int, wait_for_transaction=True
-    ):
+    ) -> str:
         """This creates an account if it does not exist and mints the specified amount of
         coins into that account.
 
@@ -982,3 +1017,11 @@ class ResourceNotFound(Exception):
         # Call the base class constructor with the parameters it needs
         super().__init__(message)
         self.resource = resource
+
+
+class TransactionTimeout(Exception):
+    """The transaction exceeded the configured wait timeout"""
+
+
+class TransactionFailed(Exception):
+    """The transaction completed but was not successful"""

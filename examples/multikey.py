@@ -23,9 +23,7 @@ from .common import CLIENT_CONFIG, FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, N
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
-    faucet_client = FaucetClient(
-        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
-    )  # <:!:section_1
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)  # <:!:section_1
     if INDEXER_URL and INDEXER_URL != "none":
         IndexerClient(INDEXER_URL)
     else:
@@ -39,9 +37,7 @@ async def main():
     pubkey2 = key2.public_key()
     pubkey3 = key3.public_key()
 
-    alice_pubkey = asymmetric_crypto_wrapper.MultiPublicKey(
-        [pubkey1, pubkey2, pubkey3], 2
-    )
+    alice_pubkey = asymmetric_crypto_wrapper.MultiPublicKey([pubkey1, pubkey2, pubkey3], 2)
     alice_address = AccountAddress.from_key(alice_pubkey)
 
     bob = Account.generate()

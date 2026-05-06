@@ -3,10 +3,14 @@ permissions:
   contents: read
 on:
   pull_request:
-    types: [labeled, opened, synchronize, reopened, auto_merge_enabled]
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run-localnet-examples:
@@ -19,10 +23,10 @@ jobs:
       APTOS_TEST_USE_EXISTING_NETWORK: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Checkout aptos-core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: aptos-labs/aptos-core
           path: './aptos-core'
@@ -30,8 +34,8 @@ jobs:
       - name: Run a localnet
         uses: aptos-labs/actions/run-local-testnet@main
         with:
-          node_version: v20.12.2
-          pnpm_version: 8.15.6
+          node_version: v22.14.0
+          pnpm_version: 9.15.4
 
       - uses: ./.github/actions/python-setup
         with:

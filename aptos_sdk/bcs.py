@@ -14,6 +14,8 @@ from typing import Dict, List
 
 from typing_extensions import Protocol
 
+from .errors import DeserializationError, SerializationError
+
 MAX_U8 = 2**8 - 1
 MAX_U16 = 2**16 - 1
 MAX_U32 = 2**32 - 1
@@ -63,7 +65,7 @@ class Deserializer:
         elif value == 1:
             return True
         else:
-            raise Exception("Unexpected boolean value: ", value)
+            raise DeserializationError(f"Unexpected boolean value: {value}")
 
     def to_bytes(self) -> bytes:
         return self._read(self.uleb128())
@@ -130,7 +132,7 @@ class Deserializer:
             shift += 7
 
         if value > MAX_U32:
-            raise Exception("Unexpectedly large uleb128 value")
+            raise DeserializationError("Unexpectedly large uleb128 value")
 
         return value
 
@@ -138,10 +140,8 @@ class Deserializer:
         value = self._input.read(length)
         if value is None or len(value) < length:
             actual_length = 0 if value is None else len(value)
-            error = (
-                f"Unexpected end of input. Requested: {length}, found: {actual_length}"
-            )
-            raise Exception(error)
+            error = f"Unexpected end of input. Requested: {length}, found: {actual_length}"
+            raise DeserializationError(error)
         return value
 
     def _read_int(self, length: int) -> int:
@@ -175,9 +175,7 @@ class Serializer:
     ):
         encoded_values = []
         for key, value in values.items():
-            encoded_values.append(
-                (encoder(key, key_encoder), encoder(value, value_encoder))
-            )
+            encoded_values.append((encoder(key, key_encoder), encoder(value, value_encoder)))
         encoded_values.sort(key=lambda item: item[0])
 
         self.uleb128(len(encoded_values))
@@ -208,43 +206,43 @@ class Serializer:
 
     def u8(self, value: int):
         if value > MAX_U8:
-            raise Exception(f"Cannot encode {value} into u8")
+            raise SerializationError(f"Cannot encode {value} into u8")
 
         self._write_int(value, 1)
 
     def u16(self, value: int):
         if value > MAX_U16:
-            raise Exception(f"Cannot encode {value} into u16")
+            raise SerializationError(f"Cannot encode {value} into u16")
 
         self._write_int(value, 2)
 
     def u32(self, value: int):
         if value > MAX_U32:
-            raise Exception(f"Cannot encode {value} into u32")
+            raise SerializationError(f"Cannot encode {value} into u32")
 
         self._write_int(value, 4)
 
     def u64(self, value: int):
         if value > MAX_U64:
-            raise Exception(f"Cannot encode {value} into u64")
+            raise SerializationError(f"Cannot encode {value} into u64")
 
         self._write_int(value, 8)
 
     def u128(self, value: int):
         if value > MAX_U128:
-            raise Exception(f"Cannot encode {value} into u128")
+            raise SerializationError(f"Cannot encode {value} into u128")
 
         self._write_int(value, 16)
 
     def u256(self, value: int):
         if value > MAX_U256:
-            raise Exception(f"Cannot encode {value} into u256")
+            raise SerializationError(f"Cannot encode {value} into u256")
 
         self._write_int(value, 32)
 
     def uleb128(self, value: int):
         if value > MAX_U32:
-            raise Exception(f"Cannot encode {value} into uleb128")
+            raise SerializationError(f"Cannot encode {value} into uleb128")
 
         while value >= 0x80:
             # Write 7 (lowest) bits of data and set the 8th bit to 1.

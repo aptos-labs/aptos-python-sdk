@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Pre-commit hook: runs formatting and linting checks.
+# Install with: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+echo "Running fmt + lint checks..."
+
+# Root package
+make fmt
+make lint
+
+# v2 package (ruff only — mypy runs in v2's own CI)
+cd v2
+uv run ruff check --fix src/ tests/
+uv run ruff format src/ tests/
+cd ..
+
+# Fail if formatting or linting left any unstaged changes in the working tree.
+if [[ -n $(git diff --name-only) ]]; then
+    echo "Failure: formatting or linting left unstaged changes. Stage them or run 'make fmt' first."
+    git diff --stat
+    exit 1
+fi

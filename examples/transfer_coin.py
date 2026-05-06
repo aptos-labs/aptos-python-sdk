@@ -12,9 +12,7 @@ from .common import CLIENT_CONFIG, FAUCET_AUTH_TOKEN, FAUCET_URL, INDEXER_URL, N
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
-    faucet_client = FaucetClient(
-        FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN
-    )  # <:!:section_1
+    faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)  # <:!:section_1
     if INDEXER_URL and INDEXER_URL != "none":
         indexer_client = IndexerClient(INDEXER_URL)
     else:
@@ -43,9 +41,7 @@ async def main():
 
     # Have Alice give Bob 1_000 coins
     # :!:>section_5
-    txn_hash = await rest_client.bcs_transfer(
-        alice, bob.address(), 1_000
-    )  # <:!:section_5
+    txn_hash = await rest_client.bcs_transfer(alice, bob.address(), 1_000)  # <:!:section_5
     # :!:>section_6
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6
 

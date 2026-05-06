@@ -76,9 +76,7 @@ async def main():
     assert len(minted_tokens) == 1
     token_addr = minted_tokens[0]
 
-    collection_addr = AccountAddress.for_named_collection(
-        alice.address(), collection_name
-    )
+    collection_addr = AccountAddress.for_named_collection(alice.address(), collection_name)
     collection_data = await token_client.read_object(collection_addr)
     print(f"Alice's collection: {collection_data}")
     token_data = await token_client.read_object(token_addr)

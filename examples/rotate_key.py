@@ -38,9 +38,7 @@ async def rotate_auth_key_ed_25519_payload(
 ) -> TransactionPayload:
     to_account = Account.load_key(private_key.hex())
     rotation_proof_challenge = RotationProofChallenge(
-        sequence_number=await rest_client.account_sequence_number(
-            from_account.address()
-        ),
+        sequence_number=await rest_client.account_sequence_number(from_account.address()),
         originator=from_account.address(),
         current_auth_key=AccountAddress.from_str_relaxed(from_account.auth_key()),
         new_public_key=to_account.public_key(),
@@ -63,16 +61,12 @@ async def rotate_auth_key_multi_ed_25519_payload(
     from_account: Account,
     private_keys: List[ed25519.PrivateKey],
 ) -> TransactionPayload:
-    to_accounts = list(
-        map(lambda private_key: Account.load_key(private_key.hex()), private_keys)
-    )
+    to_accounts = list(map(lambda private_key: Account.load_key(private_key.hex()), private_keys))
     public_keys = list(map(lambda account: account.public_key(), to_accounts))
     public_key = ed25519.MultiPublicKey(cast(List[ed25519.PublicKey], public_keys), 1)
 
     rotation_proof_challenge = RotationProofChallenge(
-        sequence_number=await rest_client.account_sequence_number(
-            from_account.address()
-        ),
+        sequence_number=await rest_client.account_sequence_number(from_account.address()),
         originator=from_account.address(),
         current_auth_key=AccountAddress.from_str(from_account.auth_key()),
         new_public_key=public_key,
@@ -83,9 +77,7 @@ async def rotate_auth_key_multi_ed_25519_payload(
     rotation_proof_challenge_bcs = serializer.output()
 
     from_signature = from_account.sign(rotation_proof_challenge_bcs)
-    to_signature = cast(
-        ed25519.Signature, to_accounts[0].sign(rotation_proof_challenge_bcs)
-    )
+    to_signature = cast(ed25519.Signature, to_accounts[0].sign(rotation_proof_challenge_bcs))
     multi_to_signature = ed25519.MultiSignature.from_key_map(
         public_key,
         [(cast(ed25519.PublicKey, to_accounts[0].public_key()), to_signature)],
@@ -153,9 +145,7 @@ async def main():
 
     # :!:>rotate_key
     # Create the payload for rotating Alice's private key to Bob's private key
-    payload = await rotate_auth_key_ed_25519_payload(
-        rest_client, alice, bob.private_key
-    )
+    payload = await rotate_auth_key_ed_25519_payload(rest_client, alice, bob.private_key)
     # Have Alice sign the transaction with the payload
     signed_transaction = await rest_client.create_bcs_signed_transaction(alice, payload)
     # Submit the transaction and wait for confirmation
@@ -165,9 +155,9 @@ async def main():
     # Check the authentication key for Alice's address on-chain
     alice_new_account_info = await rest_client.account(alice.address())
     # Ensure that Alice's authentication key matches bob's
-    assert (
-        alice_new_account_info["authentication_key"] == bob.auth_key()
-    ), "Authentication key doesn't match Bob's"
+    assert alice_new_account_info["authentication_key"] == bob.auth_key(), (
+        "Authentication key doesn't match Bob's"
+    )
 
     # Construct a new Account object that reflects alice's original address with the new private key
     original_alice_key = alice.private_key

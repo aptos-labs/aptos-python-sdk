@@ -420,9 +420,7 @@ class AptosTokenClient:
             royalty_numerator,
             royalty_denominator,
         )
-        signed_transaction = await self.client.create_bcs_signed_transaction(
-            creator, payload
-        )
+        signed_transaction = await self.client.create_bcs_signed_transaction(creator, payload)
         return await self.client.submit_bcs_transaction(signed_transaction)
 
     @staticmethod
@@ -433,18 +431,14 @@ class AptosTokenClient:
         uri: str,
         properties: PropertyMap,
     ) -> TransactionPayload:
-        (property_names, property_types, property_values) = properties.to_tuple()
+        property_names, property_types, property_values = properties.to_tuple()
         transaction_arguments = [
             TransactionArgument(collection, Serializer.str),
             TransactionArgument(description, Serializer.str),
             TransactionArgument(name, Serializer.str),
             TransactionArgument(uri, Serializer.str),
-            TransactionArgument(
-                property_names, Serializer.sequence_serializer(Serializer.str)
-            ),
-            TransactionArgument(
-                property_types, Serializer.sequence_serializer(Serializer.str)
-            ),
+            TransactionArgument(property_names, Serializer.sequence_serializer(Serializer.str)),
+            TransactionArgument(property_types, Serializer.sequence_serializer(Serializer.str)),
             TransactionArgument(
                 property_values, Serializer.sequence_serializer(Serializer.to_bytes)
             ),
@@ -472,9 +466,7 @@ class AptosTokenClient:
         payload = AptosTokenClient.mint_token_payload(
             collection, description, name, uri, properties
         )
-        signed_transaction = await self.client.create_bcs_signed_transaction(
-            creator, payload
-        )
+        signed_transaction = await self.client.create_bcs_signed_transaction(creator, payload)
         return await self.client.submit_bcs_transaction(signed_transaction)
 
     async def mint_soul_bound_token(
@@ -487,18 +479,14 @@ class AptosTokenClient:
         properties: PropertyMap,
         soul_bound_to: AccountAddress,
     ):
-        (property_names, property_types, property_values) = properties.to_tuple()
+        property_names, property_types, property_values = properties.to_tuple()
         transaction_arguments = [
             TransactionArgument(collection, Serializer.str),
             TransactionArgument(description, Serializer.str),
             TransactionArgument(name, Serializer.str),
             TransactionArgument(uri, Serializer.str),
-            TransactionArgument(
-                property_names, Serializer.sequence_serializer(Serializer.str)
-            ),
-            TransactionArgument(
-                property_types, Serializer.sequence_serializer(Serializer.str)
-            ),
+            TransactionArgument(property_names, Serializer.sequence_serializer(Serializer.str)),
+            TransactionArgument(property_types, Serializer.sequence_serializer(Serializer.str)),
             TransactionArgument(
                 property_values, Serializer.sequence_serializer(Serializer.to_bytes)
             ),
@@ -618,9 +606,7 @@ class AptosTokenClient:
         )
         return await self.client.submit_bcs_transaction(signed_transaction)
 
-    async def tokens_minted_from_transaction(
-        self, txn_hash: str
-    ) -> List[AccountAddress]:
+    async def tokens_minted_from_transaction(self, txn_hash: str) -> List[AccountAddress]:
         output = await self.client.transaction_by_hash(txn_hash)
         mints = []
         for event in output["events"]:

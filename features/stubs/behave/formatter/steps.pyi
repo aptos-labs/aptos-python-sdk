@@ -20,9 +20,7 @@ class AbstractStepsFormatter(Formatter):
     stream: Incomplete
     def close(self) -> None: ...
     def report(self) -> None: ...
-    def describe_step_definition(
-        self, step_definition, step_type: Incomplete | None = None
-    ): ...
+    def describe_step_definition(self, step_definition, step_type: Incomplete | None = None): ...
 
 class StepsFormatter(AbstractStepsFormatter):
     name: str
@@ -50,9 +48,7 @@ class StepsCatalogFormatter(StepsDocFormatter):
     shows_function_name: bool
     ordered_by_location: bool
     doc_prefix: Incomplete
-    def describe_step_definition(
-        self, step_definition, step_type: Incomplete | None = None
-    ): ...
+    def describe_step_definition(self, step_definition, step_type: Incomplete | None = None): ...
 
 class StepsUsageFormatter(AbstractStepsFormatter):
     name: str

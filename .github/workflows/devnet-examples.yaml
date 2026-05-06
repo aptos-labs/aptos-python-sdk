@@ -1,13 +1,20 @@
 name: "Devnet Examples"
+permissions:
+  contents: read
 on:
   pull_request:
-    types: [labeled, opened, synchronize, reopened, auto_merge_enabled]
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-devnet-examples:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
       APTOS_FAUCET_URL: https://faucet.devnet.aptoslabs.com
@@ -16,15 +23,12 @@ jobs:
       API_KEY: ${{ secrets.DEVNET_API_KEY }}
       FAUCET_AUTH_TOKEN: ${{ secrets.DEVNET_FAUCET_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/python-setup
         with:
           pyproject_directory: .
 
       - name: Run examples on devnet
-        uses: nick-fields/retry@v3
-        with:
-          max_attempts: 1
-          timeout_minutes: 20
-          command: make examples
+        run: make examples
+        timeout-minutes: 20

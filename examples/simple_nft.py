@@ -30,9 +30,7 @@ async def main():
 
     # :!:>section_3
     bob_fund = faucet_client.fund_account(alice.address(), 1_000_000_000)
-    alice_fund = faucet_client.fund_account(
-        bob.address(), 1_000_000_000
-    )  # <:!:section_3
+    alice_fund = faucet_client.fund_account(bob.address(), 1_000_000_000)  # <:!:section_3
     await asyncio.gather(*[bob_fund, alice_fund])
 
     print("\n=== Initial Coin Balances ===")
@@ -63,9 +61,7 @@ async def main():
     await rest_client.wait_for_transaction(txn_hash)
 
     # :!:>section_6
-    collection_data = await token_client.get_collection(
-        alice.address(), collection_name
-    )
+    collection_data = await token_client.get_collection(alice.address(), collection_name)
     print(
         f"Alice's collection: {json.dumps(collection_data, indent=4, sort_keys=True)}"
     )  # <:!:section_6

@@ -1,22 +1,68 @@
-name: "Run Python SDK Publish"
+name: "Publish aptos-sdk to PyPI"
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build only, no publish)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  release:
-    name: Release
+  test:
+    name: Test before publish
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/python-setup
+        with:
+          pyproject_directory: .
+
+      - name: Run unit tests
+        run: uv run python -m unittest discover -s aptos_sdk/ -p '*.py' -t ..
+
+      - name: Run BDD tests
+        run: uv run behave
+
+  build:
+    name: Build distribution
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/python-setup
 
-      - name: Build project for distribution
-        run: poetry build
+      - name: Build package
+        run: uv build
 
-      - name: Publish to PyPI
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
-        run: poetry publish
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI via trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1

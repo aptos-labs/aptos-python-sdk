@@ -55,9 +55,7 @@ async def main(args: List[str]):
         type=key_value,
     )
     parser.add_argument("--package-dir", help="The path to the Move package", type=str)
-    parser.add_argument(
-        "--private-key-path", help="The path to the signer's private key", type=str
-    )
+    parser.add_argument("--private-key-path", help="The path to the signer's private key", type=str)
     parser.add_argument(
         "--rest-api",
         help="The REST API to send queries to, e.g., https://testnet.aptoslabs.com/v1",
