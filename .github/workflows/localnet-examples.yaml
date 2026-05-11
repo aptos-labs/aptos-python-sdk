@@ -23,16 +23,19 @@ jobs:
       APTOS_TEST_USE_EXISTING_NETWORK: true
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
 
       - name: Checkout aptos-core
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
+          persist-credentials: false
           repository: aptos-labs/aptos-core
           path: './aptos-core'
 
       - name: Run a localnet
-        uses: aptos-labs/actions/run-local-testnet@main
+        uses: aptos-labs/actions/run-local-testnet@528ef7ad9427a8c0720ea3eea790a9190d6e377d
         with:
           node_version: v22.14.0
           pnpm_version: 9.15.4
