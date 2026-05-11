@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import typing
 import unittest
+from functools import lru_cache
 from typing import List, Tuple
 
 from .account_address import AccountAddress
@@ -306,6 +307,7 @@ class StructTag(Deserializable, Serializable):
         return value
 
     @staticmethod
+    @lru_cache(maxsize=256)
     def from_str(type_tag: str) -> StructTag:
         return StructTag._from_str_internal(type_tag, 0)[0][0].value
 
