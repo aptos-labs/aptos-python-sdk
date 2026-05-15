@@ -177,6 +177,26 @@ class TestPayloadTypes:
         result = ModuleId.deserialize(Deserializer(ser.output()))
         assert m == result
 
+    def test_module_id_from_str_rejects_invalid(self):
+        import pytest
+
+        from aptos_sdk_v2.transactions.payload import ModuleId
+
+        # Wrong number of `::` separators
+        with pytest.raises(ValueError, match="Invalid module ID"):
+            ModuleId.from_str("0x1::coin::Extra")
+        with pytest.raises(ValueError, match="Invalid module ID"):
+            ModuleId.from_str("just_a_name")
+        # Empty address half
+        with pytest.raises(ValueError, match="Invalid module ID"):
+            ModuleId.from_str("::coin")
+        # Empty module-name half
+        with pytest.raises(ValueError, match="Invalid module ID"):
+            ModuleId.from_str("0x1::")
+        # Both empty
+        with pytest.raises(ValueError, match="Invalid module ID"):
+            ModuleId.from_str("::")
+
     def test_entry_function_eq(self):
         a = EntryFunction.natural("0x1::coin", "transfer", [], [])
         b = EntryFunction.natural("0x1::coin", "transfer", [], [])
