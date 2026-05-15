@@ -167,8 +167,15 @@ class Test(unittest.IsolatedAsyncioTestCase):
             "aptos_sdk.async_client.RestClient.account_sequence_number", return_value=0
         )
         patcher.start()
+        # `synchronize` reads `current_timestamp()` (which talks to the node) for
+        # its time-budget check; stub it so the test is fully hermetic.
+        timestamp_patcher = unittest.mock.patch(
+            "aptos_sdk.async_client.RestClient.current_timestamp", return_value=0.0
+        )
+        timestamp_patcher.start()
 
-        rest_client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
+        # Use a placeholder URL — the test never makes a real HTTP call.
+        rest_client = RestClient("http://localhost:65535")
         account_sequence_number = AccountSequenceNumber(rest_client, AccountAddress.from_str("0xf"))
         last_seq_num = 0
         for seq_num in range(5):
@@ -197,3 +204,5 @@ class Test(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(account_sequence_number._current_number, last_seq_num)
         await account_sequence_number.synchronize()
         self.assertEqual(account_sequence_number._current_number, next_sequence_number)
+        patcher.stop()
+        timestamp_patcher.stop()
