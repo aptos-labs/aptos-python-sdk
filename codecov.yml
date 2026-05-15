@@ -20,12 +20,12 @@ coverage:
         threshold: 1%
         informational: false
       v1-sdk:
-        target: auto
+        target: 88%
         threshold: 1%
         flags:
           - v1-sdk
       v2-sdk:
-        target: auto
+        target: 95%
         threshold: 1%
         flags:
           - v2-sdk
@@ -53,13 +53,12 @@ comment:
   require_changes: false
   show_carryforward_flags: true
 
-# Files under aptos_sdk/v2/ are a mirror of v2/src/aptos_sdk_v2; don't
-# double-count them — the v2-sdk flag covers the canonical copy.
+# Files under aptos_sdk/v2/ are byte-for-byte mirrors of v2/src/aptos_sdk_v2;
+# don't double-count them — the v2 flag covers the canonical copy.
 ignore:
   - "aptos_sdk/v2/**"
   - "**/test_*.py"
-  - "tests/**"
-  - "v2/tests/**"
+  - "**/*_test.py"
   - "examples/**"
   - "features/**"
-  - "benchmarks/**"
+  - "v2/tests/**"

@@ -54,3 +54,7 @@ jobs:
           flags: v1-sdk
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Verify v2 mirror is in sync
+        run: bash .github/scripts/check_v2_sync.sh
+        shell: bash
