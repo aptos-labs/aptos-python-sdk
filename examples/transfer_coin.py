@@ -91,10 +91,23 @@ async def main():
             if data and "data" in data and len(data["data"]["account_transactions"]) > 0:
                 break
             await asyncio.sleep(1)
-        if data is None or "data" not in data or not data["data"]["account_transactions"]:
+
+        if last_error is not None and (
+            data is None or "data" not in data or not data["data"]["account_transactions"]
+        ):
+            # Indexer was unreachable / rate-limited the whole time; soft-skip.
             print(
                 "\n=== Indexer ===\n"
                 f"Skipped indexer assertion (no data returned). Last error: {last_error}"
+            )
+        else:
+            # The indexer responded; assert it actually saw Bob's transactions
+            # so we still verify correctness end-to-end on healthy networks.
+            assert data is not None and "data" in data, (
+                f"indexer returned malformed payload: {data!r}"
+            )
+            assert len(data["data"]["account_transactions"]) > 0, (
+                "indexer returned no transactions for Bob despite no transport errors"
             )
 
     await rest_client.close()
