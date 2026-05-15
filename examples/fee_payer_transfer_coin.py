@@ -45,7 +45,8 @@ async def main():
     print(f"Bob balance: {bob_balance}")
     print(f"Sponsor balance: {sponsor_balance}")  # <:!:section_4
 
-    # Have Alice give Bob 1_000 coins via a sponsored transaction
+    # Sponsor pays the gas for Alice to create Bob's account on chain.
+    # (No coins are transferred — the entry function is `create_account`.)
     # :!:>section_5
     transaction_arguments = [
         TransactionArgument(bob.address(), Serializer.struct),
