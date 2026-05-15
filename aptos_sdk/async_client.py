@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import json as _json
 import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+import aiohttp
 import httpx
 import python_graphql_client
 
@@ -55,12 +57,19 @@ class IndexerClient:
         """Execute a GraphQL query against the indexer.
 
         Raises:
-            IndexerError: If the indexer returns a non-JSON response (e.g. a
-                rate-limit HTML body) or includes a top-level ``errors`` array.
+            IndexerError: If the indexer is unreachable, times out, returns a
+                non-JSON response (e.g. a rate-limit HTML body), or includes a
+                top-level ``errors`` array. Other exception types — programming
+                errors, ``KeyboardInterrupt``, etc. — propagate unchanged.
         """
         try:
             result = await self.client.execute_async(query, variables)
-        except Exception as exc:  # aiohttp.ContentTypeError on rate limit, etc.
+        except (
+            aiohttp.ClientError,  # network / HTTP / decode errors from aiohttp
+            asyncio.TimeoutError,
+            _json.JSONDecodeError,
+            UnicodeDecodeError,
+        ) as exc:
             raise IndexerError(f"indexer query failed: {exc}") from exc
         if isinstance(result, dict) and result.get("errors"):
             raise IndexerError(f"indexer returned errors: {result['errors']}")
