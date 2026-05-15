@@ -89,11 +89,11 @@ class GeneralApi:
         """
         from ..bcs import Serializer
         from ..transactions.payload import ModuleId
-        from ..types.type_tag import TypeTag
+        from ..types.type_tag import StructTag, TypeTag
 
         # Build the BCS payload for the view request
         module_id = ModuleId.from_str(module)
-        parsed_ty_args = [TypeTag.from_str(t) for t in ty_args] if ty_args else []
+        parsed_ty_args = [TypeTag(StructTag.from_str(t)) for t in ty_args] if ty_args else []
 
         ser = Serializer()
         module_id.serialize(ser)
