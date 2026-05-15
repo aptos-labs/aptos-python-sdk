@@ -320,15 +320,30 @@ class IndexerClientTests(unittest.TestCase):
             _run(client.query("{x}", {}))
 
     def test_query_wraps_transport_error(self):
+        import aiohttp
+
         client = IndexerClient("http://mock.invalid/graphql", bearer_token="t")
 
         async def fake_query(query, variables):
-            raise RuntimeError("rate limit")
+            # Simulate the real failure mode: indexer returns HTML on rate-limit
+            # and aiohttp raises ContentTypeError when we ask for JSON.
+            raise aiohttp.ClientError("rate limit")
 
         client.client.execute_async = fake_query  # type: ignore[assignment]
         with self.assertRaises(IndexerError) as ctx:
             _run(client.query("{x}", {}))
         self.assertIn("rate limit", str(ctx.exception))
+
+    def test_query_does_not_swallow_programmer_errors(self):
+        """Bugs in the caller (e.g. TypeError) must propagate, not become IndexerError."""
+        client = IndexerClient("http://mock.invalid/graphql")
+
+        async def fake_query(query, variables):
+            raise TypeError("oops, unhashable variables")
+
+        client.client.execute_async = fake_query  # type: ignore[assignment]
+        with self.assertRaises(TypeError):
+            _run(client.query("{x}", {}))
 
     def test_bearer_token_is_set(self):
         client = IndexerClient("http://mock.invalid/graphql", bearer_token="secret")
