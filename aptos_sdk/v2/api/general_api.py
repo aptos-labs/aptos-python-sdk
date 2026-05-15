@@ -89,11 +89,13 @@ class GeneralApi:
         """
         from ..bcs import Serializer
         from ..transactions.payload import ModuleId
-        from ..types.type_tag import StructTag, TypeTag
+        from ..types.type_tag import TypeTag
 
-        # Build the BCS payload for the view request
+        # Build the BCS payload for the view request. ``TypeTag.from_str``
+        # supports primitives (``u64``, ``bool``, ``address``…), ``vector<T>``,
+        # and structs — anything the on-chain ABI accepts.
         module_id = ModuleId.from_str(module)
-        parsed_ty_args = [TypeTag(StructTag.from_str(t)) for t in ty_args] if ty_args else []
+        parsed_ty_args = [TypeTag.from_str(t) for t in ty_args] if ty_args else []
 
         ser = Serializer()
         module_id.serialize(ser)

@@ -1,0 +1,64 @@
+# Codecov configuration.
+#
+# Uploads come from two sources:
+#   * lints workflow → coverage.xml for the legacy `aptos-sdk` package
+#     (covers aptos_sdk/, excluding the v2 mirror)
+#   * v2-ci workflow → v2/coverage.xml flagged as `v2-sdk`
+#     (covers the standalone aptos_sdk_v2 package)
+#
+# Codecov composes both flags into a single project view.
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        informational: false
+      v1-sdk:
+        target: 88%
+        threshold: 1%
+        flags:
+          - v1-sdk
+      v2-sdk:
+        target: 95%
+        threshold: 1%
+        flags:
+          - v2-sdk
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+
+flag_management:
+  default_rules:
+    carryforward: true
+  individual_flags:
+    - name: v1-sdk
+      paths:
+        - aptos_sdk/
+      carryforward: true
+    - name: v2-sdk
+      paths:
+        - v2/src/aptos_sdk_v2/
+      carryforward: true
+
+comment:
+  layout: "header, diff, flags, components, files"
+  behavior: default
+  require_changes: false
+  show_carryforward_flags: true
+
+# Files under aptos_sdk/v2/ are byte-for-byte mirrors of v2/src/aptos_sdk_v2;
+# don't double-count them — the v2 flag covers the canonical copy.
+ignore:
+  - "aptos_sdk/v2/**"
+  - "**/test_*.py"
+  - "**/*_test.py"
+  - "examples/**"
+  - "features/**"
+  - "v2/tests/**"

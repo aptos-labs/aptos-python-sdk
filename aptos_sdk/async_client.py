@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import json as _json
 import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+import aiohttp
 import httpx
 import python_graphql_client
 
@@ -41,7 +43,7 @@ class ClientConfig:
 
 
 class IndexerClient:
-    """A wrapper around the Aptos Indexer Service on Hasura"""
+    """A wrapper around the Aptos Indexer Service on Hasura."""
 
     client: python_graphql_client.GraphqlClient
 
@@ -52,7 +54,26 @@ class IndexerClient:
         self.client = python_graphql_client.GraphqlClient(endpoint=indexer_url, headers=headers)
 
     async def query(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.execute_async(query, variables)
+        """Execute a GraphQL query against the indexer.
+
+        Raises:
+            IndexerError: If the indexer is unreachable, times out, returns a
+                non-JSON response (e.g. a rate-limit HTML body), or includes a
+                top-level ``errors`` array. Other exception types — programming
+                errors, ``KeyboardInterrupt``, etc. — propagate unchanged.
+        """
+        try:
+            result = await self.client.execute_async(query, variables)
+        except (
+            aiohttp.ClientError,  # network / HTTP / decode errors from aiohttp
+            asyncio.TimeoutError,
+            _json.JSONDecodeError,
+            UnicodeDecodeError,
+        ) as exc:
+            raise IndexerError(f"indexer query failed: {exc}") from exc
+        if isinstance(result, dict) and result.get("errors"):
+            raise IndexerError(f"indexer returned errors: {result['errors']}")
+        return result
 
 
 class RestClient:
@@ -982,8 +1003,12 @@ class FaucetClient:
         return txn_hash
 
     async def healthy(self) -> bool:
-        response = await self.rest_client.client.get(self.base_url)
-        return "tap:ok" == response.text
+        """Return ``True`` iff the faucet's root endpoint reports ``tap:ok``."""
+        try:
+            response = await self.rest_client.client.get(self.base_url)
+        except httpx.HTTPError:
+            return False
+        return response.status_code == 200 and response.text == "tap:ok"
 
 
 class ApiError(Exception):
@@ -1025,3 +1050,7 @@ class TransactionTimeout(Exception):
 
 class TransactionFailed(Exception):
     """The transaction completed but was not successful"""
+
+
+class IndexerError(Exception):
+    """The indexer returned an error or a non-JSON response (e.g., when rate-limited)."""

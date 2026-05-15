@@ -347,8 +347,8 @@ class ScriptArgument:
     value: Any
 
     def __init__(self, variant: int, value: Any):
-        if variant < 0 or variant > 5:
-            raise InvalidTypeError("Invalid variant")
+        if variant < 0 or variant > 8:
+            raise InvalidTypeError(f"Invalid ScriptArgument variant {variant}")
 
         self.variant = variant
         self.value = value

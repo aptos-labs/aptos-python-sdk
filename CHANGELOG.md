@@ -5,10 +5,14 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 ## Unreleased
 - **[Breaking Change]**: Minimum supported Python is now 3.10 (required for patched dev tooling and alignment with Python 3.9 end-of-life).
 - **[Breaking Change]**: Replace `python-ecdsa` (CVE-2024-23342, pure-Python) with `cryptography` (OpenSSL-backed) for secp256k1 ECDSA operations. The public API is unchanged. Note: signing now uses OpenSSL's randomized nonce instead of RFC 6979 deterministic nonce — identical (key, message) pairs will produce different valid signatures on each call. `verify()` now rejects high-S signatures to match Aptos on-chain behaviour.
+- **[Breaking Change — v2 only, key derivation]**: `aptos_sdk_v2.crypto.mnemonic.derive_ed25519_private_key` and `derive_secp256k1_private_key` now require the full BIP-44 path `m/purpose'/coin'/account'/change'/address'` and read the address index from segment 5 (`parts[5]`). The previous implementation read the *change* segment (`parts[4]`) as the address index and never called `.AddressIndex(...)`, so any non-zero address index was silently ignored and **every** mnemonic-derived account collapsed onto the index-0 key. After this fix, paths with a non-zero address index will derive a different private key (and therefore a different account address) than the old, broken code did. Users with on-chain state derived from a non-zero address index under the old code must migrate; users on the canonical `m/44'/637'/0'/0'/0'` path are unaffected.
 - Update dependencies for vulnerability fixes (`aiohttp`, `urllib3`, `PyNaCl`, `black`).
 - Apply Black 26 formatting across `aptos_sdk`, `examples`, and `features` stubs (required by CI `make fmt` gate).
 - CI: pin Python 3.12 in the composite setup action; use `actions/checkout@v5` and `actions/setup-python@v5`.
 - Increase default `max_gas_amount` from 100,000 to 1,000,000
+- Add `aptos_sdk_v2.types.TypeTag.from_str` parser supporting primitives (`bool`, `u8`–`u256`, `address`, `signer`), `vector<T>`, and structs. `GeneralApi.view_bcs` now uses it, so view functions with non-struct generics (e.g. `0x1::coin::balance<u64>`) work correctly.
+- Stricter `aptos_sdk_v2.transactions.payload.ModuleId.from_str` — rejects malformed inputs (wrong number of `::` separators, empty address, or empty module name) at parse time instead of failing later during BCS serialization.
+- Stricter `aptos_sdk.async_client.IndexerClient.query` exception scope — only wraps known transport / decoding errors (`aiohttp.ClientError`, `asyncio.TimeoutError`, `json.JSONDecodeError`, `UnicodeDecodeError`) into `IndexerError`. Caller bugs (`TypeError`, `AttributeError`, etc.) propagate unchanged.
 
 ## 0.11.0
 

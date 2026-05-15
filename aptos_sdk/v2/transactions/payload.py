@@ -31,7 +31,7 @@ class ModuleId:
     @staticmethod
     def from_str(module_id: str) -> ModuleId:
         parts = module_id.split("::")
-        if len(parts) != 2:
+        if len(parts) != 2 or not parts[0] or not parts[1]:
             raise ValueError(
                 f"Invalid module ID '{module_id}': expected format 'address::module_name'"
             )
