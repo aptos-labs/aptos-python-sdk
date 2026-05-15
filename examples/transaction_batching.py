@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
@@ -263,6 +264,7 @@ class Accounts:
 
     @staticmethod
     def generate(path: str, num_accounts: int) -> Accounts:
+        os.makedirs(path, exist_ok=True)
         source = Account.generate()
         source.store(f"{path}/source.txt")
         senders = []
