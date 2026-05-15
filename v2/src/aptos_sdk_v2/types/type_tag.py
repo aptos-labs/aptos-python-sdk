@@ -327,12 +327,51 @@ class TypeTag:
         serializer.uleb128(self.value.variant())
         serializer.struct(self.value)
 
+    @staticmethod
+    def from_str(type_tag: str) -> TypeTag:
+        """Parse a Move type-tag string into a :class:`TypeTag`.
+
+        Supports:
+            * primitives: ``bool``, ``u8`` … ``u256``, ``address``, ``signer``
+            * vectors: ``vector<inner>``
+            * structs: ``addr::module::name<...>``
+
+        Raises :class:`InvalidTypeTagError` on malformed input.
+        """
+        tags, _ = _parse_type_tags(type_tag, 0)
+        if len(tags) != 1:
+            raise InvalidTypeTagError(f"Expected exactly one type tag, got {len(tags)}")
+        return tags[0]
+
 
 # --- Parser for string representation ---
 
+_PRIMITIVE_TAGS: dict[str, TypeTag] = {}
+
+
+def _primitive_tag(name: str) -> TypeTag | None:
+    """Return the primitive ``TypeTag`` for ``name``, or ``None`` if not primitive."""
+    if not _PRIMITIVE_TAGS:
+        # Built lazily because TypeTag isn't constructible at module import time
+        # for the dataclass slots dance.
+        _PRIMITIVE_TAGS.update(
+            {
+                "bool": TypeTag(BoolTag(False)),
+                "u8": TypeTag(U8Tag(0)),
+                "u16": TypeTag(U16Tag(0)),
+                "u32": TypeTag(U32Tag(0)),
+                "u64": TypeTag(U64Tag(0)),
+                "u128": TypeTag(U128Tag(0)),
+                "u256": TypeTag(U256Tag(0)),
+                "address": TypeTag(AccountAddressTag(AccountAddress(b"\x00" * 32))),
+                "signer": TypeTag(SignerTag()),
+            }
+        )
+    return _PRIMITIVE_TAGS.get(name)
+
 
 def _parse_type_tags(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
-    """Recursively parse comma-separated struct tags with nested generics."""
+    """Recursively parse comma-separated tags (struct, primitive, or vector)."""
     name = ""
     tags: list[TypeTag] = []
     inner_tags: list[TypeTag] = []
@@ -346,7 +385,7 @@ def _parse_type_tags(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
         elif letter == "<":
             inner_tags, index = _parse_type_tags(type_tag, index)
         elif letter == ",":
-            tags.append(_make_struct_tag(name, inner_tags))
+            tags.append(_make_tag(name, inner_tags))
             name = ""
             inner_tags = []
         elif letter == ">":
@@ -354,13 +393,30 @@ def _parse_type_tags(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
         else:
             name += letter
 
-    tags.append(_make_struct_tag(name, inner_tags))
+    tags.append(_make_tag(name, inner_tags))
     return tags, index
+
+
+def _make_tag(name: str, inner_tags: list[TypeTag]) -> TypeTag:
+    """Resolve a parsed token into a primitive, vector, or struct tag."""
+    name = name.strip()
+    if name == "vector":
+        if len(inner_tags) != 1:
+            raise InvalidTypeTagError(
+                f"vector<...> expects exactly one type argument, got {len(inner_tags)}"
+            )
+        return TypeTag(VectorTag(inner_tags[0]))
+    primitive = _primitive_tag(name)
+    if primitive is not None:
+        if inner_tags:
+            raise InvalidTypeTagError(f"Primitive type {name!r} does not take type arguments")
+        return primitive
+    return _make_struct_tag(name, inner_tags)
 
 
 def _make_struct_tag(name: str, inner_tags: list[TypeTag]) -> TypeTag:
     parts = name.split("::")
-    if len(parts) != 3:
+    if len(parts) != 3 or not all(parts):
         raise InvalidTypeTagError(f"Invalid struct tag format: {name}")
     return TypeTag(
         StructTag(

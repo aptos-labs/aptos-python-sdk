@@ -185,3 +185,103 @@ class TestTypeTagSerialization:
         ser.uleb128(99)  # unknown variant
         with pytest.raises(InvalidTypeTagError, match="Unknown TypeTag variant"):
             TypeTag.deserialize(Deserializer(ser.output()))
+
+
+class TestTypeTagFromStr:
+    """`TypeTag.from_str` must accept primitives, vectors, and structs."""
+
+    def test_primitives(self):
+        from aptos_sdk_v2.types.type_tag import (
+            AccountAddressTag,
+            BoolTag,
+            SignerTag,
+            U8Tag,
+            U16Tag,
+            U32Tag,
+            U64Tag,
+            U128Tag,
+            U256Tag,
+        )
+
+        cases = {
+            "bool": BoolTag,
+            "u8": U8Tag,
+            "u16": U16Tag,
+            "u32": U32Tag,
+            "u64": U64Tag,
+            "u128": U128Tag,
+            "u256": U256Tag,
+            "address": AccountAddressTag,
+            "signer": SignerTag,
+        }
+        for name, cls in cases.items():
+            tag = TypeTag.from_str(name)
+            assert isinstance(tag.value, cls), f"{name!r} did not parse to {cls.__name__}"
+
+    def test_vector(self):
+        from aptos_sdk_v2.types.type_tag import U8Tag, VectorTag
+
+        tag = TypeTag.from_str("vector<u8>")
+        assert isinstance(tag.value, VectorTag)
+        assert isinstance(tag.value.element_type.value, U8Tag)
+
+    def test_nested_vector(self):
+        from aptos_sdk_v2.types.type_tag import U64Tag, VectorTag
+
+        tag = TypeTag.from_str("vector<vector<u64>>")
+        outer = tag.value
+        assert isinstance(outer, VectorTag)
+        inner = outer.element_type.value
+        assert isinstance(inner, VectorTag)
+        assert isinstance(inner.element_type.value, U64Tag)
+
+    def test_struct(self):
+        tag = TypeTag.from_str("0x1::aptos_coin::AptosCoin")
+        assert isinstance(tag.value, StructTag)
+        assert str(tag) == "0x1::aptos_coin::AptosCoin"
+
+    def test_struct_with_primitive_generic(self):
+        # Previously `view_bcs` would crash on this because it always wrapped
+        # in StructTag.from_str.
+        from aptos_sdk_v2.types.type_tag import U64Tag
+
+        tag = TypeTag.from_str("0x1::demo::Box<u64>")
+        assert isinstance(tag.value, StructTag)
+        assert len(tag.value.type_args) == 1
+        assert isinstance(tag.value.type_args[0].value, U64Tag)
+
+    def test_vector_arity_validation(self):
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidTypeTagError
+
+        with pytest.raises(InvalidTypeTagError, match="exactly one type argument"):
+            TypeTag.from_str("vector<u8, u16>")
+
+    def test_primitive_with_type_args_rejected(self):
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidTypeTagError
+
+        with pytest.raises(InvalidTypeTagError, match="does not take type arguments"):
+            TypeTag.from_str("u64<u8>")
+
+    def test_unparseable_raises(self):
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidTypeTagError
+
+        with pytest.raises(InvalidTypeTagError):
+            TypeTag.from_str("not_a_type")
+        with pytest.raises(InvalidTypeTagError):
+            TypeTag.from_str("0x1::missing_name::")
+        with pytest.raises(InvalidTypeTagError):
+            TypeTag.from_str("::no::address")
+
+    def test_more_than_one_tag_rejected(self):
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidTypeTagError
+
+        with pytest.raises(InvalidTypeTagError, match="exactly one type tag"):
+            TypeTag.from_str("0x1::a::A, 0x1::b::B")
