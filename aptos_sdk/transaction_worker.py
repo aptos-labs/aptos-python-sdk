@@ -181,7 +181,12 @@ class Test(unittest.IsolatedAsyncioTestCase):
         )
         submit_txn_patcher.start()
 
-        rest_client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
+        # Placeholder URL — every network method is patched, so no real
+        # HTTP request is ever issued.
+        rest_client = RestClient("http://localhost:65535")
+        # `RestClient.create_bcs_signed_transaction` would call `chain_id()`
+        # via `create_bcs_transaction`; pre-cache it so no network is touched.
+        rest_client._chain_id = 4
         txn_queue = TransactionQueue(rest_client)
         txn_worker = TransactionWorker(Account.generate(), rest_client, txn_queue.next)
         txn_worker.start()
