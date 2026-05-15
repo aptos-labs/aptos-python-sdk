@@ -43,7 +43,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
         if variant == PublicKey.ED25519:
             public_key: asymmetric_crypto.PublicKey = ed25519.PublicKey.deserialize(deserializer)
-        elif variant == Signature.SECP256K1_ECDSA:
+        elif variant == PublicKey.SECP256K1_ECDSA:
             public_key = secp256k1_ecdsa.PublicKey.deserialize(deserializer)
         else:
             raise InvalidTypeError(f"Invalid type: {variant}")

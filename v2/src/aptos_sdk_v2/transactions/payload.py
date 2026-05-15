@@ -31,6 +31,10 @@ class ModuleId:
     @staticmethod
     def from_str(module_id: str) -> ModuleId:
         parts = module_id.split("::")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid module ID '{module_id}': expected format 'address::module_name'"
+            )
         return ModuleId(AccountAddress.from_str(parts[0]), parts[1])
 
     @staticmethod

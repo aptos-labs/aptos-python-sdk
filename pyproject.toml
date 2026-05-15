@@ -46,6 +46,12 @@ source = ["aptos_sdk"]
 omit = [
     "aptos_sdk/**/test_*.py",
     "aptos_sdk/**/*_test.py",
+    # The v2 mirror under aptos_sdk/v2 is a byte-for-byte copy of
+    # v2/src/aptos_sdk_v2 (enforced by .github/scripts/check_v2_sync.sh)
+    # and is exercised by the standalone v2 test suite, which uploads
+    # its own coverage report. Counting it here would double-penalize
+    # tests that intentionally live in v2/tests/.
+    "aptos_sdk/v2/**",
 ]
 
 [tool.coverage.report]
