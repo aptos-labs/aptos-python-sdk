@@ -49,4 +49,9 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
+          flags: v1-sdk
           fail_ci_if_error: false
+
+      - name: Verify v2 mirror is in sync
+        run: bash .github/scripts/check_v2_sync.sh
+        shell: bash

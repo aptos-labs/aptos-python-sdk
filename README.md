@@ -2,6 +2,7 @@
 [![Discord][discord-image]][discord-url]
 [![PyPI Package Version][pypi-image-version]][pypi-url]
 [![PyPI Package Downloads][pypi-image-downloads]][pypi-url]
+[![codecov][codecov-image]][codecov-url]
 
 The official Python SDK for interacting with the [Aptos](https://github.com/aptos-labs/aptos-core/) blockchain. Get started with the [integration guide](https://aptos.dev/guides/system-integrators-guide/#getting-started).
 
@@ -65,6 +66,28 @@ uv sync --extra dev
 ```bash
 make test
 ```
+
+### Quick devnet smoke test
+
+A single command that verifies node, faucet, transaction submission, simulation,
+balance reads, and indexer (gracefully skipped on rate-limit) all work end-to-end:
+
+```bash
+make smoke           # uses public devnet by default
+APTOS_NODE_URL=http://127.0.0.1:8080/v1 \
+APTOS_FAUCET_URL=http://127.0.0.1:8081  \
+make smoke           # against a local testnet
+```
+
+### Test coverage
+
+```bash
+make test-coverage
+```
+
+The legacy `aptos_sdk/` package targets ≥ 90 % unit-test coverage. The standalone
+v2 package under `v2/` targets ≥ 95 %. Coverage from both is uploaded to
+[Codecov][codecov-url] under the `v1-sdk` and `v2-sdk` flags respectively.
 
 ### E2E testing and Using the Aptos CLI
 
@@ -131,3 +154,5 @@ This project follows [semver](https://semver.org/) as closely as possible
 [pypi-url]: https://pypi.org/project/aptos-sdk
 [discord-image]: https://img.shields.io/discord/945856774056083548?label=Discord&logo=discord&style=flat~~~~
 [discord-url]: https://discord.gg/aptosnetwork
+[codecov-image]: https://codecov.io/gh/aptos-labs/aptos-python-sdk/branch/main/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/aptos-labs/aptos-python-sdk
