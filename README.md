@@ -67,6 +67,28 @@ uv sync --extra dev
 make test
 ```
 
+### Quick devnet smoke test
+
+A single command that verifies node, faucet, transaction submission, simulation,
+balance reads, and indexer (gracefully skipped on rate-limit) all work end-to-end:
+
+```bash
+make smoke           # uses public devnet by default
+APTOS_NODE_URL=http://127.0.0.1:8080/v1 \
+APTOS_FAUCET_URL=http://127.0.0.1:8081  \
+make smoke           # against a local testnet
+```
+
+### Test coverage
+
+```bash
+make test-coverage
+```
+
+The legacy `aptos_sdk/` package targets ≥ 90 % unit-test coverage. The standalone
+v2 package under `v2/` targets ≥ 95 %. Coverage from both is uploaded to
+[Codecov][codecov-url] under the `v1-sdk` and `v2-sdk` flags respectively.
+
 ### E2E testing and Using the Aptos CLI
 
 * Download and install the [Aptos CLI](https://aptos.dev/tools/aptos-cli/use-cli/running-a-local-network).
