@@ -24,6 +24,7 @@ lint:
 
 examples:
 	uv run python -m examples.aptos_token
+	uv run python -m examples.e2e_smoke
 	uv run python -m examples.fee_payer_transfer_coin
 	uv run python -m examples.multikey
 	uv run python -m examples.rotate_key
@@ -34,6 +35,9 @@ examples:
 	uv run python -m examples.simulate_transfer_coin
 	uv run python -m examples.transfer_coin
 	uv run python -m examples.transfer_two_by_two
+
+smoke:
+	uv run python -m examples.e2e_smoke
 
 examples_cli:
 	uv run python -m examples.hello_blockchain
@@ -48,4 +52,4 @@ integration_test:
 pre-commit: fmt lint
 	@./.github/scripts/fail_if_modified_files.sh
 
-.PHONY: examples fmt lint pre-commit test test-coverage test-spec
+.PHONY: examples fmt lint pre-commit smoke test test-coverage test-spec
