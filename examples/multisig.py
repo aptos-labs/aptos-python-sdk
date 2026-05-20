@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import glob
 import subprocess
 import time
 
@@ -413,10 +414,16 @@ async def main(should_wait_input=True):
     # :!:>section_12
     print("\n=== Invoking Move script ===")
 
-    with open(
-        f"{packages_dir}/upgrade/build/UpgradeAndGovern/bytecode_scripts/set_and_transfer_0.mv",
-        "rb",
-    ) as f:
+    # The Aptos CLI's bytecode_scripts output filename has changed over time
+    # (older toolchains used `set_and_transfer_0.mv`, newer ones drop the index
+    # suffix), so glob to find whichever filename was actually emitted.
+    script_glob = (
+        f"{packages_dir}/upgrade/build/UpgradeAndGovern/bytecode_scripts/set_and_transfer*.mv"
+    )
+    script_matches = glob.glob(script_glob)
+    if not script_matches:
+        raise FileNotFoundError(f"No compiled script found matching {script_glob}")
+    with open(script_matches[0], "rb") as f:
         script_code = f.read()
 
     payload = Script(
