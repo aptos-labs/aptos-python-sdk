@@ -61,6 +61,7 @@ jobs:
           files: v2/coverage.xml
           flags: v2-sdk
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   test-v2-integrated:
     name: V2 integrated import test
