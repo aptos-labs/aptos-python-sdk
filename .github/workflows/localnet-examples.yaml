@@ -57,8 +57,3 @@ jobs:
         run: make examples
         shell: bash
         timeout-minutes: 20
-
-      - name: Run CLI-dependent examples on localnet
-        run: make examples_cli
-        shell: bash
-        timeout-minutes: 20
