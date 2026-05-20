@@ -10,6 +10,7 @@ One method to do so is to use the CLI:
 """
 
 import asyncio
+import dataclasses
 import os
 import sys
 
@@ -28,9 +29,13 @@ from .common import (
     NODE_URL,
 )
 
+# Large-package chunked publishing needs more gas per chunk than the shared
+# example config allows. Use the SDK default of 1,000,000 here.
+LARGE_PACKAGE_CLIENT_CONFIG = dataclasses.replace(CLIENT_CONFIG, max_gas_amount=1_000_000)
+
 
 async def publish_large_packages(large_packages_dir) -> AccountAddress:
-    rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
+    rest_client = RestClient(NODE_URL, client_config=LARGE_PACKAGE_CLIENT_CONFIG)
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice = Account.generate()
@@ -45,7 +50,7 @@ async def main(
     large_package_example_dir,
     large_packages_account: AccountAddress = MODULE_ADDRESS,
 ):
-    rest_client = RestClient(NODE_URL, client_config=CLIENT_CONFIG)
+    rest_client = RestClient(NODE_URL, client_config=LARGE_PACKAGE_CLIENT_CONFIG)
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice = Account.generate()

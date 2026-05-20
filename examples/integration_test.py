@@ -34,7 +34,6 @@ class Test(unittest.IsolatedAsyncioTestCase):
         os.environ["APTOS_NODE_URL"] = "http://127.0.0.1:8080/v1"
 
     async def test_aptos_token(self):
-        return
         from . import aptos_token
 
         await aptos_token.main()
@@ -57,9 +56,6 @@ class Test(unittest.IsolatedAsyncioTestCase):
         await hello_blockchain.main(contract_address)
 
     async def test_large_package_publisher(self):
-        # TODO -- this is currently broken, out of gas
-        return
-
         from . import large_package_publisher
 
         large_packages_dir = os.path.join(
@@ -77,8 +73,6 @@ class Test(unittest.IsolatedAsyncioTestCase):
     async def test_multisig(self):
         from . import multisig
 
-        # This test is currently broken, needs an aptos core checkout
-        return
         await multisig.main(False)
 
     async def test_read_aggreagtor(self):
