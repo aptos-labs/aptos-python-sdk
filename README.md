@@ -2,6 +2,7 @@
 [![Discord][discord-image]][discord-url]
 [![PyPI Package Version][pypi-image-version]][pypi-url]
 [![PyPI Package Downloads][pypi-image-downloads]][pypi-url]
+[![codecov][codecov-image]][codecov-url]
 
 The official Python SDK for interacting with the [Aptos](https://github.com/aptos-labs/aptos-core/) blockchain. Get started with the [integration guide](https://aptos.dev/guides/system-integrators-guide/#getting-started).
 
@@ -131,3 +132,5 @@ This project follows [semver](https://semver.org/) as closely as possible
 [pypi-url]: https://pypi.org/project/aptos-sdk
 [discord-image]: https://img.shields.io/discord/945856774056083548?label=Discord&logo=discord&style=flat~~~~
 [discord-url]: https://discord.gg/aptosnetwork
+[codecov-image]: https://codecov.io/gh/aptos-labs/aptos-python-sdk/branch/main/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/aptos-labs/aptos-python-sdk
