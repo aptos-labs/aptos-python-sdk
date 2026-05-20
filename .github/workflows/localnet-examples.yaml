@@ -1,4 +1,4 @@
-name: "Localnet Examples"
+name: "Localnet Tests"
 permissions:
   contents: read
 on:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run-localnet-examples:
+  run-localnet-tests:
     runs-on: ubuntu-latest
     env:
       APTOS_CORE_PATH: ./aptos-core
@@ -48,6 +48,17 @@ jobs:
         run: pnpm install -g @aptos-labs/aptos-cli
         shell: bash
 
-      - name: Run examples on localnet
+      - name: Run integration tests on localnet
         run: make integration_test
         shell: bash
+        timeout-minutes: 20
+
+      - name: Run examples on localnet
+        run: make examples
+        shell: bash
+        timeout-minutes: 20
+
+      - name: Run CLI-dependent examples on localnet
+        run: make examples_cli
+        shell: bash
+        timeout-minutes: 20
