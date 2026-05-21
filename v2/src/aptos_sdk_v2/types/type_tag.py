@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 from ..bcs import Deserializer, Serializer
 from ..errors import InvalidTypeTagError
@@ -217,6 +218,7 @@ class StructTag:
         return value
 
     @staticmethod
+    @lru_cache(maxsize=256)
     def from_str(type_tag: str) -> StructTag:
         tags, _ = _parse_type_tags(type_tag, 0)
         if not tags:  # pragma: no cover — parser always appends via _make_struct_tag
