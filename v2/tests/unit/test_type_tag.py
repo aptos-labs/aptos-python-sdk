@@ -57,7 +57,13 @@ class TestTypeTagSerialization:
         result = TypeTag.deserialize(der)
         assert tag == result
 
-    def test_primitive_tags_round_trip(self):
+    def test_primitive_tags_bcs_encoding(self):
+        """TypeTag BCS for primitives is a single discriminant byte — no value payload.
+
+        In the Aptos BCS TypeTag encoding, primitive variants (bool, u8 … u256,
+        address, signer) carry no inner data after the variant discriminant.  Only
+        VectorTag and StructTag have additional BCS payload.
+        """
         from aptos_sdk_v2.bcs import Deserializer, Serializer
         from aptos_sdk_v2.types.account_address import AccountAddress
         from aptos_sdk_v2.types.type_tag import (
@@ -84,14 +90,23 @@ class TestTypeTagSerialization:
         for tag in cases:
             ser = Serializer()
             tag.serialize(ser)
-            result = TypeTag.deserialize(Deserializer(ser.output()))
-            assert tag == result, f"Failed for {tag}"
+            data = ser.output()
+            # ULEB128 of any variant < 128 encodes as a single byte.
+            assert len(data) == 1, f"Expected 1-byte discriminant for {tag}, got {data.hex()}"
+            result = TypeTag.deserialize(Deserializer(data))
+            assert isinstance(result.value, type(tag.value)), (
+                f"Wrong type after round-trip for {tag}"
+            )
 
     def test_primitive_tag_str(self):
+        """Individual tag __str__ still returns the value; TypeTag wrapper returns the type name."""
         from aptos_sdk_v2.types.type_tag import BoolTag, U64Tag
 
         assert str(BoolTag(True)) == "True"
         assert str(U64Tag(123)) == "123"
+        # TypeTag wrapper must render the Move type name, not the placeholder value.
+        assert str(TypeTag(BoolTag(True))) == "bool"
+        assert str(TypeTag(U64Tag(123))) == "u64"
 
     def test_type_tag_eq_ne(self):
         a = TypeTag(StructTag.from_str("0x1::coin::Coin"))
@@ -217,6 +232,10 @@ class TestTypeTagFromStr:
         for name, cls in cases.items():
             tag = TypeTag.from_str(name)
             assert isinstance(tag.value, cls), f"{name!r} did not parse to {cls.__name__}"
+            # The TypeTag wrapper must render back to the canonical type name string.
+            assert str(tag) == name, (
+                f"str(TypeTag.from_str({name!r})) != {name!r}, got {str(tag)!r}"
+            )
 
     def test_vector(self):
         from aptos_sdk_v2.types.type_tag import U8Tag, VectorTag

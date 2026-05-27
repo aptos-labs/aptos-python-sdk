@@ -47,12 +47,17 @@ def derive_ed25519_private_key(
 
     seed = Bip39SeedGenerator(phrase).Generate()
 
-    # Parse the BIP-44 derivation path: m/purpose'/coin'/account'/change'/address'
+    # Parse the BIP-44 derivation path: m/44'/637'/account'/change'/address'
     parts = path.replace("'", "").split("/")
-    if len(parts) < 6 or parts[0] != "m":
+    if len(parts) != 6 or parts[0] != "m" or parts[1] != "44" or parts[2] != "637":
         raise InvalidMnemonicError(
             f"Invalid derivation path: {path}. "
             "Expected BIP-44 format: m/44'/637'/account'/change'/address'"
+        )
+    change_idx = int(parts[4])
+    if change_idx != 0:
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. Aptos uses change index 0 (external chain) only."
         )
 
     account_idx = int(parts[3])
@@ -81,12 +86,17 @@ def derive_secp256k1_private_key(
 
     seed = Bip39SeedGenerator(phrase).Generate()
 
-    # Parse the BIP-44 derivation path: m/purpose'/coin'/account'/change'/address'
+    # Parse the BIP-44 derivation path: m/44'/637'/account'/change'/address'
     parts = path.replace("'", "").split("/")
-    if len(parts) < 6 or parts[0] != "m":
+    if len(parts) != 6 or parts[0] != "m" or parts[1] != "44" or parts[2] != "637":
         raise InvalidMnemonicError(
             f"Invalid derivation path: {path}. "
             "Expected BIP-44 format: m/44'/637'/account'/change'/address'"
+        )
+    change_idx = int(parts[4])
+    if change_idx != 0:
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. Aptos uses change index 0 (external chain) only."
         )
 
     account_idx = int(parts[3])

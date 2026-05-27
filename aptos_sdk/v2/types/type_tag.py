@@ -24,6 +24,21 @@ class TypeTagVariant:
     U256 = 10
 
 
+# Maps variant discriminant → canonical type-name string used by TypeTag.__str__.
+# Only primitive variants appear here; VectorTag and StructTag have their own __str__.
+_PRIMITIVE_TYPE_NAMES: dict[int, str] = {
+    TypeTagVariant.BOOL: "bool",
+    TypeTagVariant.U8: "u8",
+    TypeTagVariant.U16: "u16",
+    TypeTagVariant.U32: "u32",
+    TypeTagVariant.U64: "u64",
+    TypeTagVariant.U128: "u128",
+    TypeTagVariant.U256: "u256",
+    TypeTagVariant.ACCOUNT_ADDRESS: "address",
+    TypeTagVariant.SIGNER: "signer",
+}
+
+
 # --- Primitive tag classes ---
 
 
@@ -291,7 +306,10 @@ class TypeTag:
         return self.value.variant() == other.value.variant() and self.value == other.value
 
     def __str__(self) -> str:
-        return str(self.value)
+        # Primitive variants render as their Move type name (e.g. "u64"), not their
+        # placeholder value; VectorTag and StructTag provide their own __str__.
+        name = _PRIMITIVE_TYPE_NAMES.get(self.value.variant())
+        return name if name is not None else str(self.value)
 
     def __repr__(self) -> str:
         return str(self)
@@ -300,24 +318,26 @@ class TypeTag:
     def deserialize(deserializer: Deserializer) -> TypeTag:
         variant = deserializer.uleb128()
         match variant:
+            # Primitive variants carry no BCS payload after the discriminant.
             case TypeTagVariant.BOOL:
-                return TypeTag(BoolTag.deserialize(deserializer))
+                return TypeTag(BoolTag(False))
             case TypeTagVariant.U8:
-                return TypeTag(U8Tag.deserialize(deserializer))
+                return TypeTag(U8Tag(0))
             case TypeTagVariant.U16:
-                return TypeTag(U16Tag.deserialize(deserializer))
+                return TypeTag(U16Tag(0))
             case TypeTagVariant.U32:
-                return TypeTag(U32Tag.deserialize(deserializer))
+                return TypeTag(U32Tag(0))
             case TypeTagVariant.U64:
-                return TypeTag(U64Tag.deserialize(deserializer))
+                return TypeTag(U64Tag(0))
             case TypeTagVariant.U128:
-                return TypeTag(U128Tag.deserialize(deserializer))
+                return TypeTag(U128Tag(0))
             case TypeTagVariant.U256:
-                return TypeTag(U256Tag.deserialize(deserializer))
+                return TypeTag(U256Tag(0))
             case TypeTagVariant.ACCOUNT_ADDRESS:
-                return TypeTag(AccountAddressTag.deserialize(deserializer))
+                return TypeTag(AccountAddressTag(AccountAddress(b"\x00" * 32)))
             case TypeTagVariant.SIGNER:
-                return TypeTag(SignerTag.deserialize(deserializer))
+                return TypeTag(SignerTag())
+            # Composite variants do have inner BCS data.
             case TypeTagVariant.VECTOR:
                 return TypeTag(VectorTag.deserialize(deserializer))
             case TypeTagVariant.STRUCT:
@@ -327,7 +347,10 @@ class TypeTag:
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(self.value.variant())
-        serializer.struct(self.value)
+        # Primitive variants (bool, u8 … u256, address, signer) are pure discriminants
+        # in the Aptos BCS TypeTag encoding — no payload follows the variant byte.
+        if isinstance(self.value, (VectorTag, StructTag)):
+            serializer.struct(self.value)
 
     @staticmethod
     def from_str(type_tag: str) -> TypeTag:
@@ -348,28 +371,34 @@ class TypeTag:
 
 # --- Parser for string representation ---
 
-_PRIMITIVE_TAGS: dict[str, TypeTag] = {}
-
 
 def _primitive_tag(name: str) -> TypeTag | None:
-    """Return the primitive ``TypeTag`` for ``name``, or ``None`` if not primitive."""
-    if not _PRIMITIVE_TAGS:
-        # Built lazily because TypeTag isn't constructible at module import time
-        # for the dataclass slots dance.
-        _PRIMITIVE_TAGS.update(
-            {
-                "bool": TypeTag(BoolTag(False)),
-                "u8": TypeTag(U8Tag(0)),
-                "u16": TypeTag(U16Tag(0)),
-                "u32": TypeTag(U32Tag(0)),
-                "u64": TypeTag(U64Tag(0)),
-                "u128": TypeTag(U128Tag(0)),
-                "u256": TypeTag(U256Tag(0)),
-                "address": TypeTag(AccountAddressTag(AccountAddress(b"\x00" * 32))),
-                "signer": TypeTag(SignerTag()),
-            }
-        )
-    return _PRIMITIVE_TAGS.get(name)
+    """Return a fresh primitive ``TypeTag`` for ``name``, or ``None`` if not primitive.
+
+    A new instance is returned each call so that callers cannot accidentally
+    mutate a shared singleton (TypeTag is not frozen).
+    """
+    match name:
+        case "bool":
+            return TypeTag(BoolTag(False))
+        case "u8":
+            return TypeTag(U8Tag(0))
+        case "u16":
+            return TypeTag(U16Tag(0))
+        case "u32":
+            return TypeTag(U32Tag(0))
+        case "u64":
+            return TypeTag(U64Tag(0))
+        case "u128":
+            return TypeTag(U128Tag(0))
+        case "u256":
+            return TypeTag(U256Tag(0))
+        case "address":
+            return TypeTag(AccountAddressTag(AccountAddress(b"\x00" * 32)))
+        case "signer":
+            return TypeTag(SignerTag())
+        case _:
+            return None
 
 
 def _parse_type_tags(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
