@@ -163,16 +163,20 @@ class Test(unittest.IsolatedAsyncioTestCase):
         * Ensure that none is returned if the call for next_sequence_number would block
         * Ensure that synchronize completes if the value matches on-chain
         """
-        patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.account_sequence_number", return_value=0
-        )
-        patcher.start()
-        # `synchronize` reads `current_timestamp()` (which talks to the node) for
-        # its time-budget check; stub it so the test is fully hermetic.
+        # Use addCleanup for each patcher so they're stopped even if the test fails
+        # partway through. patcher.stop() is idempotent so the explicit mid-test
+        # stop() calls (needed to swap return values) are still safe.
         timestamp_patcher = unittest.mock.patch(
             "aptos_sdk.async_client.RestClient.current_timestamp", return_value=0.0
         )
         timestamp_patcher.start()
+        self.addCleanup(timestamp_patcher.stop)
+
+        patcher = unittest.mock.patch(
+            "aptos_sdk.async_client.RestClient.account_sequence_number", return_value=0
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
         # Use a placeholder URL — the test never makes a real HTTP call.
         rest_client = RestClient("http://localhost:65535")
@@ -187,6 +191,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
             "aptos_sdk.async_client.RestClient.account_sequence_number", return_value=5
         )
         patcher.start()
+        self.addCleanup(patcher.stop)
 
         for seq_num in range(AccountSequenceNumber._maximum_in_flight):
             last_seq_num = await account_sequence_number.next_sequence_number()
@@ -200,6 +205,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
             return_value=next_sequence_number,
         )
         patcher.start()
+        self.addCleanup(patcher.stop)
 
         self.assertNotEqual(account_sequence_number._current_number, last_seq_num)
         await account_sequence_number.synchronize()
