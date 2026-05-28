@@ -17,6 +17,9 @@ from .authenticator import (
 )
 from .payload import TransactionPayload
 
+# Domain-separator prehashes for transaction signing (keyed = prehash || BCS(txn)).
+# Single-sender transactions use APTOS::RawTransaction; multi-agent and fee-payer
+# transactions use APTOS::RawTransactionWithData.
 _RAW_TXN_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransaction").digest()
 _RAW_TXN_WITH_DATA_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransactionWithData").digest()
 

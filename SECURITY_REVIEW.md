@@ -80,8 +80,10 @@ direct `httpx.AsyncClient.post`.
 
 * **Ed25519** — backed by PyNaCl (libsodium). No issues found.
 * **Secp256k1** — backed by `cryptography` (OpenSSL via `hazmat`). Signing
-  uses deterministic ECDSA per RFC 6979 (default in `cryptography`).
-  ✅ Good.
+  uses OpenSSL's default randomized ECDSA nonce (not RFC 6979); identical
+  (key, message) pairs produce different valid signatures on each call.
+  See CHANGELOG for migration context. High-S signatures are rejected on
+  `verify()` to match Aptos on-chain behaviour. ✅ Acceptable.
 * **Authentication-key derivation** — uses SHA3-256 with the documented
   scheme bytes (Ed25519=0x00, MultiEd25519=0x01, SingleKey=0x02,
   MultiKey=0x03). Matches the on-chain definition in `aptos-core`.
