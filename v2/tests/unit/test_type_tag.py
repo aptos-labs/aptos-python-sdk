@@ -116,6 +116,17 @@ class TestTypeTagSerialization:
         assert a != c
         assert a != "not a tag"
 
+    def test_primitive_type_tag_eq_ignores_placeholder_value(self):
+        """Two TypeTags of the same primitive variant compare equal regardless of placeholder."""
+        from aptos_sdk_v2.types.type_tag import BoolTag, U64Tag
+
+        # BoolTag(True) and BoolTag(False) both represent the Move type `bool`.
+        assert TypeTag(BoolTag(True)) == TypeTag(BoolTag(False))
+        # U64Tag with different numeric placeholders are the same `u64` type.
+        assert TypeTag(U64Tag(0)) == TypeTag(U64Tag(999))
+        # Different primitive variants are still unequal.
+        assert TypeTag(BoolTag(False)) != TypeTag(U64Tag(0))
+
     def test_type_tag_str(self):
         tag = TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))
         assert str(tag) == "0x1::aptos_coin::AptosCoin"

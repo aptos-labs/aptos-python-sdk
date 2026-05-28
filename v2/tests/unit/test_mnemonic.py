@@ -88,3 +88,26 @@ class TestKeyDerivation:
         phrase = generate_mnemonic()
         with pytest.raises(InvalidMnemonicError, match="Invalid derivation"):
             derive_secp256k1_private_key(phrase, "bad/path")
+
+    def test_non_numeric_path_segment_raises_invalid_mnemonic(self):
+        """Non-numeric path segments must raise InvalidMnemonicError, not ValueError."""
+        from aptos_sdk_v2.crypto.mnemonic import derive_secp256k1_private_key
+
+        phrase = generate_mnemonic()
+        bad_path = "m/44'/637'/x'/0'/0'"
+        with pytest.raises(InvalidMnemonicError, match="Non-numeric segment"):
+            derive_ed25519_private_key(phrase, bad_path)
+        with pytest.raises(InvalidMnemonicError, match="Non-numeric segment"):
+            derive_secp256k1_private_key(phrase, bad_path)
+
+    def test_extra_path_segments_rejected(self):
+        """Paths with more or fewer than 6 segments must be rejected."""
+        phrase = generate_mnemonic()
+        with pytest.raises(InvalidMnemonicError):
+            derive_ed25519_private_key(phrase, "m/44'/637'/0'/0'/0'/extra")
+
+    def test_nonzero_change_index_rejected(self):
+        """Non-zero change index must raise InvalidMnemonicError."""
+        phrase = generate_mnemonic()
+        with pytest.raises(InvalidMnemonicError, match="change index"):
+            derive_ed25519_private_key(phrase, "m/44'/637'/0'/1'/0'")

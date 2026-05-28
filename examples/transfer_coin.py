@@ -89,6 +89,7 @@ async def main():
                 await asyncio.sleep(1)
                 continue
             if data and "data" in data and len(data["data"]["account_transactions"]) > 0:
+                last_error = None  # successful response — don't soft-skip
                 break
             await asyncio.sleep(1)
 
