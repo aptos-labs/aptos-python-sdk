@@ -154,7 +154,7 @@ class Serializer:
     ) -> None:
         self.uleb128(len(values))
         for value in values:
-            self.fixed_bytes(_encode(value, value_encoder))
+            value_encoder(self, value)
 
     def map(
         self,

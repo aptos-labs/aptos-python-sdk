@@ -210,5 +210,4 @@ class Test(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(account_sequence_number._current_number, last_seq_num)
         await account_sequence_number.synchronize()
         self.assertEqual(account_sequence_number._current_number, next_sequence_number)
-        patcher.stop()
-        timestamp_patcher.stop()
+        # addCleanup handles teardown — no explicit stops needed here.
