@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
 
 from ..bcs import Deserializer, Serializer
 from ..errors import InvalidTypeTagError
@@ -233,7 +232,6 @@ class StructTag:
         return value
 
     @staticmethod
-    @lru_cache(maxsize=256)
     def from_str(type_tag: str) -> StructTag:
         tags, _ = _parse_type_tags(type_tag, 0)
         if not tags:  # pragma: no cover — parser always appends via _make_struct_tag
@@ -303,7 +301,14 @@ class TypeTag:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeTag):
             return NotImplemented
-        return self.value.variant() == other.value.variant() and self.value == other.value
+        v1, v2 = self.value.variant(), other.value.variant()
+        if v1 != v2:
+            return False
+        # Primitive variants carry no BCS payload; two TypeTags with the same primitive
+        # variant represent the same Move type regardless of any placeholder value.
+        if v1 in _PRIMITIVE_TYPE_NAMES:
+            return True
+        return self.value == other.value
 
     def __str__(self) -> str:
         # Primitive variants render as their Move type name (e.g. "u64"), not their

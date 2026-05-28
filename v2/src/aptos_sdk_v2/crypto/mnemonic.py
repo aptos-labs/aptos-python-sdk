@@ -54,14 +54,18 @@ def derive_ed25519_private_key(
             f"Invalid derivation path: {path}. "
             "Expected BIP-44 format: m/44'/637'/account'/change'/address'"
         )
-    change_idx = int(parts[4])
+    try:
+        account_idx = int(parts[3])
+        change_idx = int(parts[4])
+        address_idx = int(parts[5])
+    except ValueError as exc:
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. Non-numeric segment: {exc}"
+        ) from exc
     if change_idx != 0:
         raise InvalidMnemonicError(
             f"Invalid derivation path: {path}. Aptos uses change index 0 (external chain) only."
         )
-
-    account_idx = int(parts[3])
-    address_idx = int(parts[5])
 
     bip44_ctx = (
         Bip44.FromSeed(seed, Bip44Coins.APTOS)
@@ -93,14 +97,18 @@ def derive_secp256k1_private_key(
             f"Invalid derivation path: {path}. "
             "Expected BIP-44 format: m/44'/637'/account'/change'/address'"
         )
-    change_idx = int(parts[4])
+    try:
+        account_idx = int(parts[3])
+        change_idx = int(parts[4])
+        address_idx = int(parts[5])
+    except ValueError as exc:
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. Non-numeric segment: {exc}"
+        ) from exc
     if change_idx != 0:
         raise InvalidMnemonicError(
             f"Invalid derivation path: {path}. Aptos uses change index 0 (external chain) only."
         )
-
-    account_idx = int(parts[3])
-    address_idx = int(parts[5])
 
     bip44_ctx = (
         Bip44.FromSeed(seed, Bip44Coins.APTOS)
