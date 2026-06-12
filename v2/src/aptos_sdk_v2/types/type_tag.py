@@ -411,6 +411,7 @@ def _parse_type_tags(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
     name = ""
     tags: list[TypeTag] = []
     inner_tags: list[TypeTag] = []
+    saw_generics = False
 
     while index < len(type_tag):
         letter = type_tag[index]
@@ -419,11 +420,21 @@ def _parse_type_tags(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
         if letter == " ":
             continue
         elif letter == "<":
+            # Reject a second generic argument list on the same token, e.g.
+            # ``vector<u8><u16>``. Without this guard the second list would
+            # silently overwrite ``inner_tags`` and yield an incorrect tag.
+            if saw_generics:
+                raise InvalidTypeTagError(
+                    f"Unexpected '<' in type tag: a token may have at most one "
+                    f"generic argument list, got {type_tag!r}"
+                )
             inner_tags, index = _parse_type_tags(type_tag, index)
+            saw_generics = True
         elif letter == ",":
             tags.append(_make_tag(name, inner_tags))
             name = ""
             inner_tags = []
+            saw_generics = False
         elif letter == ">":
             break
         else:

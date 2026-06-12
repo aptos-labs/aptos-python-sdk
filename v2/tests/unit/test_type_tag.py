@@ -315,3 +315,26 @@ class TestTypeTagFromStr:
 
         with pytest.raises(InvalidTypeTagError, match="exactly one type tag"):
             TypeTag.from_str("0x1::a::A, 0x1::b::B")
+
+    def test_double_generics_rejected(self):
+        """A token may carry at most one ``<...>``; a second one is malformed."""
+        import pytest
+
+        from aptos_sdk_v2.errors import InvalidTypeTagError
+
+        # Without the guard the second `<u16>` would silently overwrite the
+        # first generic list, producing a `vector<u16>` instead of an error.
+        with pytest.raises(InvalidTypeTagError, match="at most one"):
+            TypeTag.from_str("vector<u8><u16>")
+        with pytest.raises(InvalidTypeTagError, match="at most one"):
+            TypeTag.from_str("0x1::a::A<u8><u16>")
+        # Same shape inside a vector element is also rejected.
+        with pytest.raises(InvalidTypeTagError, match="at most one"):
+            TypeTag.from_str("vector<vector<u8><u16>>")
+
+    def test_double_generics_in_comma_list_resets(self):
+        """A `,` separator resets the per-token state — second token may carry generics."""
+        # ``Pair<u8, vector<u16>>`` is valid: the second element starts fresh.
+        tag = TypeTag.from_str("0x1::pair::Pair<u8, vector<u16>>")
+        assert isinstance(tag.value, StructTag)
+        assert len(tag.value.type_args) == 2
