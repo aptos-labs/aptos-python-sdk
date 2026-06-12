@@ -20,7 +20,8 @@ coverage:
         threshold: 1%
         informational: false
       v1-sdk:
-        target: 88%
+        # Matches the ≥ 90 % goal documented in README.md "Test coverage".
+        target: 90%
         threshold: 1%
         flags:
           - v1-sdk
