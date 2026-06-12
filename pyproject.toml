@@ -3,10 +3,15 @@ name = "aptos-sdk"
 version = "0.11.0"
 description = "Aptos SDK"
 authors = [{ name = "Aptos Labs", email = "opensource@aptoslabs.com" }]
-license = "Apache-2.0"
+license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["web3", "sdk", "aptos", "blockchain"]
+classifiers = [
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
 
 dependencies = [
     "cryptography>=46.0.7,<47",
