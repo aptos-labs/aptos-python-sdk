@@ -30,11 +30,11 @@ class Ed25519Authenticator:
     def verify(self, data: bytes) -> bool:
         return self.public_key.verify(data, self.signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Ed25519Authenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Ed25519Authenticator:
         key = deserializer.struct(Ed25519PublicKey)
         sig = deserializer.struct(Ed25519Signature)
-        return Ed25519Authenticator(key, sig)
+        return cls(key, sig)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.struct(self.public_key)
@@ -62,11 +62,11 @@ class SingleKeyAuthenticator:
     def verify(self, data: bytes) -> bool:
         return self.public_key.verify(data, self.signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SingleKeyAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> SingleKeyAuthenticator:
         pub = deserializer.struct(AnyPublicKey)
         sig = deserializer.struct(AnySignature)
-        return SingleKeyAuthenticator(pub, sig)
+        return cls(pub, sig)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.struct(self.public_key)
@@ -89,10 +89,10 @@ class SingleSenderAuthenticator:
     def verify(self, data: bytes) -> bool:
         return self.sender.verify(data)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SingleSenderAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> SingleSenderAuthenticator:
         sender = deserializer.struct(AccountAuthenticator)
-        return SingleSenderAuthenticator(sender)
+        return cls(sender)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.struct(self.sender)
@@ -124,12 +124,12 @@ class MultiAgentAuthenticator:
             return False
         return all(auth.verify(data) for _, auth in self.secondary_signers)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiAgentAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiAgentAuthenticator:
         sender = deserializer.struct(AccountAuthenticator)
         addresses = deserializer.sequence(AccountAddress.deserialize)
         authenticators = deserializer.sequence(AccountAuthenticator.deserialize)
-        return MultiAgentAuthenticator(sender, list(zip(addresses, authenticators)))
+        return cls(sender, list(zip(addresses, authenticators)))
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.struct(self.sender)
@@ -174,14 +174,14 @@ class FeePayerAuthenticator:
             return False
         return all(auth.verify(data) for _, auth in self.secondary_signers)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> FeePayerAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> FeePayerAuthenticator:
         sender = deserializer.struct(AccountAuthenticator)
         addresses = deserializer.sequence(AccountAddress.deserialize)
         authenticators = deserializer.sequence(AccountAuthenticator.deserialize)
         fee_payer_addr = deserializer.struct(AccountAddress)
         fee_payer_auth = deserializer.struct(AccountAuthenticator)
-        return FeePayerAuthenticator(
+        return cls(
             sender,
             list(zip(addresses, authenticators)),
             (fee_payer_addr, fee_payer_auth),
@@ -225,14 +225,14 @@ class AccountAuthenticator:
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AccountAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> AccountAuthenticator:
         variant = deserializer.uleb128()
         match variant:
             case AccountAuthenticator.ED25519:
-                return AccountAuthenticator(Ed25519Authenticator.deserialize(deserializer))
+                return cls(Ed25519Authenticator.deserialize(deserializer))
             case AccountAuthenticator.SINGLE_KEY:
-                return AccountAuthenticator(SingleKeyAuthenticator.deserialize(deserializer))
+                return cls(SingleKeyAuthenticator.deserialize(deserializer))
             case _:
                 raise BcsDeserializationError(f"Unknown AccountAuthenticator variant: {variant}")
 
@@ -281,18 +281,18 @@ class Authenticator:
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Authenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Authenticator:
         variant = deserializer.uleb128()
         match variant:
             case Authenticator.ED25519:
-                return Authenticator(Ed25519Authenticator.deserialize(deserializer))
+                return cls(Ed25519Authenticator.deserialize(deserializer))
             case Authenticator.MULTI_AGENT:
-                return Authenticator(MultiAgentAuthenticator.deserialize(deserializer))
+                return cls(MultiAgentAuthenticator.deserialize(deserializer))
             case Authenticator.FEE_PAYER:
-                return Authenticator(FeePayerAuthenticator.deserialize(deserializer))
+                return cls(FeePayerAuthenticator.deserialize(deserializer))
             case Authenticator.SINGLE_SENDER:
-                return Authenticator(SingleSenderAuthenticator.deserialize(deserializer))
+                return cls(SingleSenderAuthenticator.deserialize(deserializer))
             case _:
                 raise BcsDeserializationError(f"Unknown Authenticator variant: {variant}")
 

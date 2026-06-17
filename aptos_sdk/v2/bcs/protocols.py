@@ -27,8 +27,8 @@ class Serializable(Protocol):
 class Deserializable(Protocol):
     """Types that can be deserialized from BCS bytes."""
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Any: ...
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Any: ...
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Any:

@@ -26,34 +26,35 @@ class Account:
         self._private_key = private_key
         self._address = address
 
-    @staticmethod
-    def generate() -> Account:
+    @classmethod
+    def generate(cls) -> Account:
         """Generate a new Ed25519 account."""
         key = Ed25519PrivateKey.generate()
         pub = key.public_key()
         auth_key = AuthenticationKey.from_public_key(pub)
-        return Account(key, auth_key.account_address())
+        return cls(key, auth_key.account_address())
 
-    @staticmethod
-    def generate_secp256k1() -> Account:
+    @classmethod
+    def generate_secp256k1(cls) -> Account:
         """Generate a new Secp256k1 account."""
         key = Secp256k1PrivateKey.generate()
         pub = AnyPublicKey(key.public_key())
         auth_key = AuthenticationKey.from_public_key(pub)
-        return Account(key, auth_key.account_address())
+        return cls(key, auth_key.account_address())
 
-    @staticmethod
-    def from_private_key(key: PrivateKey) -> Account:
+    @classmethod
+    def from_private_key(cls, key: PrivateKey) -> Account:
         """Create an account from an existing private key."""
         pub = key.public_key()
         if isinstance(pub, Ed25519PublicKey):
             auth_key = AuthenticationKey.from_public_key(pub)
         else:
             auth_key = AuthenticationKey.from_public_key(AnyPublicKey(pub))
-        return Account(key, auth_key.account_address())
+        return cls(key, auth_key.account_address())
 
-    @staticmethod
+    @classmethod
     def from_mnemonic(
+        cls,
         phrase: str,
         path: str = DEFAULT_DERIVATION_PATH,
         *,
@@ -65,7 +66,7 @@ class Account:
             key = derive_secp256k1_private_key(phrase, path)
         else:
             key = derive_ed25519_private_key(phrase, path)
-        return Account.from_private_key(key)
+        return cls.from_private_key(key)
 
     @property
     def address(self) -> AccountAddress:

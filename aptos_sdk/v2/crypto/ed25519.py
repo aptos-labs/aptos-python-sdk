@@ -29,27 +29,27 @@ class Ed25519PrivateKey(PrivateKeyBase):
     def _variant(self) -> PrivateKeyVariant:
         return PrivateKeyVariant.ED25519
 
-    @staticmethod
-    def generate() -> Ed25519PrivateKey:
-        return Ed25519PrivateKey(SigningKey.generate())
+    @classmethod
+    def generate(cls) -> Ed25519PrivateKey:
+        return cls(SigningKey.generate())
 
-    @staticmethod
-    def from_str(value: str, strict: bool | None = None) -> Ed25519PrivateKey:
+    @classmethod
+    def from_str(cls, value: str, strict: bool | None = None) -> Ed25519PrivateKey:
         raw = parse_hex_input(value, PrivateKeyVariant.ED25519, strict)
         if len(raw) != Ed25519PrivateKey.LENGTH:
             raise InvalidKeyError(
                 f"Ed25519 private key must be {Ed25519PrivateKey.LENGTH} bytes, got {len(raw)}"
             )
-        return Ed25519PrivateKey(SigningKey(raw))
+        return cls(SigningKey(raw))
 
-    @staticmethod
-    def from_hex(value: str | bytes, strict: bool | None = None) -> Ed25519PrivateKey:
+    @classmethod
+    def from_hex(cls, value: str | bytes, strict: bool | None = None) -> Ed25519PrivateKey:
         raw = parse_hex_input(value, PrivateKeyVariant.ED25519, strict)
         if len(raw) != Ed25519PrivateKey.LENGTH:
             raise InvalidKeyError(
                 f"Ed25519 private key must be {Ed25519PrivateKey.LENGTH} bytes, got {len(raw)}"
             )
-        return Ed25519PrivateKey(SigningKey(raw))
+        return cls(SigningKey(raw))
 
     def hex(self) -> str:
         return f"0x{self._key.encode().hex()}"
@@ -60,12 +60,12 @@ class Ed25519PrivateKey(PrivateKeyBase):
     def sign(self, data: bytes) -> Ed25519Signature:
         return Ed25519Signature(self._key.sign(data).signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Ed25519PrivateKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Ed25519PrivateKey:
         key = deserializer.to_bytes()
         if len(key) != Ed25519PrivateKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
-        return Ed25519PrivateKey(SigningKey(key))
+        return cls(SigningKey(key))
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self._key.encode())
@@ -88,8 +88,8 @@ class Ed25519PublicKey(PublicKeyBase):
     def __str__(self) -> str:
         return f"0x{self._key.encode().hex()}"
 
-    @staticmethod
-    def from_str(value: str) -> Ed25519PublicKey:
+    @classmethod
+    def from_str(cls, value: str) -> Ed25519PublicKey:
         if value.startswith("0x"):
             value = value[2:]
         raw = bytes.fromhex(value)
@@ -97,7 +97,7 @@ class Ed25519PublicKey(PublicKeyBase):
             raise InvalidKeyError(
                 f"Ed25519 public key must be {Ed25519PublicKey.LENGTH} bytes, got {len(raw)}"
             )
-        return Ed25519PublicKey(VerifyKey(raw))
+        return cls(VerifyKey(raw))
 
     def to_crypto_bytes(self) -> bytes:
         return self._key.encode()
@@ -109,12 +109,12 @@ class Ed25519PublicKey(PublicKeyBase):
         except Exception:
             return False
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Ed25519PublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Ed25519PublicKey:
         key = deserializer.to_bytes()
         if len(key) != Ed25519PublicKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
-        return Ed25519PublicKey(VerifyKey(key))
+        return cls(VerifyKey(key))
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self._key.encode())
@@ -140,18 +140,18 @@ class Ed25519Signature(SignatureBase):
     def data(self) -> bytes:
         return self._signature
 
-    @staticmethod
-    def from_str(value: str) -> Ed25519Signature:
+    @classmethod
+    def from_str(cls, value: str) -> Ed25519Signature:
         if value.startswith("0x"):
             value = value[2:]
-        return Ed25519Signature(bytes.fromhex(value))
+        return cls(bytes.fromhex(value))
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Ed25519Signature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Ed25519Signature:
         sig = deserializer.to_bytes()
         if len(sig) != Ed25519Signature.LENGTH:
             raise InvalidSignatureError("Length mismatch")
-        return Ed25519Signature(sig)
+        return cls(sig)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self._signature)

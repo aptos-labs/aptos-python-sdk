@@ -103,9 +103,9 @@ class RawTransaction:
     def verify(self, key: PublicKey, signature: Signature) -> bool:
         return key.verify(self.keyed(), signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> RawTransaction:
-        return RawTransaction(
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> RawTransaction:
+        return cls(
             AccountAddress.deserialize(deserializer),
             deserializer.u64(),
             TransactionPayload.deserialize(deserializer),
@@ -154,18 +154,18 @@ class MultiAgentRawTransaction:
         serializer.struct(self.raw_transaction)
         serializer.sequence(self.secondary_signers, Serializer.struct)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiAgentRawTransaction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiAgentRawTransaction:
         tag = deserializer.u8()
         if tag != 0:
             raise BcsDeserializationError(f"Expected multi-agent tag 0, got {tag}")
-        return MultiAgentRawTransaction._deserialize_inner(deserializer)
+        return cls._deserialize_inner(deserializer)
 
-    @staticmethod
-    def _deserialize_inner(deserializer: Deserializer) -> MultiAgentRawTransaction:
+    @classmethod
+    def _deserialize_inner(cls, deserializer: Deserializer) -> MultiAgentRawTransaction:
         raw_txn = RawTransaction.deserialize(deserializer)
         secondary = deserializer.sequence(AccountAddress.deserialize)
-        return MultiAgentRawTransaction(raw_txn, secondary)
+        return cls(raw_txn, secondary)
 
 
 class FeePayerRawTransaction:
@@ -203,18 +203,18 @@ class FeePayerRawTransaction:
         fee_payer = self.fee_payer if self.fee_payer is not None else AccountAddress.from_str("0x0")
         serializer.struct(fee_payer)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> FeePayerRawTransaction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> FeePayerRawTransaction:
         tag = deserializer.u8()
         if tag != 1:
             raise BcsDeserializationError(f"Expected fee-payer tag 1, got {tag}")
-        return FeePayerRawTransaction._deserialize_inner(deserializer)
+        return cls._deserialize_inner(deserializer)
 
-    @staticmethod
-    def _deserialize_inner(deserializer: Deserializer) -> FeePayerRawTransaction:
+    @classmethod
+    def _deserialize_inner(cls, deserializer: Deserializer) -> FeePayerRawTransaction:
         raw_txn = RawTransaction.deserialize(deserializer)
         secondary = deserializer.sequence(AccountAddress.deserialize)
         fee_payer_addr = AccountAddress.deserialize(deserializer)
         if fee_payer_addr == AccountAddress.from_str("0x0"):
-            return FeePayerRawTransaction(raw_txn, secondary, None)
-        return FeePayerRawTransaction(raw_txn, secondary, fee_payer_addr)
+            return cls(raw_txn, secondary, None)
+        return cls(raw_txn, secondary, fee_payer_addr)

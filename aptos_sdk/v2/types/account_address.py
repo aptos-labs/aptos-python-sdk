@@ -41,13 +41,13 @@ class AccountAddress:
 
     # --- Parsing ---
 
-    @staticmethod
-    def from_str(address: str) -> AccountAddress:
+    @classmethod
+    def from_str(cls, address: str) -> AccountAddress:
         """Strict AIP-40 parsing: LONG form or SHORT form for special addresses only."""
         if not address.startswith("0x"):
             raise InvalidAddressError("Hex string must start with a leading 0x.")
 
-        out = AccountAddress.from_str_relaxed(address)
+        out = cls.from_str_relaxed(address)
 
         if len(address) != LENGTH * 2 + 2:
             if not out.is_special():
@@ -61,8 +61,8 @@ class AccountAddress:
 
         return out
 
-    @staticmethod
-    def from_str_relaxed(address: str) -> AccountAddress:
+    @classmethod
+    def from_str_relaxed(cls, address: str) -> AccountAddress:
         """Relaxed parsing: allows short form, padding zeroes, and optional 0x prefix."""
         addr = address
         if addr.startswith("0x"):
@@ -77,55 +77,55 @@ class AccountAddress:
             addr = addr.zfill(LENGTH * 2)
 
         try:
-            return AccountAddress(bytes.fromhex(addr))
+            return cls(bytes.fromhex(addr))
         except ValueError as e:
             raise InvalidAddressError(f"Invalid hex in address: {e}") from e
 
     # --- Derived addresses ---
 
-    @staticmethod
-    def for_resource_account(creator: AccountAddress, seed: bytes) -> AccountAddress:
+    @classmethod
+    def for_resource_account(cls, creator: AccountAddress, seed: bytes) -> AccountAddress:
         hasher = hashlib.sha3_256()
         hasher.update(creator.address)
         hasher.update(seed)
         hasher.update(AuthKeyScheme.DERIVE_RESOURCE_ACCOUNT)
-        return AccountAddress(hasher.digest())
+        return cls(hasher.digest())
 
-    @staticmethod
-    def for_named_object(creator: AccountAddress, seed: bytes) -> AccountAddress:
+    @classmethod
+    def for_named_object(cls, creator: AccountAddress, seed: bytes) -> AccountAddress:
         hasher = hashlib.sha3_256()
         hasher.update(creator.address)
         hasher.update(seed)
         hasher.update(AuthKeyScheme.DERIVE_OBJECT_FROM_SEED)
-        return AccountAddress(hasher.digest())
+        return cls(hasher.digest())
 
-    @staticmethod
-    def for_guid_object(creator: AccountAddress, creation_num: int) -> AccountAddress:
+    @classmethod
+    def for_guid_object(cls, creator: AccountAddress, creation_num: int) -> AccountAddress:
         hasher = hashlib.sha3_256()
         ser = Serializer()
         ser.u64(creation_num)
         hasher.update(ser.output())
         hasher.update(creator.address)
         hasher.update(AuthKeyScheme.DERIVE_OBJECT_FROM_GUID)
-        return AccountAddress(hasher.digest())
+        return cls(hasher.digest())
 
-    @staticmethod
-    def for_named_collection(creator: AccountAddress, collection_name: str) -> AccountAddress:
-        return AccountAddress.for_named_object(creator, collection_name.encode())
+    @classmethod
+    def for_named_collection(cls, creator: AccountAddress, collection_name: str) -> AccountAddress:
+        return cls.for_named_object(creator, collection_name.encode())
 
-    @staticmethod
+    @classmethod
     def for_named_token(
-        creator: AccountAddress, collection_name: str, token_name: str
+        cls, creator: AccountAddress, collection_name: str, token_name: str
     ) -> AccountAddress:
-        return AccountAddress.for_named_object(
+        return cls.for_named_object(
             creator, collection_name.encode() + b"::" + token_name.encode()
         )
 
     # --- BCS ---
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AccountAddress:
-        return AccountAddress(deserializer.fixed_bytes(LENGTH))
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> AccountAddress:
+        return cls(deserializer.fixed_bytes(LENGTH))
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.fixed_bytes(self.address)
