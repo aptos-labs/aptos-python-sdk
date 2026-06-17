@@ -19,6 +19,47 @@ from aptos_sdk_v2.types.account_address import AccountAddress
 from aptos_sdk_v2.types.type_tag import StructTag, TypeTag
 
 
+class TestStructArgumentEncoding:
+    """Struct entry-function args must not be encoded with Serializer.map.
+
+    Explorers render struct arguments as JSON objects (e.g. ``{"inner": "0x..."}``),
+    but BCS encodes structs as ordered field values. Move ``map<K, V>`` is a different
+    type with its own encoding (length + lexicographically sorted key/value pairs).
+    """
+
+    COLLECTION = "0xd42cd397c41a62eaf03e83ad0324ff6822178a3e40aa596c4b9930561d4753e5"
+
+    def test_map_encoding_round_trips(self):
+        values = {"inner": self.COLLECTION}
+        ser = Serializer()
+        ser.map(values, Serializer.str, Serializer.str)
+        assert Deserializer(ser.output()).map(Deserializer.str, Deserializer.str) == values
+
+    def test_object_inner_field_is_address_not_map(self):
+        collection = AccountAddress.from_str(self.COLLECTION)
+
+        wrong = TransactionArgument(
+            {"inner": self.COLLECTION},
+            lambda ser, val: ser.map(val, Serializer.str, Serializer.str),
+        )
+        correct = TransactionArgument(collection, Serializer.struct)
+
+        assert wrong.encode() != correct.encode()
+        assert correct.encode().hex() == self.COLLECTION.removeprefix("0x")
+
+    def test_vector_field_is_sequence_not_map(self):
+        wrong = TransactionArgument(
+            {"vec": ["1"]},
+            lambda ser, val: ser.map(
+                val, Serializer.str, Serializer.sequence_serializer(Serializer.str)
+            ),
+        )
+        correct = TransactionArgument(["1"], Serializer.sequence_serializer(Serializer.str))
+
+        assert wrong.encode() != correct.encode()
+        assert correct.encode().hex() == "010131"
+
+
 class TestEntryFunctionSignVerify:
     def test_sign_and_verify(self):
         private_key = Ed25519PrivateKey.generate()
