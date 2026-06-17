@@ -314,6 +314,22 @@ class TestPayloadTypes:
 
 
 class TestSignedTransactionExtras:
+    def test_signed_txn_hash(self):
+        signed_transaction_input = (
+            "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b"
+            "000000000000000200000000000000000000000000000000000000000000000000000000000000"
+            "0104636f696e087472616e736665720107000000000000000000000000000000000000000000"
+            "00000000000000000000000000010a6170746f735f636f696e094170746f73436f696e000220"
+            "2d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000"
+            "000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711"
+            "144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040f25b74ec60a38a1ed780fd2bef6"
+            "ddb6eb4356e3ab39276c9176cdf0fcae2ab37d79b626abb43d926e91595b66503a4a3c90acbae"
+            "36a28d405e308f3537af720b"
+        )
+        signed = SignedTransaction.deserialize(Deserializer(bytes.fromhex(signed_transaction_input)))
+        assert signed.hash() == "0xdb7e0f0b00b817ad8a9d2eae33cf4eec9e25110bac48fa6807000f43128f17ac"
+        assert signed.hash() == signed.hash()
+
     def test_signed_txn_bytes(self):
         key = Ed25519PrivateKey.generate()
         addr = AuthenticationKey.from_public_key(key.public_key()).account_address()

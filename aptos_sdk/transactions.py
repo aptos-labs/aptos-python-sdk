@@ -30,6 +30,8 @@ from .type_tag import StructTag, TypeTag
 
 _RAW_TXN_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransaction").digest()
 _RAW_TXN_WITH_DATA_PREHASH: bytes = hashlib.sha3_256(b"APTOS::RawTransactionWithData").digest()
+_TRANSACTION_PREHASH: bytes = hashlib.sha3_256(b"APTOS::Transaction").digest()
+_USER_TRANSACTION_VARIANT: int = 0
 
 
 class RawTransactionInternal(Protocol):
@@ -546,6 +548,13 @@ class SignedTransaction:
         ser.struct(self)
         return ser.output()
 
+    def hash(self) -> str:
+        """Return the committed transaction hash without submitting to the network."""
+        digest = hashlib.sha3_256(
+            _TRANSACTION_PREHASH + bytes([_USER_TRANSACTION_VARIANT]) + self.bytes()
+        ).hexdigest()
+        return f"0x{digest}"
+
     def verify(self) -> bool:
         auth = self.authenticator.authenticator
         if isinstance(auth, MultiAgentAuthenticator):
@@ -611,6 +620,17 @@ class Test(unittest.TestCase):
         authenticator = raw_transaction.sign(private_key)
         signed_transaction = SignedTransaction(raw_transaction, authenticator)
         self.assertTrue(signed_transaction.verify())
+
+    def test_signed_transaction_hash(self):
+        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040f25b74ec60a38a1ed780fd2bef6ddb6eb4356e3ab39276c9176cdf0fcae2ab37d79b626abb43d926e91595b66503a4a3c90acbae36a28d405e308f3537af720b"
+        signed_transaction = SignedTransaction.deserialize(
+            Deserializer(bytes.fromhex(signed_transaction_input))
+        )
+        self.assertEqual(
+            signed_transaction.hash(),
+            "0xdb7e0f0b00b817ad8a9d2eae33cf4eec9e25110bac48fa6807000f43128f17ac",
+        )
+        self.assertEqual(signed_transaction.hash(), signed_transaction.hash())
 
     def test_entry_function_with_corpus(self):
         # Define common inputs
