@@ -37,8 +37,8 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
         return self.public_key.verify(data, sig.signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> PublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> PublicKey:
         variant = deserializer.uleb128()
 
         if variant == PublicKey.ED25519:
@@ -48,7 +48,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
         else:
             raise InvalidTypeError(f"Invalid type: {variant}")
 
-        return PublicKey(public_key)
+        return cls(public_key)
 
     def serialize(self, serializer: Serializer):
         serializer.uleb128(self.variant)
@@ -71,8 +71,8 @@ class Signature(asymmetric_crypto.Signature):
             raise NotImplementedError()
         self.signature = signature
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Signature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Signature:
         variant = deserializer.uleb128()
 
         if variant == Signature.ED25519:
@@ -82,7 +82,7 @@ class Signature(asymmetric_crypto.Signature):
         else:
             raise InvalidTypeError(f"Invalid type: {variant}")
 
-        return Signature(signature)
+        return cls(signature)
 
     def serialize(self, serializer: Serializer):
         serializer.uleb128(self.variant)
@@ -132,8 +132,8 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
             return False
         return True
 
-    @staticmethod
-    def from_crypto_bytes(indata: bytes) -> MultiPublicKey:
+    @classmethod
+    def from_crypto_bytes(cls, indata: bytes) -> MultiPublicKey:
         deserializer = Deserializer(indata)
         return deserializer.struct(MultiPublicKey)
 
@@ -142,11 +142,11 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
         serializer.struct(self)
         return serializer.output()
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiPublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiPublicKey:
         keys = deserializer.sequence(PublicKey.deserialize)
         threshold = deserializer.u8()
-        return MultiPublicKey(keys, threshold)
+        return cls(keys, threshold)
 
     def serialize(self, serializer: Serializer):
         serializer.sequence(self.keys, Serializer.struct)
@@ -177,8 +177,8 @@ class MultiSignature(asymmetric_crypto.Signature):
     def __str__(self) -> str:
         return f"{self.signatures}"
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiSignature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiSignature:
         signatures = deserializer.sequence(Signature.deserialize)
         bitmap_raw = deserializer.to_bytes()
         bitmap = int.from_bytes(bitmap_raw, "little")
@@ -192,7 +192,7 @@ class MultiSignature(asymmetric_crypto.Signature):
                 indexed_signatures.append((i, signatures[sig_index]))
                 sig_index += 1
 
-        return MultiSignature(indexed_signatures)
+        return cls(indexed_signatures)
 
     def serialize(self, serializer: Serializer):
         actual_sigs = []

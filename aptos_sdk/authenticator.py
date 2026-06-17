@@ -64,8 +64,8 @@ class Authenticator:
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Authenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Authenticator:
         variant = deserializer.uleb128()
 
         if variant == Authenticator.ED25519:
@@ -81,7 +81,7 @@ class Authenticator:
         else:
             raise InvalidTypeError(f"Invalid type: {variant}")
 
-        return Authenticator(authenticator)
+        return cls(authenticator)
 
     def serialize(self, serializer: Serializer):
         serializer.uleb128(self.variant)
@@ -124,8 +124,8 @@ class AccountAuthenticator:
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AccountAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> AccountAuthenticator:
         variant = deserializer.uleb128()
 
         if variant == AccountAuthenticator.ED25519:
@@ -139,7 +139,7 @@ class AccountAuthenticator:
         else:
             raise InvalidTypeError(f"Invalid type: {variant}")
 
-        return AccountAuthenticator(authenticator)
+        return cls(authenticator)
 
     def serialize(self, serializer: Serializer):
         serializer.uleb128(self.variant)
@@ -166,11 +166,11 @@ class Ed25519Authenticator:
     def verify(self, data: bytes) -> bool:
         return self.public_key.verify(data, self.signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Ed25519Authenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Ed25519Authenticator:
         key = deserializer.struct(ed25519.PublicKey)
         signature = deserializer.struct(ed25519.Signature)
-        return Ed25519Authenticator(key, signature)
+        return cls(key, signature)
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.public_key)
@@ -217,14 +217,14 @@ class FeePayerAuthenticator:
             return False
         return all([x[1].verify(data) for x in self.secondary_signers])
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> FeePayerAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> FeePayerAuthenticator:
         sender = deserializer.struct(AccountAuthenticator)
         secondary_addresses = deserializer.sequence(AccountAddress.deserialize)
         secondary_authenticators = deserializer.sequence(AccountAuthenticator.deserialize)
         fee_payer_address = deserializer.struct(AccountAddress)
         fee_payer_authenticator = deserializer.struct(AccountAuthenticator)
-        return FeePayerAuthenticator(
+        return cls(
             sender,
             list(zip(secondary_addresses, secondary_authenticators)),
             (fee_payer_address, fee_payer_authenticator),
@@ -263,14 +263,12 @@ class MultiAgentAuthenticator:
             return False
         return all([x[1].verify(data) for x in self.secondary_signers])
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiAgentAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiAgentAuthenticator:
         sender = deserializer.struct(AccountAuthenticator)
         secondary_addresses = deserializer.sequence(AccountAddress.deserialize)
         secondary_authenticators = deserializer.sequence(AccountAuthenticator.deserialize)
-        return MultiAgentAuthenticator(
-            sender, list(zip(secondary_addresses, secondary_authenticators))
-        )
+        return cls(sender, list(zip(secondary_addresses, secondary_authenticators)))
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.sender)
@@ -289,8 +287,8 @@ class MultiEd25519Authenticator:
     def verify(self, data: bytes) -> bool:
         raise NotImplementedError
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiEd25519Authenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiEd25519Authenticator:
         raise NotImplementedError
 
     def serialize(self, serializer: Serializer):
@@ -315,10 +313,10 @@ class SingleSenderAuthenticator:
     def verify(self, data: bytes) -> bool:
         return self.sender.verify(data)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SingleSenderAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> SingleSenderAuthenticator:
         sender = deserializer.struct(AccountAuthenticator)
-        return SingleSenderAuthenticator(sender)
+        return cls(sender)
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.sender)
@@ -346,11 +344,11 @@ class SingleKeyAuthenticator:
     def verify(self, data: bytes) -> bool:
         return self.public_key.verify(data, self.signature.signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SingleKeyAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> SingleKeyAuthenticator:
         public_key = deserializer.struct(asymmetric_crypto_wrapper.PublicKey)
         signature = deserializer.struct(asymmetric_crypto_wrapper.Signature)
-        return SingleKeyAuthenticator(public_key, signature)
+        return cls(public_key, signature)
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.public_key)
@@ -372,11 +370,11 @@ class MultiKeyAuthenticator:
     def verify(self, data: bytes) -> bool:
         return self.public_key.verify(data, self.signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiKeyAuthenticator:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiKeyAuthenticator:
         public_key = deserializer.struct(asymmetric_crypto_wrapper.MultiPublicKey)
         signature = deserializer.struct(asymmetric_crypto_wrapper.MultiSignature)
-        return MultiKeyAuthenticator(public_key, signature)
+        return cls(public_key, signature)
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.public_key)

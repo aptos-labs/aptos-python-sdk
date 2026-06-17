@@ -73,8 +73,8 @@ class RawTransactionWithData(RawTransactionInternal, Protocol):
     def prehash(self) -> bytes:
         return _RAW_TXN_WITH_DATA_PREHASH
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> RawTransactionWithData:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> RawTransactionWithData:
         enum_type = deserializer.u8()
         if enum_type == 0:
             return MultiAgentRawTransaction.deserialize_inner(deserializer)
@@ -146,9 +146,9 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
     def prehash(self) -> bytes:
         return _RAW_TXN_PREHASH
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> RawTransaction:
-        return RawTransaction(
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> RawTransaction:
+        return cls(
             AccountAddress.deserialize(deserializer),
             deserializer.u64(),
             TransactionPayload.deserialize(deserializer),
@@ -181,20 +181,20 @@ class MultiAgentRawTransaction(RawTransactionWithData):
         serializer.struct(self.raw_transaction)
         serializer.sequence(self.secondary_signers, Serializer.struct)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiAgentRawTransaction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiAgentRawTransaction:
         raw_txn_type = deserializer.u8()
         if raw_txn_type != 0:
             raise DeserializationError(f"Enum type mismatch, expected 0 got {raw_txn_type}")
 
-        return MultiAgentRawTransaction.deserialize_inner(deserializer)
+        return cls.deserialize_inner(deserializer)
 
-    @staticmethod
-    def deserialize_inner(deserializer: Deserializer) -> MultiAgentRawTransaction:
+    @classmethod
+    def deserialize_inner(cls, deserializer: Deserializer) -> MultiAgentRawTransaction:
         raw_txn = RawTransaction.deserialize(deserializer)
         secondary_signers = deserializer.sequence(AccountAddress.deserialize)
 
-        return MultiAgentRawTransaction(raw_txn, secondary_signers)
+        return cls(raw_txn, secondary_signers)
 
 
 class FeePayerRawTransaction(RawTransactionWithData):
@@ -218,16 +218,16 @@ class FeePayerRawTransaction(RawTransactionWithData):
         fee_payer = AccountAddress.from_str("0x0") if self.fee_payer is None else self.fee_payer
         serializer.struct(fee_payer)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> FeePayerRawTransaction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> FeePayerRawTransaction:
         raw_txn_type = deserializer.u8()
         if raw_txn_type != 1:
             raise DeserializationError(f"Enum type mismatch, expected 1 got {raw_txn_type}")
 
-        return FeePayerRawTransaction.deserialize_inner(deserializer)
+        return cls.deserialize_inner(deserializer)
 
-    @staticmethod
-    def deserialize_inner(deserializer: Deserializer) -> FeePayerRawTransaction:
+    @classmethod
+    def deserialize_inner(cls, deserializer: Deserializer) -> FeePayerRawTransaction:
         raw_txn = RawTransaction.deserialize(deserializer)
         secondary_signers = deserializer.sequence(AccountAddress.deserialize)
         fee_payer = AccountAddress.deserialize(deserializer)
@@ -236,7 +236,7 @@ class FeePayerRawTransaction(RawTransactionWithData):
         else:
             fee_payer_optional = fee_payer
 
-        return FeePayerRawTransaction(raw_txn, secondary_signers, fee_payer_optional)
+        return cls(raw_txn, secondary_signers, fee_payer_optional)
 
 
 class TransactionPayload:
@@ -266,8 +266,8 @@ class TransactionPayload:
     def __str__(self) -> str:
         return self.value.__str__()
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> TransactionPayload:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> TransactionPayload:
         variant = deserializer.uleb128()
 
         if variant == TransactionPayload.SCRIPT:
@@ -279,7 +279,7 @@ class TransactionPayload:
         else:
             raise InvalidTypeError("Invalid type")
 
-        return TransactionPayload(payload)
+        return cls(payload)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(self.variant)
@@ -290,8 +290,8 @@ class ModuleBundle:
     def __init__(self):
         raise NotImplementedError
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> ModuleBundle:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> ModuleBundle:
         raise NotImplementedError
 
     def serialize(self, serializer: Serializer) -> None:
@@ -308,12 +308,12 @@ class Script:
         self.ty_args = ty_args
         self.args = args
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Script:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Script:
         code = deserializer.to_bytes()
         ty_args = deserializer.sequence(TypeTag.deserialize)
         args = deserializer.sequence(ScriptArgument.deserialize)
-        return Script(code, ty_args, args)
+        return cls(code, ty_args, args)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self.code)
@@ -350,8 +350,8 @@ class ScriptArgument:
         self.variant = variant
         self.value = value
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> ScriptArgument:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> ScriptArgument:
         variant = deserializer.u8()
         if variant == ScriptArgument.U8:
             value: Any = deserializer.u8()
@@ -373,7 +373,7 @@ class ScriptArgument:
             value = deserializer.bool()
         else:
             raise DeserializationError("Invalid variant")
-        return ScriptArgument(variant, value)
+        return cls(variant, value)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.u8(self.variant)
@@ -433,8 +433,9 @@ class EntryFunction:
     def __str__(self):
         return f"{self.module}::{self.function}::<{self.ty_args}>({self.args})"
 
-    @staticmethod
+    @classmethod
     def natural(
+        cls,
         module: str,
         function: str,
         ty_args: List[TypeTag],
@@ -445,15 +446,15 @@ class EntryFunction:
         byte_args = []
         for arg in args:
             byte_args.append(arg.encode())
-        return EntryFunction(module_id, function, ty_args, byte_args)
+        return cls(module_id, function, ty_args, byte_args)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> EntryFunction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> EntryFunction:
         module = ModuleId.deserialize(deserializer)
         function = deserializer.str()
         ty_args = deserializer.sequence(TypeTag.deserialize)
         args = deserializer.sequence(Deserializer.to_bytes)
-        return EntryFunction(module, function, ty_args, args)
+        return cls(module, function, ty_args, args)
 
     def serialize(self, serializer: Serializer) -> None:
         self.module.serialize(serializer)
@@ -478,16 +479,16 @@ class ModuleId:
     def __str__(self) -> str:
         return f"{self.address}::{self.name}"
 
-    @staticmethod
-    def from_str(module_id: str) -> ModuleId:
+    @classmethod
+    def from_str(cls, module_id: str) -> ModuleId:
         split = module_id.split("::")
-        return ModuleId(AccountAddress.from_str(split[0]), split[1])
+        return cls(AccountAddress.from_str(split[0]), split[1])
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> ModuleId:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> ModuleId:
         addr = AccountAddress.deserialize(deserializer)
         name = deserializer.str()
-        return ModuleId(addr, name)
+        return cls(addr, name)
 
     def serialize(self, serializer: Serializer) -> None:
         self.address.serialize(serializer)
@@ -565,11 +566,11 @@ class SignedTransaction:
             transaction = self.transaction
         return self.authenticator.verify(transaction.keyed())
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SignedTransaction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> SignedTransaction:
         transaction = RawTransaction.deserialize(deserializer)
         authenticator = Authenticator.deserialize(deserializer)
-        return SignedTransaction(transaction, authenticator)
+        return cls(transaction, authenticator)
 
     def serialize(self, serializer: Serializer) -> None:
         self.transaction.serialize(serializer)

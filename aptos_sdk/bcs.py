@@ -32,8 +32,8 @@ class Deserializable(Protocol):
         der = Deserializer(indata)
         return der.struct(cls)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Deserializable: ...
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Deserializable: ...
 
 
 class Serializable(Protocol):

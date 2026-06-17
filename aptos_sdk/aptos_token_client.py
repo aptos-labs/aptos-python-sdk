@@ -23,9 +23,9 @@ class Object:
         self.allow_ungated_transfer = allow_ungated_transfer
         self.owner = owner
 
-    @staticmethod
-    def parse(resource: dict[str, Any]) -> Object:
-        return Object(
+    @classmethod
+    def parse(cls, resource: dict[str, Any]) -> Object:
+        return cls(
             resource["allow_ungated_transfer"],
             AccountAddress.from_str_relaxed(resource["owner"]),
         )
@@ -51,9 +51,9 @@ class Collection:
     def __str__(self) -> str:
         return f"AccountAddress[creator: {self.creator}, description: {self.description}, name: {self.name}, ur: {self.uri}]"
 
-    @staticmethod
-    def parse(resource: dict[str, Any]) -> Collection:
-        return Collection(
+    @classmethod
+    def parse(cls, resource: dict[str, Any]) -> Collection:
+        return cls(
             AccountAddress.from_str_relaxed(resource["creator"]),
             resource["description"],
             resource["name"],
@@ -76,9 +76,9 @@ class Royalty:
     def __str__(self) -> str:
         return f"Royalty[numerator: {self.numerator}, denominator: {self.denominator}, payee_address: {self.payee_address}]"
 
-    @staticmethod
-    def parse(resource: dict[str, Any]) -> Royalty:
-        return Royalty(
+    @classmethod
+    def parse(cls, resource: dict[str, Any]) -> Royalty:
+        return cls(
             resource["numerator"],
             resource["denominator"],
             AccountAddress.from_str_relaxed(resource["payee_address"]),
@@ -111,9 +111,9 @@ class Token:
     def __str__(self) -> str:
         return f"Token[collection: {self.collection}, index: {self.index}, description: {self.description}, name: {self.name}, uri: {self.uri}]"
 
-    @staticmethod
-    def parse(resource: dict[str, Any]):
-        return Token(
+    @classmethod
+    def parse(cls, resource: dict[str, Any]):
+        return cls(
             AccountAddress.from_str_relaxed(resource["collection"]["inner"]),
             int(resource["index"]),
             resource["description"],
@@ -190,67 +190,67 @@ class Property:
             TransactionArgument(self.serialize_value(), Serializer.to_bytes),
         ]
 
-    @staticmethod
-    def parse(name: str, property_type: int, value: bytes) -> Property:
+    @classmethod
+    def parse(cls, name: str, property_type: int, value: bytes) -> Property:
         deserializer = Deserializer(value)
 
         if property_type == Property.BOOL:
-            return Property(name, "bool", deserializer.bool())
+            return cls(name, "bool", deserializer.bool())
         elif property_type == Property.U8:
-            return Property(name, "u8", deserializer.u8())
+            return cls(name, "u8", deserializer.u8())
         elif property_type == Property.U16:
-            return Property(name, "u16", deserializer.u16())
+            return cls(name, "u16", deserializer.u16())
         elif property_type == Property.U32:
-            return Property(name, "u32", deserializer.u32())
+            return cls(name, "u32", deserializer.u32())
         elif property_type == Property.U64:
-            return Property(name, "u64", deserializer.u64())
+            return cls(name, "u64", deserializer.u64())
         elif property_type == Property.U128:
-            return Property(name, "u128", deserializer.u128())
+            return cls(name, "u128", deserializer.u128())
         elif property_type == Property.U256:
-            return Property(name, "u256", deserializer.u256())
+            return cls(name, "u256", deserializer.u256())
         elif property_type == Property.ADDRESS:
-            return Property(name, "address", AccountAddress.deserialize(deserializer))
+            return cls(name, "address", AccountAddress.deserialize(deserializer))
         elif property_type == Property.STRING:
-            return Property(name, "0x1::string::String", deserializer.str())
+            return cls(name, "0x1::string::String", deserializer.str())
         elif property_type == Property.BYTE_VECTOR:
-            return Property(name, "vector<u8>", deserializer.to_bytes())
+            return cls(name, "vector<u8>", deserializer.to_bytes())
         raise InvalidPropertyType(property_type)
 
-    @staticmethod
-    def bool(name: str, value: bool) -> Property:
-        return Property(name, "bool", value)
+    @classmethod
+    def bool(cls, name: str, value: bool) -> Property:
+        return cls(name, "bool", value)
 
-    @staticmethod
-    def u8(name: str, value: int) -> Property:
-        return Property(name, "u8", value)
+    @classmethod
+    def u8(cls, name: str, value: int) -> Property:
+        return cls(name, "u8", value)
 
-    @staticmethod
-    def u16(name: str, value: int) -> Property:
-        return Property(name, "u16", value)
+    @classmethod
+    def u16(cls, name: str, value: int) -> Property:
+        return cls(name, "u16", value)
 
-    @staticmethod
-    def u32(name: str, value: int) -> Property:
-        return Property(name, "u32", value)
+    @classmethod
+    def u32(cls, name: str, value: int) -> Property:
+        return cls(name, "u32", value)
 
-    @staticmethod
-    def u64(name: str, value: int) -> Property:
-        return Property(name, "u64", value)
+    @classmethod
+    def u64(cls, name: str, value: int) -> Property:
+        return cls(name, "u64", value)
 
-    @staticmethod
-    def u128(name: str, value: int) -> Property:
-        return Property(name, "u128", value)
+    @classmethod
+    def u128(cls, name: str, value: int) -> Property:
+        return cls(name, "u128", value)
 
-    @staticmethod
-    def u256(name: str, value: int) -> Property:
-        return Property(name, "u256", value)
+    @classmethod
+    def u256(cls, name: str, value: int) -> Property:
+        return cls(name, "u256", value)
 
-    @staticmethod
-    def string(name: str, value: str) -> Property:
-        return Property(name, "0x1::string::String", value)
+    @classmethod
+    def string(cls, name: str, value: str) -> Property:
+        return cls(name, "0x1::string::String", value)
 
-    @staticmethod
-    def bytes(name: str, value: bytes) -> Property:
-        return Property(name, "vector<u8>", value)
+    @classmethod
+    def bytes(cls, name: str, value: bytes) -> Property:
+        return cls(name, "vector<u8>", value)
 
 
 class PropertyMap:
@@ -282,8 +282,8 @@ class PropertyMap:
 
         return (names, types, values)
 
-    @staticmethod
-    def parse(resource: dict[str, Any]) -> PropertyMap:
+    @classmethod
+    def parse(cls, resource: dict[str, Any]) -> PropertyMap:
         props = resource["inner"]["data"]
         properties = []
         for prop in props:
@@ -295,7 +295,7 @@ class PropertyMap:
                 )
             )
 
-        return PropertyMap(properties)
+        return cls(properties)
 
 
 class ReadObject:
