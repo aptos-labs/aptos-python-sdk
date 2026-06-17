@@ -43,6 +43,16 @@ jobs:
 
       - uses: ./.github/actions/python-setup
 
+      - name: Verify release tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [[ "v${VERSION}" != "${TAG}" ]]; then
+            echo "::error::Release tag ${TAG} does not match pyproject.toml version ${VERSION} (expected v${VERSION})"
+            exit 1
+          fi
+
       - name: Build package
         run: uv build
 
