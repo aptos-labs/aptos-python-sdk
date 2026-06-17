@@ -117,9 +117,7 @@ class AccountAddress:
     def for_named_token(
         cls, creator: AccountAddress, collection_name: str, token_name: str
     ) -> AccountAddress:
-        return cls.for_named_object(
-            creator, collection_name.encode() + b"::" + token_name.encode()
-        )
+        return cls.for_named_object(creator, collection_name.encode() + b"::" + token_name.encode())
 
     # --- BCS ---
 
