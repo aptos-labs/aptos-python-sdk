@@ -54,7 +54,7 @@ jobs:
             echo "::error::Manual publish must be dispatched from a version tag (refs/tags/v*), got ${{ github.ref }}"
             exit 1
           fi
-          VERSION=$(python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_bytes())['project']['version'])")
+          VERSION=$(python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
           if [[ "v${VERSION}" != "${TAG}" ]]; then
             echo "::error::Release tag ${TAG} does not match pyproject.toml version ${VERSION} (expected v${VERSION})"
             exit 1
