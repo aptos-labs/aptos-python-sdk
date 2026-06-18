@@ -43,6 +43,23 @@ jobs:
 
       - uses: ./.github/actions/python-setup
 
+      - name: Verify release tag matches package version
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (inputs.dry_run == false || inputs.dry_run == 'false'))
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            echo "::error::Manual publish must be dispatched from a version tag (refs/tags/v*), got ${{ github.ref }}"
+            exit 1
+          fi
+          VERSION=$(python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [[ "v${VERSION}" != "${TAG}" ]]; then
+            echo "::error::Release tag ${TAG} does not match pyproject.toml version ${VERSION} (expected v${VERSION})"
+            exit 1
+          fi
+
       - name: Build package
         run: uv build
 
@@ -55,7 +72,7 @@ jobs:
   publish-pypi:
     name: Publish to PyPI
     needs: build
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (inputs.dry_run == false || inputs.dry_run == 'false'))
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
