@@ -19,6 +19,47 @@ from aptos_sdk_v2.types.account_address import AccountAddress
 from aptos_sdk_v2.types.type_tag import StructTag, TypeTag
 
 
+class TestStructArgumentEncoding:
+    """Struct entry-function args must not be encoded with Serializer.map.
+
+    Explorers render struct arguments as JSON objects (e.g. ``{"inner": "0x..."}``),
+    but BCS encodes structs as ordered field values. Move ``map<K, V>`` is a different
+    type with its own encoding (uleb128 length + key/value pairs sorted by encoded key bytes).
+    """
+
+    COLLECTION = "0xd42cd397c41a62eaf03e83ad0324ff6822178a3e40aa596c4b9930561d4753e5"
+
+    def test_map_encoding_round_trips(self):
+        values = {"inner": self.COLLECTION}
+        ser = Serializer()
+        ser.map(values, Serializer.str, Serializer.str)
+        assert Deserializer(ser.output()).map(Deserializer.str, Deserializer.str) == values
+
+    def test_object_inner_field_is_address_not_map(self):
+        collection = AccountAddress.from_str(self.COLLECTION)
+
+        wrong = TransactionArgument(
+            {"inner": self.COLLECTION},
+            lambda ser, val: ser.map(val, Serializer.str, Serializer.str),
+        )
+        correct = TransactionArgument(collection, Serializer.struct)
+
+        assert wrong.encode() != correct.encode()
+        assert correct.encode().hex() == self.COLLECTION.removeprefix("0x")
+
+    def test_vector_field_is_sequence_not_map(self):
+        wrong = TransactionArgument(
+            {"vec": ["1"]},
+            lambda ser, val: ser.map(
+                val, Serializer.str, Serializer.sequence_serializer(Serializer.str)
+            ),
+        )
+        correct = TransactionArgument(["1"], Serializer.sequence_serializer(Serializer.str))
+
+        assert wrong.encode() != correct.encode()
+        assert correct.encode().hex() == "010131"
+
+
 class TestEntryFunctionSignVerify:
     def test_sign_and_verify(self):
         private_key = Ed25519PrivateKey.generate()
@@ -314,6 +355,14 @@ class TestPayloadTypes:
 
 
 class TestSignedTransactionExtras:
+    def test_signed_txn_hash(self):
+        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040f25b74ec60a38a1ed780fd2bef6ddb6eb4356e3ab39276c9176cdf0fcae2ab37d79b626abb43d926e91595b66503a4a3c90acbae36a28d405e308f3537af720b"
+        signed = SignedTransaction.deserialize(
+            Deserializer(bytes.fromhex(signed_transaction_input))
+        )
+        assert signed.hash() == "0xdb7e0f0b00b817ad8a9d2eae33cf4eec9e25110bac48fa6807000f43128f17ac"
+        assert signed.hash() == signed.hash()
+
     def test_signed_txn_bytes(self):
         key = Ed25519PrivateKey.generate()
         addr = AuthenticationKey.from_public_key(key.public_key()).account_address()

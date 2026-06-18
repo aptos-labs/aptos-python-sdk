@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from ..bcs import Deserializer, Serializer
 from .authenticator import (
     AccountAuthenticator,
@@ -15,6 +17,9 @@ from .raw_transaction import (
     MultiAgentRawTransaction,
     RawTransaction,
 )
+
+_TRANSACTION_PREHASH: bytes = hashlib.sha3_256(b"APTOS::Transaction").digest()
+_USER_TRANSACTION_VARIANT: int = 0
 
 
 class SignedTransaction:
@@ -45,6 +50,13 @@ class SignedTransaction:
         self.serialize(ser)
         return ser.output()
 
+    def hash(self) -> str:
+        """Return the committed transaction hash without submitting to the network."""
+        digest = hashlib.sha3_256(
+            _TRANSACTION_PREHASH + bytes([_USER_TRANSACTION_VARIANT]) + self.to_bytes()
+        ).hexdigest()
+        return f"0x{digest}"
+
     def verify(self) -> bool:
         auth = self.authenticator.authenticator
         if isinstance(auth, MultiAgentAuthenticator):
@@ -58,11 +70,11 @@ class SignedTransaction:
         else:
             return self.authenticator.verify(self.transaction.keyed())
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SignedTransaction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> SignedTransaction:
         transaction = RawTransaction.deserialize(deserializer)
         authenticator = Authenticator.deserialize(deserializer)
-        return SignedTransaction(transaction, authenticator)
+        return cls(transaction, authenticator)
 
     def serialize(self, serializer: Serializer) -> None:
         self.transaction.serialize(serializer)

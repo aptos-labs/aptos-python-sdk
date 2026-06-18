@@ -34,9 +34,9 @@ class PrivateKey(ABC):
     @abstractmethod
     def serialize(self, serializer: Serializer) -> None: ...
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def deserialize(deserializer: Deserializer) -> PrivateKey: ...
+    def deserialize(cls, deserializer: Deserializer) -> PrivateKey: ...
 
     def aip80(self) -> str:
         return format_private_key(self.hex(), self._variant())
@@ -60,9 +60,9 @@ class PublicKey(ABC):
     @abstractmethod
     def serialize(self, serializer: Serializer) -> None: ...
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def deserialize(deserializer: Deserializer) -> PublicKey: ...
+    def deserialize(cls, deserializer: Deserializer) -> PublicKey: ...
 
 
 class Signature(ABC):
@@ -74,9 +74,9 @@ class Signature(ABC):
     @abstractmethod
     def serialize(self, serializer: Serializer) -> None: ...
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def deserialize(deserializer: Deserializer) -> Signature: ...
+    def deserialize(cls, deserializer: Deserializer) -> Signature: ...
 
 
 # --- AIP-80 helpers ---

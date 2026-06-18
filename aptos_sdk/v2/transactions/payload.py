@@ -28,20 +28,20 @@ class ModuleId:
     def __str__(self) -> str:
         return f"{self.address}::{self.name}"
 
-    @staticmethod
-    def from_str(module_id: str) -> ModuleId:
+    @classmethod
+    def from_str(cls, module_id: str) -> ModuleId:
         parts = module_id.split("::")
         if len(parts) != 2 or not parts[0] or not parts[1]:
             raise ValueError(
                 f"Invalid module ID '{module_id}': expected format 'address::module_name'"
             )
-        return ModuleId(AccountAddress.from_str(parts[0]), parts[1])
+        return cls(AccountAddress.from_str(parts[0]), parts[1])
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> ModuleId:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> ModuleId:
         addr = AccountAddress.deserialize(deserializer)
         name = deserializer.str()
-        return ModuleId(addr, name)
+        return cls(addr, name)
 
     def serialize(self, serializer: Serializer) -> None:
         self.address.serialize(serializer)
@@ -93,8 +93,9 @@ class EntryFunction:
     def __str__(self) -> str:
         return f"{self.module}::{self.function}::<{self.ty_args}>({self.args})"
 
-    @staticmethod
+    @classmethod
     def natural(
+        cls,
         module: str,
         function: str,
         ty_args: list[TypeTag],
@@ -102,15 +103,15 @@ class EntryFunction:
     ) -> EntryFunction:
         module_id = ModuleId.from_str(module)
         byte_args = [arg.encode() for arg in args]
-        return EntryFunction(module_id, function, ty_args, byte_args)
+        return cls(module_id, function, ty_args, byte_args)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> EntryFunction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> EntryFunction:
         module = ModuleId.deserialize(deserializer)
         function = deserializer.str()
         ty_args = deserializer.sequence(TypeTag.deserialize)
         args = deserializer.sequence(Deserializer.to_bytes)
-        return EntryFunction(module, function, ty_args, args)
+        return cls(module, function, ty_args, args)
 
     def serialize(self, serializer: Serializer) -> None:
         self.module.serialize(serializer)
@@ -134,12 +135,12 @@ class Script:
             return NotImplemented
         return self.code == other.code and self.ty_args == other.ty_args and self.args == other.args
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Script:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Script:
         code = deserializer.to_bytes()
         ty_args = deserializer.sequence(TypeTag.deserialize)
         args = deserializer.sequence(ScriptArgument.deserialize)
-        return Script(code, ty_args, args)
+        return cls(code, ty_args, args)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self.code)
@@ -171,8 +172,8 @@ class ScriptArgument:
             return NotImplemented
         return self.variant == other.variant and self.value == other.value
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> ScriptArgument:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> ScriptArgument:
         variant = deserializer.u8()
         value: Any
         match variant:
@@ -196,7 +197,7 @@ class ScriptArgument:
                 value = deserializer.bool()
             case _:
                 raise BcsDeserializationError(f"Invalid ScriptArgument variant: {variant}")
-        return ScriptArgument(variant, value)
+        return cls(variant, value)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.u8(self.variant)
@@ -246,14 +247,14 @@ class TransactionExecutable:
             return NotImplemented
         return self.variant == other.variant and self.value == other.value
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> TransactionExecutable:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> TransactionExecutable:
         variant = deserializer.uleb128()
         match variant:
             case TransactionExecutable.SCRIPT:
-                return TransactionExecutable(Script.deserialize(deserializer))
+                return cls(Script.deserialize(deserializer))
             case TransactionExecutable.ENTRY_FUNCTION:
-                return TransactionExecutable(EntryFunction.deserialize(deserializer))
+                return cls(EntryFunction.deserialize(deserializer))
             case _:
                 raise BcsDeserializationError(f"Invalid TransactionExecutable variant: {variant}")
 
@@ -284,14 +285,14 @@ class TransactionExtraConfig:
             and self.replay_protection_nonce == other.replay_protection_nonce
         )
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> TransactionExtraConfig:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> TransactionExtraConfig:
         variant = deserializer.uleb128()
         if variant != 0:
             raise BcsDeserializationError(f"Invalid TransactionExtraConfig variant: {variant}")
         multisig = deserializer.option(AccountAddress.deserialize)
         nonce = deserializer.option(Deserializer.u64)
-        return TransactionExtraConfig(multisig_address=multisig, replay_protection_nonce=nonce)
+        return cls(multisig_address=multisig, replay_protection_nonce=nonce)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(0)  # V1
@@ -317,14 +318,14 @@ class TransactionInnerPayload:
             return NotImplemented
         return self.executable == other.executable and self.extra_config == other.extra_config
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> TransactionInnerPayload:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> TransactionInnerPayload:
         variant = deserializer.uleb128()
         if variant != 0:
             raise BcsDeserializationError(f"Invalid TransactionInnerPayload variant: {variant}")
         executable = TransactionExecutable.deserialize(deserializer)
         extra_config = TransactionExtraConfig.deserialize(deserializer)
-        return TransactionInnerPayload(executable, extra_config)
+        return cls(executable, extra_config)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.uleb128(0)  # V1
@@ -360,16 +361,16 @@ class TransactionPayload:
     def __str__(self) -> str:
         return str(self.value)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> TransactionPayload:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> TransactionPayload:
         variant = deserializer.uleb128()
         match variant:
             case TransactionPayload.SCRIPT:
-                return TransactionPayload(Script.deserialize(deserializer))
+                return cls(Script.deserialize(deserializer))
             case TransactionPayload.ENTRY_FUNCTION:
-                return TransactionPayload(EntryFunction.deserialize(deserializer))
+                return cls(EntryFunction.deserialize(deserializer))
             case TransactionPayload.PAYLOAD:
-                return TransactionPayload(TransactionInnerPayload.deserialize(deserializer))
+                return cls(TransactionInnerPayload.deserialize(deserializer))
             case _:
                 raise BcsDeserializationError(f"Invalid TransactionPayload variant: {variant}")
 

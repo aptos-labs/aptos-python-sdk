@@ -31,18 +31,18 @@ class Account:
             self.account_address == other.account_address and self.private_key == other.private_key
         )
 
-    @staticmethod
-    def generate() -> Account:
+    @classmethod
+    def generate(cls) -> Account:
         """Generate a new Ed25519 account with a random private key.
 
         :returns: A new Account with a freshly generated Ed25519 key pair.
         """
         private_key = ed25519.PrivateKey.random()
         account_address = AccountAddress.from_key(private_key.public_key())
-        return Account(account_address, private_key)
+        return cls(account_address, private_key)
 
-    @staticmethod
-    def generate_secp256k1_ecdsa() -> Account:
+    @classmethod
+    def generate_secp256k1_ecdsa(cls) -> Account:
         """Generate a new Secp256k1 ECDSA account with a random private key.
 
         :returns: A new Account with a freshly generated Secp256k1 key pair.
@@ -50,10 +50,10 @@ class Account:
         private_key = secp256k1_ecdsa.PrivateKey.random()
         public_key = asymmetric_crypto_wrapper.PublicKey(private_key.public_key())
         account_address = AccountAddress.from_key(public_key)
-        return Account(account_address, private_key)
+        return cls(account_address, private_key)
 
-    @staticmethod
-    def load_key(key: str) -> Account:
+    @classmethod
+    def load_key(cls, key: str) -> Account:
         """Create an Account from an Ed25519 private key hex string.
 
         :param key: Hex-encoded private key string.
@@ -61,10 +61,10 @@ class Account:
         """
         private_key = ed25519.PrivateKey.from_str(key)
         account_address = AccountAddress.from_key(private_key.public_key())
-        return Account(account_address, private_key)
+        return cls(account_address, private_key)
 
-    @staticmethod
-    def load(path: str) -> Account:
+    @classmethod
+    def load(cls, path: str) -> Account:
         """Load an Account from a JSON file containing ``account_address`` and ``private_key``.
 
         :param path: Path to the JSON file.
@@ -72,7 +72,7 @@ class Account:
         """
         with open(path) as file:
             data = json.load(file)
-        return Account(
+        return cls(
             AccountAddress.from_str_relaxed(data["account_address"]),
             ed25519.PrivateKey.from_str(data["private_key"]),
         )

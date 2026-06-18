@@ -43,31 +43,31 @@ class TypeTag(Deserializable, Serializable):
     def __repr__(self):
         return self.__str__()
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> TypeTag:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> TypeTag:
         variant = deserializer.uleb128()
         if variant == TypeTag.BOOL:
-            return TypeTag(BoolTag.deserialize(deserializer))
+            return cls(BoolTag.deserialize(deserializer))
         elif variant == TypeTag.U8:
-            return TypeTag(U8Tag.deserialize(deserializer))
+            return cls(U8Tag.deserialize(deserializer))
         elif variant == TypeTag.U16:
-            return TypeTag(U16Tag.deserialize(deserializer))
+            return cls(U16Tag.deserialize(deserializer))
         elif variant == TypeTag.U32:
-            return TypeTag(U32Tag.deserialize(deserializer))
+            return cls(U32Tag.deserialize(deserializer))
         elif variant == TypeTag.U64:
-            return TypeTag(U64Tag.deserialize(deserializer))
+            return cls(U64Tag.deserialize(deserializer))
         elif variant == TypeTag.U128:
-            return TypeTag(U128Tag.deserialize(deserializer))
+            return cls(U128Tag.deserialize(deserializer))
         elif variant == TypeTag.U256:
-            return TypeTag(U256Tag.deserialize(deserializer))
+            return cls(U256Tag.deserialize(deserializer))
         elif variant == TypeTag.ACCOUNT_ADDRESS:
-            return TypeTag(AccountAddressTag.deserialize(deserializer))
+            return cls(AccountAddressTag.deserialize(deserializer))
         elif variant == TypeTag.SIGNER:
             raise NotImplementedError
         elif variant == TypeTag.VECTOR:
             raise NotImplementedError
         elif variant == TypeTag.STRUCT:
-            return TypeTag(StructTag.deserialize(deserializer))
+            return cls(StructTag.deserialize(deserializer))
         raise NotImplementedError
 
     def serialize(self, serializer: Serializer):
@@ -92,9 +92,9 @@ class BoolTag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.BOOL
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> BoolTag:
-        return BoolTag(deserializer.bool())
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> BoolTag:
+        return cls(deserializer.bool())
 
     def serialize(self, serializer: Serializer):
         serializer.bool(self.value)
@@ -117,9 +117,9 @@ class U8Tag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.U8
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> U8Tag:
-        return U8Tag(deserializer.u8())
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> U8Tag:
+        return cls(deserializer.u8())
 
     def serialize(self, serializer: Serializer):
         serializer.u8(self.value)
@@ -142,9 +142,9 @@ class U16Tag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.U16
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> U16Tag:
-        return U16Tag(deserializer.u16())
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> U16Tag:
+        return cls(deserializer.u16())
 
     def serialize(self, serializer: Serializer):
         serializer.u16(self.value)
@@ -167,9 +167,9 @@ class U32Tag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.U32
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> U32Tag:
-        return U32Tag(deserializer.u32())
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> U32Tag:
+        return cls(deserializer.u32())
 
     def serialize(self, serializer: Serializer):
         serializer.u32(self.value)
@@ -192,9 +192,9 @@ class U64Tag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.U64
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> U64Tag:
-        return U64Tag(deserializer.u64())
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> U64Tag:
+        return cls(deserializer.u64())
 
     def serialize(self, serializer: Serializer):
         serializer.u64(self.value)
@@ -217,9 +217,9 @@ class U128Tag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.U128
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> U128Tag:
-        return U128Tag(deserializer.u128())
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> U128Tag:
+        return cls(deserializer.u128())
 
     def serialize(self, serializer: Serializer):
         serializer.u128(self.value)
@@ -242,9 +242,9 @@ class U256Tag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.U256
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> U256Tag:
-        return U256Tag(deserializer.u256())
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> U256Tag:
+        return cls(deserializer.u256())
 
     def serialize(self, serializer: Serializer):
         serializer.u256(self.value)
@@ -267,9 +267,9 @@ class AccountAddressTag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.ACCOUNT_ADDRESS
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AccountAddressTag:
-        return AccountAddressTag(deserializer.struct(AccountAddress))
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> AccountAddressTag:
+        return cls(deserializer.struct(AccountAddress))
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.value)
@@ -306,13 +306,13 @@ class StructTag(Deserializable, Serializable):
             value += ">"
         return value
 
-    @staticmethod
+    @classmethod
     @lru_cache(maxsize=256)
-    def from_str(type_tag: str) -> StructTag:
-        return StructTag._from_str_internal(type_tag, 0)[0][0].value
+    def from_str(cls, type_tag: str) -> StructTag:
+        return cls._from_str_internal(type_tag, 0)[0][0].value
 
-    @staticmethod
-    def _from_str_internal(type_tag: str, index: int) -> Tuple[List[TypeTag], int]:
+    @classmethod
+    def _from_str_internal(cls, type_tag: str, index: int) -> Tuple[List[TypeTag], int]:
         name = ""
         tags = []
         inner_tags: List[TypeTag] = []
@@ -325,7 +325,7 @@ class StructTag(Deserializable, Serializable):
                 continue
 
             if letter == "<":
-                inner_tags, index = StructTag._from_str_internal(type_tag, index)
+                inner_tags, index = cls._from_str_internal(type_tag, index)
             elif letter == ",":
                 split = name.split("::")
                 tag = TypeTag(
@@ -359,13 +359,13 @@ class StructTag(Deserializable, Serializable):
     def variant(self):
         return TypeTag.STRUCT
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> StructTag:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> StructTag:
         address = deserializer.struct(AccountAddress)
         module = deserializer.str()
         name = deserializer.str()
         type_args = deserializer.sequence(TypeTag.deserialize)
-        return StructTag(address, module, name, type_args)
+        return cls(address, module, name, type_args)
 
     def serialize(self, serializer: Serializer):
         self.address.serialize(serializer)

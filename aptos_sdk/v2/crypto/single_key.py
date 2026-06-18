@@ -57,14 +57,14 @@ class AnyPublicKey(PublicKey):
             return self._inner.verify(data, signature.inner)
         return self._inner.verify(data, signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AnyPublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> AnyPublicKey:
         variant = deserializer.uleb128()
         match variant:
             case AnyPublicKeyVariant.ED25519:
-                return AnyPublicKey(Ed25519PublicKey.deserialize(deserializer))
+                return cls(Ed25519PublicKey.deserialize(deserializer))
             case AnyPublicKeyVariant.SECP256K1:
-                return AnyPublicKey(Secp256k1PublicKey.deserialize(deserializer))
+                return cls(Secp256k1PublicKey.deserialize(deserializer))
             case _:
                 raise InvalidKeyError(f"Unknown AnyPublicKey variant: {variant}")
 
@@ -106,14 +106,14 @@ class AnySignature(Signature):
     def data(self) -> bytes:
         return self._inner.data()
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AnySignature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> AnySignature:
         variant = deserializer.uleb128()
         match variant:
             case AnyPublicKeyVariant.ED25519:
-                return AnySignature(Ed25519Signature.deserialize(deserializer))
+                return cls(Ed25519Signature.deserialize(deserializer))
             case AnyPublicKeyVariant.SECP256K1:
-                return AnySignature(Secp256k1Signature.deserialize(deserializer))
+                return cls(Secp256k1Signature.deserialize(deserializer))
             case _:
                 raise InvalidSignatureError(f"Unknown AnySignature variant: {variant}")
 
