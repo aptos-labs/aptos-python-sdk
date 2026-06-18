@@ -44,7 +44,7 @@ jobs:
       - uses: ./.github/actions/python-setup
 
       - name: Verify release tag matches package version
-        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (inputs.dry_run == false || inputs.dry_run == 'false'))
         run: |
           if [[ "${{ github.event_name }}" == "release" ]]; then
             TAG="${{ github.event.release.tag_name }}"
@@ -72,7 +72,7 @@ jobs:
   publish-pypi:
     name: Publish to PyPI
     needs: build
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (inputs.dry_run == false || inputs.dry_run == 'false'))
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
