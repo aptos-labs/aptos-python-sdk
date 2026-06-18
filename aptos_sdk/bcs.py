@@ -313,6 +313,28 @@ class Test(unittest.TestCase):
 
         self.assertEqual(in_value, out_value)
 
+    def test_struct_args_are_not_maps(self):
+        """Struct entry-function args serialize field values, not field-name maps."""
+        from .account_address import AccountAddress
+
+        collection = "0xd42cd397c41a62eaf03e83ad0324ff6822178a3e40aa596c4b9930561d4753e5"
+        address = AccountAddress.from_str(collection)
+
+        ser_map = Serializer()
+        ser_map.map({"inner": collection}, Serializer.str, Serializer.str)
+        map_bytes = ser_map.output()
+
+        ser_struct = Serializer()
+        address.serialize(ser_struct)
+        struct_bytes = ser_struct.output()
+
+        self.assertNotEqual(map_bytes, struct_bytes)
+        self.assertEqual(struct_bytes.hex(), collection.removeprefix("0x"))
+        self.assertEqual(
+            Deserializer(map_bytes).map(Deserializer.str, Deserializer.str),
+            {"inner": collection},
+        )
+
     def test_sequence(self):
         in_value = ["a", "abc", "def", "ghi"]
 
