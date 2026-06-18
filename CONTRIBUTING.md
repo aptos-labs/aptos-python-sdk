@@ -28,7 +28,7 @@ Then create a GitHub **environment** named `pypi` under **Settings → Environme
    - Paste the new `CHANGELOG.md` section as release notes
 4. Click **Publish release**. The `Publish aptos-sdk to PyPI` workflow runs automatically.
 
-To dry-run the pipeline without publishing, run the workflow manually from the Actions tab with **Dry run** enabled (tests and build only).
+To dry-run the pipeline without publishing, run the workflow manually from the Actions tab with **Dry run** enabled (tests and build only). A manual publish (`Dry run` disabled) must be dispatched from a `v*` tag that matches `pyproject.toml`.
 
 ### Local build
 

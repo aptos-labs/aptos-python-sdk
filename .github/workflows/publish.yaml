@@ -44,10 +44,17 @@ jobs:
       - uses: ./.github/actions/python-setup
 
       - name: Verify release tag matches package version
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            echo "::error::Manual publish must be dispatched from a version tag (refs/tags/v*), got ${{ github.ref }}"
+            exit 1
+          fi
+          VERSION=$(python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_bytes())['project']['version'])")
           if [[ "v${VERSION}" != "${TAG}" ]]; then
             echo "::error::Release tag ${TAG} does not match pyproject.toml version ${VERSION} (expected v${VERSION})"
             exit 1
