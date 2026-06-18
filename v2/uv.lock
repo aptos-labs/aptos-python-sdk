@@ -166,7 +166,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.1,<4" },
-    { name = "aioresponses", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "aioresponses", marker = "extra == 'dev'", specifier = ">=0.7.8" },
     { name = "bip-utils", specifier = ">=2.9,<3" },
     { name = "cryptography", specifier = ">=48.0.1,<49" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
