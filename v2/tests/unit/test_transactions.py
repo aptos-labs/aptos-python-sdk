@@ -24,7 +24,7 @@ class TestStructArgumentEncoding:
 
     Explorers render struct arguments as JSON objects (e.g. ``{"inner": "0x..."}``),
     but BCS encodes structs as ordered field values. Move ``map<K, V>`` is a different
-    type with its own encoding (length + lexicographically sorted key/value pairs).
+    type with its own encoding (uleb128 length + key/value pairs sorted by encoded key bytes).
     """
 
     COLLECTION = "0xd42cd397c41a62eaf03e83ad0324ff6822178a3e40aa596c4b9930561d4753e5"
