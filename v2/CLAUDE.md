@@ -81,8 +81,8 @@ Every BCS type implements:
 ```python
 def serialize(self, serializer: Serializer) -> None: ...
 
-@staticmethod
-def deserialize(deserializer: Deserializer) -> Self: ...
+@classmethod
+def deserialize(cls, deserializer: Deserializer) -> Self: ...
 ```
 
 Use `Serializable` and `Deserializable` protocols from `bcs/protocols.py`. Call `serializer.struct(obj)` for nested types, `serializer.sequence(items, Serializer.struct)` for lists.

@@ -36,8 +36,8 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def __str__(self):
         return self.aip80()
 
-    @staticmethod
-    def from_hex(value: str | bytes, strict: bool | None = None) -> PrivateKey:
+    @classmethod
+    def from_hex(cls, value: str | bytes, strict: bool | None = None) -> PrivateKey:
         """
         Parse a HexInput that may be a hex string, bytes, or an AIP-80 compliant string to a private key.
 
@@ -45,7 +45,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         :param strict: If true, the value MUST be compliant with AIP-80.
         :return: Parsed private key as bytes.
         """
-        parsed_value = PrivateKey.parse_hex_input(
+        parsed_value = cls.parse_hex_input(
             value, asymmetric_crypto.PrivateKeyVariant.Secp256k1, strict
         )
         if len(parsed_value) != PrivateKey.LENGTH:
@@ -53,10 +53,10 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         private_int = int.from_bytes(parsed_value, "big")
         if not (1 <= private_int < _SECP256K1_ORDER):
             raise InvalidKeyError("Invalid Secp256k1 private key scalar")
-        return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
+        return cls(ec.derive_private_key(private_int, ec.SECP256K1()))
 
-    @staticmethod
-    def from_str(value: str, strict: bool | None = None) -> PrivateKey:
+    @classmethod
+    def from_str(cls, value: str, strict: bool | None = None) -> PrivateKey:
         """
         Parse a HexInput that may be a hex string or an AIP-80 compliant string to a private key.
 
@@ -64,7 +64,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         :param strict: If true, the value MUST be compliant with AIP-80.
         :return: Parsed Secp256k1 private key.
         """
-        return PrivateKey.from_hex(value, strict)
+        return cls.from_hex(value, strict)
 
     def hex(self) -> str:
         raw = self.key.private_numbers().private_value.to_bytes(PrivateKey.LENGTH, "big")
@@ -78,9 +78,9 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def public_key(self) -> PublicKey:
         return PublicKey(self.key.public_key())
 
-    @staticmethod
-    def random() -> PrivateKey:
-        return PrivateKey(ec.generate_private_key(ec.SECP256K1()))
+    @classmethod
+    def random(cls) -> PrivateKey:
+        return cls(ec.generate_private_key(ec.SECP256K1()))
 
     def sign(self, data: bytes) -> Signature:
         der_sig = self.key.sign(data, ec.ECDSA(hashes.SHA3_256()))
@@ -92,15 +92,15 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         sig_bytes = r.to_bytes(32, "big") + s.to_bytes(32, "big")
         return Signature(sig_bytes)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> PrivateKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> PrivateKey:
         key = deserializer.to_bytes()
         if len(key) != PrivateKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
         private_int = int.from_bytes(key, "big")
         if not (1 <= private_int < _SECP256K1_ORDER):
             raise InvalidKeyError("Invalid Secp256k1 private key scalar")
-        return PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
+        return cls(ec.derive_private_key(private_int, ec.SECP256K1()))
 
     def serialize(self, serializer: Serializer):
         raw = self.key.private_numbers().private_value.to_bytes(PrivateKey.LENGTH, "big")
@@ -126,8 +126,8 @@ class PublicKey(asymmetric_crypto.PublicKey):
     def __str__(self) -> str:
         return self.hex()
 
-    @staticmethod
-    def from_str(value: str) -> PublicKey:
+    @classmethod
+    def from_str(cls, value: str) -> PublicKey:
         if value[0:2] == "0x":
             value = value[2:]
         # Hex values are twice the length of their binary counterpart.
@@ -141,7 +141,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             raw = b"\x04" + raw
         elif raw[0] != 0x04:
             raise InvalidKeyError("Invalid uncompressed point prefix")
-        return PublicKey(ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), raw))
+        return cls(ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), raw))
 
     def _raw_bytes(self) -> bytes:
         nums = self.key.public_numbers()
@@ -171,8 +171,8 @@ class PublicKey(asymmetric_crypto.PublicKey):
     def to_crypto_bytes(self) -> bytes:
         return b"\x04" + self._raw_bytes()
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> PublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> PublicKey:
         key = deserializer.to_bytes()
         if len(key) == PublicKey.LENGTH_WITH_PREFIX_LENGTH:
             if key[0] != 0x04:
@@ -180,9 +180,7 @@ class PublicKey(asymmetric_crypto.PublicKey):
             key = key[1:]
         elif len(key) != PublicKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
-        return PublicKey(
-            ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), b"\x04" + key)
-        )
+        return cls(ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), b"\x04" + key))
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.to_crypto_bytes())
@@ -207,24 +205,24 @@ class Signature(asymmetric_crypto.Signature):
     def hex(self) -> str:
         return f"0x{self.signature.hex()}"
 
-    @staticmethod
-    def from_str(value: str) -> Signature:
+    @classmethod
+    def from_str(cls, value: str) -> Signature:
         if value[0:2] == "0x":
             value = value[2:]
         if len(value) != Signature.LENGTH * 2:
             raise InvalidSignatureError("Length mismatch")
-        return Signature(bytes.fromhex(value))
+        return cls(bytes.fromhex(value))
 
     def data(self) -> bytes:
         return self.signature
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Signature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Signature:
         signature = deserializer.to_bytes()
         if len(signature) != Signature.LENGTH:
             raise InvalidSignatureError("Length mismatch")
 
-        return Signature(signature)
+        return cls(signature)
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.signature)

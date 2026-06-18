@@ -29,8 +29,8 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def __str__(self):
         return self.aip80()
 
-    @staticmethod
-    def from_hex(value: str | bytes, strict: bool | None = None) -> PrivateKey:
+    @classmethod
+    def from_hex(cls, value: str | bytes, strict: bool | None = None) -> PrivateKey:
         """
         Parse a HexInput that may be a hex string, bytes, or an AIP-80 compliant string to a private key.
 
@@ -38,16 +38,14 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         :param strict: If true, the value MUST be compliant with AIP-80.
         :return: Parsed Ed25519 private key.
         """
-        return PrivateKey(
+        return cls(
             SigningKey(
-                PrivateKey.parse_hex_input(
-                    value, asymmetric_crypto.PrivateKeyVariant.Ed25519, strict
-                )
+                cls.parse_hex_input(value, asymmetric_crypto.PrivateKeyVariant.Ed25519, strict)
             )
         )
 
-    @staticmethod
-    def from_str(value: str, strict: bool | None = None) -> PrivateKey:
+    @classmethod
+    def from_str(cls, value: str, strict: bool | None = None) -> PrivateKey:
         """
         Parse a HexInput that may be a hex string or an AIP-80 compliant string to a private key.
 
@@ -55,7 +53,7 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
         :param strict: If true, the value MUST be compliant with AIP-80.
         :return: Parsed Ed25519 private key.
         """
-        return PrivateKey.from_hex(value, strict)
+        return cls.from_hex(value, strict)
 
     def hex(self) -> str:
         return f"0x{self.key.encode().hex()}"
@@ -68,20 +66,20 @@ class PrivateKey(asymmetric_crypto.PrivateKey):
     def public_key(self) -> PublicKey:
         return PublicKey(self.key.verify_key)
 
-    @staticmethod
-    def random() -> PrivateKey:
-        return PrivateKey(SigningKey.generate())
+    @classmethod
+    def random(cls) -> PrivateKey:
+        return cls(SigningKey.generate())
 
     def sign(self, data: bytes) -> Signature:
         return Signature(self.key.sign(data).signature)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> PrivateKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> PrivateKey:
         key = deserializer.to_bytes()
         if len(key) != PrivateKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
 
-        return PrivateKey(SigningKey(key))
+        return cls(SigningKey(key))
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.key.encode())
@@ -103,11 +101,11 @@ class PublicKey(asymmetric_crypto.PublicKey):
     def __str__(self) -> str:
         return f"0x{self.key.encode().hex()}"
 
-    @staticmethod
-    def from_str(value: str) -> PublicKey:
+    @classmethod
+    def from_str(cls, value: str) -> PublicKey:
         if value[0:2] == "0x":
             value = value[2:]
-        return PublicKey(VerifyKey(bytes.fromhex(value)))
+        return cls(VerifyKey(bytes.fromhex(value)))
 
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         try:
@@ -120,13 +118,13 @@ class PublicKey(asymmetric_crypto.PublicKey):
     def to_crypto_bytes(self) -> bytes:
         return self.key.encode()
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> PublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> PublicKey:
         key = deserializer.to_bytes()
         if len(key) != PublicKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
 
-        return PublicKey(VerifyKey(key))
+        return cls(VerifyKey(key))
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.key.encode())
@@ -167,8 +165,8 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
             return False
         return True
 
-    @staticmethod
-    def from_crypto_bytes(indata: bytes) -> MultiPublicKey:
+    @classmethod
+    def from_crypto_bytes(cls, indata: bytes) -> MultiPublicKey:
         total_keys = int(len(indata) / PublicKey.LENGTH)
         keys: List[PublicKey] = []
         for idx in range(total_keys):
@@ -176,7 +174,7 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
             end = (idx + 1) * PublicKey.LENGTH
             keys.append(PublicKey(VerifyKey(indata[start:end])))
         threshold = indata[-1]
-        return MultiPublicKey(keys, threshold)
+        return cls(keys, threshold)
 
     def to_crypto_bytes(self) -> bytes:
         key_bytes = bytearray()
@@ -185,10 +183,10 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
         key_bytes.append(self.threshold)
         return key_bytes
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiPublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiPublicKey:
         indata = deserializer.to_bytes()
-        return MultiPublicKey.from_crypto_bytes(indata)
+        return cls.from_crypto_bytes(indata)
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.to_crypto_bytes())
@@ -213,19 +211,19 @@ class Signature(asymmetric_crypto.Signature):
     def data(self) -> bytes:
         return self.signature
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Signature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Signature:
         signature = deserializer.to_bytes()
         if len(signature) != Signature.LENGTH:
             raise InvalidSignatureError("Length mismatch")
 
-        return Signature(signature)
+        return cls(signature)
 
-    @staticmethod
-    def from_str(value: str) -> Signature:
+    @classmethod
+    def from_str(cls, value: str) -> Signature:
         if value[0:2] == "0x":
             value = value[2:]
-        return Signature(bytes.fromhex(value))
+        return cls(bytes.fromhex(value))
 
     def serialize(self, serializer: Serializer):
         serializer.to_bytes(self.signature)
@@ -249,8 +247,9 @@ class MultiSignature(asymmetric_crypto.Signature):
     def __str__(self) -> str:
         return f"{self.signatures}"
 
-    @staticmethod
+    @classmethod
     def from_key_map(
+        cls,
         public_key: MultiPublicKey,
         signatures_map: List[Tuple[PublicKey, Signature]],
     ) -> MultiSignature:
@@ -258,10 +257,10 @@ class MultiSignature(asymmetric_crypto.Signature):
 
         for entry in signatures_map:
             signatures.append((public_key.keys.index(entry[0]), entry[1]))
-        return MultiSignature(signatures)
+        return cls(signatures)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> MultiSignature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> MultiSignature:
         signature_bytes = deserializer.to_bytes()
         count = len(signature_bytes) // Signature.LENGTH
         if count * Signature.LENGTH + MultiSignature.BITMAP_NUM_OF_BYTES != len(signature_bytes):
@@ -281,7 +280,7 @@ class MultiSignature(asymmetric_crypto.Signature):
                 current += 1
             position += 1
 
-        return MultiSignature(signatures)
+        return cls(signatures)
 
     def serialize(self, serializer: Serializer):
         signature_bytes = bytearray()

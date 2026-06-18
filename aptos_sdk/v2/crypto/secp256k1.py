@@ -39,28 +39,28 @@ class Secp256k1PrivateKey(PrivateKeyBase):
     def _variant(self) -> PrivateKeyVariant:
         return PrivateKeyVariant.SECP256K1
 
-    @staticmethod
-    def generate() -> Secp256k1PrivateKey:
-        return Secp256k1PrivateKey(ec.generate_private_key(ec.SECP256K1()))
+    @classmethod
+    def generate(cls) -> Secp256k1PrivateKey:
+        return cls(ec.generate_private_key(ec.SECP256K1()))
 
-    @staticmethod
-    def _from_raw(raw: bytes) -> Secp256k1PrivateKey:
+    @classmethod
+    def _from_raw(cls, raw: bytes) -> Secp256k1PrivateKey:
         if len(raw) != Secp256k1PrivateKey.LENGTH:
             raise InvalidKeyError("Length mismatch")
         private_int = int.from_bytes(raw, "big")
         if not (1 <= private_int < _N):
             raise InvalidKeyError("Secp256k1 private key scalar must be in [1, N)")
-        return Secp256k1PrivateKey(ec.derive_private_key(private_int, ec.SECP256K1()))
+        return cls(ec.derive_private_key(private_int, ec.SECP256K1()))
 
-    @staticmethod
-    def from_str(value: str, strict: bool | None = None) -> Secp256k1PrivateKey:
+    @classmethod
+    def from_str(cls, value: str, strict: bool | None = None) -> Secp256k1PrivateKey:
         raw = parse_hex_input(value, PrivateKeyVariant.SECP256K1, strict)
-        return Secp256k1PrivateKey._from_raw(raw)
+        return cls._from_raw(raw)
 
-    @staticmethod
-    def from_hex(value: str | bytes, strict: bool | None = None) -> Secp256k1PrivateKey:
+    @classmethod
+    def from_hex(cls, value: str | bytes, strict: bool | None = None) -> Secp256k1PrivateKey:
         raw = parse_hex_input(value, PrivateKeyVariant.SECP256K1, strict)
-        return Secp256k1PrivateKey._from_raw(raw)
+        return cls._from_raw(raw)
 
     def hex(self) -> str:
         raw = self._key.private_numbers().private_value.to_bytes(self.LENGTH, "big")
@@ -81,10 +81,10 @@ class Secp256k1PrivateKey(PrivateKeyBase):
         sig_bytes = r.to_bytes(32, "big") + s.to_bytes(32, "big")
         return Secp256k1Signature(sig_bytes)
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Secp256k1PrivateKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Secp256k1PrivateKey:
         key = deserializer.to_bytes()
-        return Secp256k1PrivateKey._from_raw(key)
+        return cls._from_raw(key)
 
     def serialize(self, serializer: Serializer) -> None:
         raw = self._key.private_numbers().private_value.to_bytes(self.LENGTH, "big")
@@ -114,14 +114,14 @@ class Secp256k1PublicKey(PublicKeyBase):
     def __str__(self) -> str:
         return f"0x04{self._raw.hex()}"
 
-    @staticmethod
-    def from_str(value: str) -> Secp256k1PublicKey:
+    @classmethod
+    def from_str(cls, value: str) -> Secp256k1PublicKey:
         if value.startswith("0x"):
             value = value[2:]
         raw = bytes.fromhex(value)
         if len(raw) == 65 and raw[0] == 0x04:
             raw = raw[1:]
-        return Secp256k1PublicKey(raw)
+        return cls(raw)
 
     def to_crypto_bytes(self) -> bytes:
         return b"\x04" + self._raw
@@ -144,10 +144,10 @@ class Secp256k1PublicKey(PublicKeyBase):
             return False
         return True
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Secp256k1PublicKey:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Secp256k1PublicKey:
         key = deserializer.to_bytes()
-        return Secp256k1PublicKey(key)
+        return cls(key)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self.to_crypto_bytes())
@@ -173,20 +173,20 @@ class Secp256k1Signature(SignatureBase):
     def data(self) -> bytes:
         return self._signature
 
-    @staticmethod
-    def from_str(value: str) -> Secp256k1Signature:
+    @classmethod
+    def from_str(cls, value: str) -> Secp256k1Signature:
         if value.startswith("0x"):
             value = value[2:]
         if len(value) != Secp256k1Signature.LENGTH * 2:
             raise InvalidSignatureError("Length mismatch")
-        return Secp256k1Signature(bytes.fromhex(value))
+        return cls(bytes.fromhex(value))
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> Secp256k1Signature:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> Secp256k1Signature:
         sig = deserializer.to_bytes()
         if len(sig) != Secp256k1Signature.LENGTH:
             raise InvalidSignatureError("Length mismatch")
-        return Secp256k1Signature(sig)
+        return cls(sig)
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.to_bytes(self._signature)

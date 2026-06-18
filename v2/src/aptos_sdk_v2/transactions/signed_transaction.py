@@ -70,11 +70,11 @@ class SignedTransaction:
         else:
             return self.authenticator.verify(self.transaction.keyed())
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> SignedTransaction:
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> SignedTransaction:
         transaction = RawTransaction.deserialize(deserializer)
         authenticator = Authenticator.deserialize(deserializer)
-        return SignedTransaction(transaction, authenticator)
+        return cls(transaction, authenticator)
 
     def serialize(self, serializer: Serializer) -> None:
         self.transaction.serialize(serializer)

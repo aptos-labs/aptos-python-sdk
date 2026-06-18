@@ -83,8 +83,8 @@ class AccountAddress:
         """
         return all(b == 0 for b in self.address[:-1]) and self.address[-1] < 0b10000
 
-    @staticmethod
-    def from_str(address: str) -> AccountAddress:
+    @classmethod
+    def from_str(cls, address: str) -> AccountAddress:
         """
         NOTE: This function has strict parsing behavior. For relaxed behavior, please use
         `from_string_relaxed` function.
@@ -117,7 +117,7 @@ class AccountAddress:
         if not address.startswith("0x"):
             raise RuntimeError("Hex string must start with a leading 0x.")
 
-        out = AccountAddress.from_str_relaxed(address)
+        out = cls.from_str_relaxed(address)
 
         # Check if the address is in LONG form. If it is not, this is only allowed for
         # special addresses, in which case we check it is in proper SHORT form.
@@ -144,8 +144,8 @@ class AccountAddress:
 
         return out
 
-    @staticmethod
-    def from_str_relaxed(address: str) -> AccountAddress:
+    @classmethod
+    def from_str_relaxed(cls, address: str) -> AccountAddress:
         """
         NOTE: This function has relaxed parsing behavior. For strict behavior, please use
         the `from_string` function. Where possible, use `from_string` rather than this
@@ -194,10 +194,10 @@ class AccountAddress:
             pad = "0" * (AccountAddress.LENGTH * 2 - len(addr))
             addr = pad + addr
 
-        return AccountAddress(bytes.fromhex(addr))
+        return cls(bytes.fromhex(addr))
 
-    @staticmethod
-    def from_key(key: asymmetric_crypto.PublicKey) -> AccountAddress:
+    @classmethod
+    def from_key(cls, key: asymmetric_crypto.PublicKey) -> AccountAddress:
         hasher = hashlib.sha3_256()
         hasher.update(key.to_crypto_bytes())
 
@@ -212,49 +212,49 @@ class AccountAddress:
         else:
             raise InvalidKeyError("Unsupported asymmetric_crypto.PublicKey key type.")
 
-        return AccountAddress(hasher.digest())
+        return cls(hasher.digest())
 
-    @staticmethod
-    def for_resource_account(creator: AccountAddress, seed: bytes) -> AccountAddress:
+    @classmethod
+    def for_resource_account(cls, creator: AccountAddress, seed: bytes) -> AccountAddress:
         hasher = hashlib.sha3_256()
         hasher.update(creator.address)
         hasher.update(seed)
         hasher.update(AuthKeyScheme.DeriveResourceAccountAddress)
-        return AccountAddress(hasher.digest())
+        return cls(hasher.digest())
 
-    @staticmethod
-    def for_guid_object(creator: AccountAddress, creation_num: int) -> AccountAddress:
+    @classmethod
+    def for_guid_object(cls, creator: AccountAddress, creation_num: int) -> AccountAddress:
         hasher = hashlib.sha3_256()
         serializer = Serializer()
         serializer.u64(creation_num)
         hasher.update(serializer.output())
         hasher.update(creator.address)
         hasher.update(AuthKeyScheme.DeriveObjectAddressFromGuid)
-        return AccountAddress(hasher.digest())
+        return cls(hasher.digest())
 
-    @staticmethod
-    def for_named_object(creator: AccountAddress, seed: bytes) -> AccountAddress:
+    @classmethod
+    def for_named_object(cls, creator: AccountAddress, seed: bytes) -> AccountAddress:
         hasher = hashlib.sha3_256()
         hasher.update(creator.address)
         hasher.update(seed)
         hasher.update(AuthKeyScheme.DeriveObjectAddressFromSeed)
-        return AccountAddress(hasher.digest())
+        return cls(hasher.digest())
 
-    @staticmethod
+    @classmethod
     def for_named_token(
-        creator: AccountAddress, collection_name: str, token_name: str
+        cls, creator: AccountAddress, collection_name: str, token_name: str
     ) -> AccountAddress:
         collection_bytes = collection_name.encode()
         token_bytes = token_name.encode()
-        return AccountAddress.for_named_object(creator, collection_bytes + b"::" + token_bytes)
+        return cls.for_named_object(creator, collection_bytes + b"::" + token_bytes)
 
-    @staticmethod
-    def for_named_collection(creator: AccountAddress, collection_name: str) -> AccountAddress:
-        return AccountAddress.for_named_object(creator, collection_name.encode())
+    @classmethod
+    def for_named_collection(cls, creator: AccountAddress, collection_name: str) -> AccountAddress:
+        return cls.for_named_object(creator, collection_name.encode())
 
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> AccountAddress:
-        return AccountAddress(deserializer.fixed_bytes(AccountAddress.LENGTH))
+    @classmethod
+    def deserialize(cls, deserializer: Deserializer) -> AccountAddress:
+        return cls(deserializer.fixed_bytes(AccountAddress.LENGTH))
 
     def serialize(self, serializer: Serializer):
         serializer.fixed_bytes(self.address)

@@ -19,8 +19,8 @@ class AuthenticationKey:
     def __init__(self, data: bytes) -> None:
         self._data = data
 
-    @staticmethod
-    def from_public_key(key: PublicKey) -> AuthenticationKey:
+    @classmethod
+    def from_public_key(cls, key: PublicKey) -> AuthenticationKey:
         # Auto-wrap non-Ed25519 keys into AnyPublicKey for single-key auth
         if isinstance(key, Secp256k1PublicKey):
             key = AnyPublicKey(key)
@@ -35,7 +35,7 @@ class AuthenticationKey:
         else:
             raise ValueError(f"Unsupported public key type: {type(key).__name__}")
 
-        return AuthenticationKey(hasher.digest())
+        return cls(hasher.digest())
 
     def account_address(self) -> AccountAddress:
         return AccountAddress(self._data)
