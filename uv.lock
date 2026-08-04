@@ -143,7 +143,7 @@ wheels = [
 
 [[package]]
 name = "aptos-sdk"
-version = "0.11.0"
+version = "0.12.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -237,14 +237,14 @@ resolution-markers = [
     "python_full_version >= '3.13'",
 ]
 dependencies = [
-    { name = "cbor2", marker = "python_full_version >= '3.13'" },
-    { name = "coincurve", marker = "python_full_version >= '3.13'" },
-    { name = "crcmod", marker = "python_full_version >= '3.13'" },
-    { name = "ecdsa", marker = "python_full_version >= '3.13'" },
-    { name = "ed25519-blake2b", marker = "python_full_version >= '3.13'" },
-    { name = "py-sr25519-bindings", marker = "python_full_version >= '3.13'" },
-    { name = "pycryptodome", marker = "python_full_version >= '3.13'" },
-    { name = "pynacl", marker = "python_full_version >= '3.13'" },
+    { name = "cbor2" },
+    { name = "coincurve" },
+    { name = "crcmod" },
+    { name = "ecdsa" },
+    { name = "ed25519-blake2b" },
+    { name = "py-sr25519-bindings" },
+    { name = "pycryptodome" },
+    { name = "pynacl" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fd/0b/c112ca753e8454d8f0ac3ddae2337f37b60c36056f9a89184f07bbed1a0c/bip_utils-2.9.3.tar.gz", hash = "sha256:72a8c95484b57e92311b0b2a3d5195b0ce4395c19a0b157d4a289e8b1300f48a", size = 335672, upload-time = "2024-04-15T19:30:46.31Z" }
 wheels = [
@@ -259,16 +259,16 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 dependencies = [
-    { name = "cbor2", marker = "python_full_version < '3.13'" },
-    { name = "coincurve", marker = "python_full_version < '3.13'" },
-    { name = "crcmod", marker = "python_full_version < '3.13'" },
-    { name = "ecdsa", marker = "python_full_version < '3.13'" },
-    { name = "ed25519-blake2b-fork", marker = "python_full_version < '3.13'" },
-    { name = "py-sr25519-bindings", marker = "python_full_version < '3.13'" },
-    { name = "pycryptodome", marker = "python_full_version < '3.13'" },
-    { name = "pynacl", marker = "python_full_version < '3.13'" },
-    { name = "pytoniq-core-fork", marker = "python_full_version < '3.13'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "cbor2" },
+    { name = "coincurve" },
+    { name = "crcmod" },
+    { name = "ecdsa" },
+    { name = "ed25519-blake2b-fork" },
+    { name = "py-sr25519-bindings" },
+    { name = "pycryptodome" },
+    { name = "pynacl" },
+    { name = "pytoniq-core-fork" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7c/1b/417d040f1f31a9438eef1f874655db126662e7293c9bbaf28d056616cedd/bip_utils-2.12.1.tar.gz", hash = "sha256:23a88779620a981237227c7482bc316f8ce877a543c736fb00b1e4a7762d1978", size = 608036, upload-time = "2026-03-02T11:43:02.998Z" }
 wheels = [
@@ -1430,12 +1430,12 @@ name = "pytoniq-core-fork"
 version = "0.1.48"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "bitarray", marker = "python_full_version < '3.13'" },
-    { name = "pycryptodomex", marker = "python_full_version < '3.13'" },
-    { name = "pynacl", marker = "python_full_version < '3.13'" },
-    { name = "requests", marker = "python_full_version < '3.13'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
-    { name = "x25519", marker = "python_full_version < '3.13'" },
+    { name = "bitarray" },
+    { name = "pycryptodomex" },
+    { name = "pynacl" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+    { name = "x25519" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/73/aa/f345c0bdb04dc7f323fdf0708129e54ca95c0435ff57a4b404f8d628c9fd/pytoniq_core_fork-0.1.48.tar.gz", hash = "sha256:eeb22d5f3d9fb15daccc48df5b2faf53e45426503c51bf665b56138a6955ae4a", size = 115892, upload-time = "2026-02-27T10:38:53.432Z" }
 wheels = [

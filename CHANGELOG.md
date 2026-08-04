@@ -3,16 +3,35 @@
 All notable changes to the Aptos Python SDK will be captured in this file. This changelog is written by hand for now.
 
 ## Unreleased
-- **[Breaking Change]**: Minimum supported Python is now 3.10 (required for patched dev tooling and alignment with Python 3.9 end-of-life).
+
+## 0.12.0 (2026-07-02)
+
+### Breaking changes
+
+- **[Breaking Change]**: Minimum supported Python is now **3.12** (was 3.10+).
 - **[Breaking Change]**: Replace `python-ecdsa` (CVE-2024-23342, pure-Python) with `cryptography` (OpenSSL-backed) for secp256k1 ECDSA operations. The public API is unchanged. Note: signing now uses OpenSSL's randomized nonce instead of RFC 6979 deterministic nonce — identical (key, message) pairs will produce different valid signatures on each call. `verify()` now rejects high-S signatures to match Aptos on-chain behaviour.
-- **[Breaking Change — v2 only, key derivation]**: `aptos_sdk_v2.crypto.mnemonic.derive_ed25519_private_key` and `derive_secp256k1_private_key` now require the full BIP-44 path `m/purpose'/coin'/account'/change'/address'` and read the address index from segment 5 (`parts[5]`). The previous implementation read the *change* segment (`parts[4]`) as the address index and never called `.AddressIndex(...)`, so any non-zero address index was silently ignored and **every** mnemonic-derived account collapsed onto the index-0 key. After this fix, paths with a non-zero address index will derive a different private key (and therefore a different account address) than the old, broken code did. Users with on-chain state derived from a non-zero address index under the old code must migrate; users on the canonical `m/44'/637'/0'/0'/0'` path are unaffected.
-- Update dependencies for vulnerability fixes (`aiohttp`, `urllib3`, `PyNaCl`, `black`).
-- Apply Black 26 formatting across `aptos_sdk`, `examples`, and `features` stubs (required by CI `make fmt` gate).
-- CI: pin Python 3.12 in the composite setup action; use `actions/checkout@v5` and `actions/setup-python@v5`.
-- Increase default `max_gas_amount` from 100,000 to 1,000,000
-- Add `aptos_sdk_v2.types.TypeTag.from_str` parser supporting primitives (`bool`, `u8`–`u256`, `address`, `signer`), `vector<T>`, and structs. `GeneralApi.view_bcs` now uses it, so view functions with non-struct generics (e.g. `0x1::coin::balance<u64>`) work correctly.
-- Stricter `aptos_sdk_v2.transactions.payload.ModuleId.from_str` — rejects malformed inputs (wrong number of `::` separators, empty address, or empty module name) at parse time instead of failing later during BCS serialization.
+- **[Breaking Change — v2 only, key derivation]**: `aptos_sdk.v2.crypto.mnemonic.derive_ed25519_private_key` and `derive_secp256k1_private_key` now require the full BIP-44 path `m/purpose'/coin'/account'/change'/address'` and read the address index from segment 5 (`parts[5]`). The previous implementation read the *change* segment (`parts[4]`) as the address index and never called `.AddressIndex(...)`, so any non-zero address index was silently ignored and **every** mnemonic-derived account collapsed onto the index-0 key. After this fix, paths with a non-zero address index will derive a different private key (and therefore a different account address) than the old, broken code did. Users with on-chain state derived from a non-zero address index under the old code must migrate; users on the canonical `m/44'/637'/0'/0'/0'` path are unaffected.
+
+### Added
+
+- Add **`aptos_sdk.v2`** — an async-first v2 SDK subpackage with a modern API surface (`Aptos`, `AptosConfig`, `Network`, typed APIs for accounts, coins, fungible assets, transactions, and BCS). See [`MIGRATION.md`](MIGRATION.md) for a v1→v2 guide.
+- Add `SignedTransaction.hash()` to v1 and v2 — compute the committed transaction hash locally without submitting to the network.
+- Add `aptos_sdk.v2.types.TypeTag.from_str` parser supporting primitives (`bool`, `u8`–`u256`, `address`, `signer`), `vector<T>`, and structs. `GeneralApi.view_bcs` now uses it, so view functions with non-struct generics (e.g. `0x1::coin::balance<u64>`) work correctly.
+- Add devnet E2E smoke example (`make smoke`) covering node, faucet, transaction submission, simulation, balance reads, and indexer.
+- Add automated PyPI publishing on GitHub Release via OIDC trusted publishing (see [`CONTRIBUTING.md`](CONTRIBUTING.md)).
+
+### Changed
+
+- Increase default `max_gas_amount` from 100,000 to 1,000,000.
+- Stricter `aptos_sdk.v2.transactions.payload.ModuleId.from_str` — rejects malformed inputs (wrong number of `::` separators, empty address, or empty module name) at parse time instead of failing later during BCS serialization.
 - Stricter `aptos_sdk.async_client.IndexerClient.query` exception scope — only wraps known transport / decoding errors (`aiohttp.ClientError`, `asyncio.TimeoutError`, `json.JSONDecodeError`, `UnicodeDecodeError`) into `IndexerError`. Caller bugs (`TypeError`, `AttributeError`, etc.) propagate unchanged.
+- `aptos_sdk.v2` balance queries use the REST API to support both legacy coins and fungible assets.
+- BCS serialization, transaction signing, and type-tag parsing performance optimizations.
+- Migrate build tooling from Poetry to **uv** + **hatchling**; lint/format with **ruff** and **mypy**.
+- Apply ruff formatting across `aptos_sdk`, `examples`, and `features` stubs (enforced by CI `make fmt` gate).
+- Update dependencies for vulnerability fixes (`aiohttp`, `urllib3`, `PyNaCl`, `cryptography`, `requests`).
+- Adopt the Innovation-Enabling Source Code License from aptos-core.
+- CI: test against Python 3.12 and 3.13; pin GitHub Actions; add Codecov v1/v2 coverage flags and v2-mirror sync enforcement; replace devnet examples CI with comprehensive localnet testing.
 
 ## 0.11.0
 
@@ -91,4 +110,3 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 - Add support for generating account addresses.
 - Add support for http2
 - Add async client
-
