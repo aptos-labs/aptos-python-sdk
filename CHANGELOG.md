@@ -4,7 +4,12 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+## 0.12.1 (2026-08-13)
+
+### Changed
+
 - Make e2e / localnet examples more reliable: `aggregator_value` reads both OptionalAggregator variants (aggregator table and integer, as used on localnet), REST and faucet calls retry transient 429/5xx and faucet sequence-number races, and the integration harness waits for the node and reloads network env vars after starting a localnet.
+- Update dependencies: `aiohttp` 3.14.3, `h2` 4.4.1, and `cryptography` 50.0.0 (both the root SDK and the standalone `v2` package), plus a full lockfile refresh.
 
 ## 0.12.0 (2026-07-02)
 
