@@ -96,9 +96,13 @@ def _build_rest_client(
     handler: Callable[[httpx.Request], httpx.Response],
     *,
     base_url: str = "http://mock.invalid/v1",
+    http_retries: int = 0,
 ) -> RestClient:
     """Construct a RestClient whose underlying httpx.AsyncClient is mocked."""
-    client = RestClient(base_url, ClientConfig(http2=False, transaction_wait_in_seconds=2))
+    client = RestClient(
+        base_url,
+        ClientConfig(http2=False, transaction_wait_in_seconds=2, http_retries=http_retries),
+    )
     _run(client.client.aclose())
     transport = httpx.MockTransport(handler)
     client.client = httpx.AsyncClient(base_url="", transport=transport)
@@ -453,14 +457,89 @@ class RestClientTests(unittest.TestCase):
             return httpx.Response(404)
 
         client = _build_rest_client(handler)
+        path = ["supply"]
         v = _run(
             client.aggregator_value(
                 AccountAddress.from_str_relaxed(SAMPLE_ADDR),
                 "0x1::coin::CoinInfo",
-                ["supply"],
+                path,
             )
         )
         self.assertEqual(v, 42)
+        self.assertEqual(path, ["supply"])
+        _run(client.close())
+
+    def test_aggregator_value_reads_integer_optional_aggregator(self):
+        """Localnet stores APT supply as OptionalAggregator.integer, not a table."""
+        resource = {
+            "data": {
+                "decimals": 8,
+                "name": "Aptos Coin",
+                "supply": {
+                    "vec": [
+                        {
+                            "aggregator": {"vec": []},
+                            "integer": {
+                                "vec": [
+                                    {
+                                        "limit": "340282366920938463463374607431768211455",
+                                        "value": "43510",
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                },
+                "symbol": "APT",
+            }
+        }
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            if "/resource/" in req.url.path:
+                return httpx.Response(200, json=resource)
+            return httpx.Response(404)
+
+        client = _build_rest_client(handler)
+        v = _run(
+            client.aggregator_value(
+                AccountAddress.from_str_relaxed(SAMPLE_ADDR),
+                "0x1::coin::CoinInfo<0x1::aptos_coin::AptosCoin>",
+                ["supply"],
+            )
+        )
+        self.assertEqual(v, 43510)
+        _run(client.close())
+
+    def test_aggregator_value_walks_path_outer_to_inner(self):
+        resource = {
+            "data": {
+                "outer": {
+                    "inner": {
+                        "vec": [
+                            {
+                                "aggregator": {"vec": []},
+                                "integer": {"vec": [{"value": "7"}]},
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            if "/resource/" in req.url.path:
+                return httpx.Response(200, json=resource)
+            return httpx.Response(404)
+
+        client = _build_rest_client(handler)
+        v = _run(
+            client.aggregator_value(
+                AccountAddress.from_str_relaxed(SAMPLE_ADDR),
+                "0x1::coin::CoinInfo",
+                ["outer", "inner"],
+            )
+        )
+        self.assertEqual(v, 7)
         _run(client.close())
 
     def test_aggregator_value_missing_path_raises(self):
@@ -527,6 +606,37 @@ class RestClientTests(unittest.TestCase):
                 _run(coro)
         _run(client.close())
 
+    def test_get_retries_transient_503(self):
+        calls = {"n": 0}
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(503, text="unavailable")
+            return httpx.Response(200, json={"chain_id": 4})
+
+        client = _build_rest_client(handler, http_retries=3)
+        with mock.patch("aptos_sdk.async_client.asyncio.sleep", new=mock.AsyncMock()):
+            info = _run(client.info())
+        self.assertEqual(info["chain_id"], 4)
+        self.assertEqual(calls["n"], 2)
+        _run(client.close())
+
+    def test_wait_until_ready_polls_until_info_succeeds(self):
+        calls = {"n": 0}
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(500, text="booting")
+            return httpx.Response(200, json={"chain_id": 4})
+
+        client = _build_rest_client(handler, http_retries=0)
+        with mock.patch("aptos_sdk.async_client.asyncio.sleep", new=mock.AsyncMock()):
+            _run(client.wait_until_ready(timeout_secs=5))
+        self.assertGreaterEqual(calls["n"], 2)
+        _run(client.close())
+
 
 class FaucetClientTests(unittest.TestCase):
     def _client(self, handler):
@@ -572,6 +682,29 @@ class FaucetClientTests(unittest.TestCase):
 
         c = self._client(handler)
         self.assertTrue(_run(c.healthy()))
+        _run(c.close())
+
+    def test_fund_account_retries_sequence_number_too_old(self):
+        calls = {"fund": 0}
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            if req.url.path.endswith("/fund"):
+                calls["fund"] += 1
+                if calls["fund"] == 1:
+                    return httpx.Response(
+                        400,
+                        text="API error Error(VmError): Invalid transaction: "
+                        "Type: Validation Code: SEQUENCE_NUMBER_TOO_OLD",
+                    )
+                return httpx.Response(200, json={"txn_hashes": ["0xabc"]})
+            return httpx.Response(200, json={"type": "user_transaction", "success": True})
+
+        rest = _build_rest_client(handler, http_retries=3)
+        c = FaucetClient("http://faucet.invalid", rest, auth_token="tok")
+        with mock.patch("aptos_sdk.async_client.asyncio.sleep", new=mock.AsyncMock()):
+            h = _run(c.fund_account(AccountAddress.from_str_relaxed(SAMPLE_ADDR), 100))
+        self.assertEqual(h, "0xabc")
+        self.assertEqual(calls["fund"], 2)
         _run(c.close())
 
 

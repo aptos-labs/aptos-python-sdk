@@ -6,13 +6,16 @@ Provides a test harness for treating examples as integration tests.
 """
 
 import asyncio
+import importlib
 import os
 import unittest
 from typing import Optional
 
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper, AptosInstance
+from aptos_sdk.async_client import RestClient
 
+from . import common
 from .common import APTOS_CORE_PATH
 
 
@@ -22,6 +25,8 @@ class Test(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(self):
         if os.getenv("APTOS_TEST_USE_EXISTING_NETWORK"):
+            self._reload_network_config()
+            asyncio.run(self._wait_for_network())
             return
 
         self._node = AptosCLIWrapper.start_node()
@@ -30,8 +35,23 @@ class Test(unittest.IsolatedAsyncioTestCase):
             raise Exception("".join(self._node.errors()))
 
         os.environ["APTOS_FAUCET_URL"] = "http://127.0.0.1:8081"
-        os.environ["APTOS_INDEXER_CLIENT"] = "none"
+        os.environ["APTOS_INDEXER_URL"] = "none"
         os.environ["APTOS_NODE_URL"] = "http://127.0.0.1:8080/v1"
+        self._reload_network_config()
+        asyncio.run(self._wait_for_network())
+
+    @classmethod
+    def _reload_network_config(cls) -> None:
+        """Re-read NODE/FAUCET/INDEXER URLs after env vars are set in setUpClass."""
+        importlib.reload(common)
+
+    @classmethod
+    async def _wait_for_network(cls) -> None:
+        rest = RestClient(common.NODE_URL, client_config=common.CLIENT_CONFIG)
+        try:
+            await rest.wait_until_ready()
+        finally:
+            await rest.close()
 
     async def test_aptos_token(self):
         from . import aptos_token

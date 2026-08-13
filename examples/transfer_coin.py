@@ -79,7 +79,7 @@ async def main():
         variables = {"account": f"{bob.address()}"}
         data = None
         last_error: Optional[Exception] = None
-        for _ in range(20):
+        for _ in range(30):
             try:
                 data = await indexer_client.query(query, variables)
             except IndexerError as exc:
