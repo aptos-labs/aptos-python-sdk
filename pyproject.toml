@@ -1,6 +1,6 @@
 [project]
 name = "aptos-sdk"
-version = "0.12.0"
+version = "0.12.1"
 description = "Aptos SDK"
 authors = [{ name = "Aptos Labs", email = "opensource@aptoslabs.com" }]
 license = {file = "LICENSE"}
