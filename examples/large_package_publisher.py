@@ -54,10 +54,9 @@ async def main(
     faucet_client = FaucetClient(FAUCET_URL, rest_client, FAUCET_AUTH_TOKEN)
 
     alice = Account.generate()
-    req0 = faucet_client.fund_account(alice.address(), 1_000_000_000)
-    req1 = faucet_client.fund_account(alice.address(), 1_000_000_000)
-    req2 = faucet_client.fund_account(alice.address(), 1_000_000_000)
-    await asyncio.gather(*[req0, req1, req2])
+    await faucet_client.fund_account(alice.address(), 1_000_000_000)
+    await faucet_client.fund_account(alice.address(), 1_000_000_000)
+    await faucet_client.fund_account(alice.address(), 1_000_000_000)
     alice_balance = await rest_client.account_balance(alice.address())
     print(f"Alice: {alice.address()} {alice_balance}")
 

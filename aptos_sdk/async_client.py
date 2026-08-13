@@ -5,6 +5,7 @@ import asyncio
 import json as _json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -29,6 +30,26 @@ from .type_tag import StructTag, TypeTag
 
 U64_MAX = 18446744073709551615
 
+# Transient REST / faucet failures that are safe to retry. SEQUENCE_NUMBER_*
+# shows up when a faucet minter races concurrent mint transactions.
+_FAUCET_RETRY_MARKERS = (
+    "SEQUENCE_NUMBER_TOO_OLD",
+    "SEQUENCE_NUMBER_TOO_NEW",
+    "TRANSACTION_EXPIRED",
+)
+
+
+def _retryable_http_status(status: int) -> bool:
+    return status == 429 or status >= 500
+
+
+def _retryable_faucet_error(status: int, body: str) -> bool:
+    if _retryable_http_status(status):
+        return True
+    if status >= 400:
+        return any(marker in body for marker in _FAUCET_RETRY_MARKERS)
+    return False
+
 
 @dataclass
 class ClientConfig:
@@ -40,6 +61,7 @@ class ClientConfig:
     transaction_wait_in_seconds: int = 20
     http2: bool = True
     api_key: Optional[str] = None
+    http_retries: int = 3
 
 
 class IndexerClient:
@@ -457,47 +479,72 @@ class RestClient:
         resource_type: str,
         aggregator_path: List[str],
     ) -> int:
+        """Read an ``OptionalAggregator`` value from an account resource.
+
+        Aptos ``0x1::optional_aggregator::OptionalAggregator`` stores either a
+        parallelizable aggregator (table handle + key) or a plain integer. Local
+        networks typically use the integer variant for APT supply; mainnet and
+        devnet use the aggregator variant. This helper accepts both so callers
+        do not need to know which representation the chain is using.
+
+        :param account_address: Account that holds the resource.
+        :param resource_type: Move resource type, e.g. CoinInfo.
+        :param aggregator_path: Field names from the resource root to the
+            ``OptionalAggregator``, e.g. ``["supply"]``. The list is not mutated.
+        """
         source = await self.account_resource(account_address, resource_type)
         source_data = data = source["data"]
 
-        while len(aggregator_path) > 0:
-            key = aggregator_path.pop()
+        for key in aggregator_path:
             if key not in data:
                 raise ApiError(f"aggregator path not found in data: {source_data}", source_data)
             data = data[key]
 
-        if "vec" not in data:
+        if "vec" not in data or len(data["vec"]) != 1:
             raise ApiError(f"aggregator not found in data: {source_data}", source_data)
-        data = data["vec"]
-        if len(data) != 1:
-            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
-        data = data[0]
-        if "aggregator" not in data:
-            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
-        data = data["aggregator"]
-        if "vec" not in data:
-            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
-        data = data["vec"]
-        if len(data) != 1:
-            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
-        data = data[0]
-        if "handle" not in data:
-            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
-        if "key" not in data:
-            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
-        handle = data["handle"]
-        key = data["key"]
-        return int(await self.get_table_item(handle, "address", "u128", key))
+        optional = data["vec"][0]
+
+        aggregator = optional.get("aggregator", {}).get("vec", [])
+        if len(aggregator) == 1 and "handle" in aggregator[0] and "key" in aggregator[0]:
+            handle = aggregator[0]["handle"]
+            key = aggregator[0]["key"]
+            return int(await self.get_table_item(handle, "address", "u128", key))
+
+        integer = optional.get("integer", {}).get("vec", [])
+        if len(integer) == 1 and "value" in integer[0]:
+            return int(integer[0]["value"])
+
+        raise ApiError(f"aggregator not found in data: {source_data}", source_data)
 
     #
     # Ledger accessors
     #
 
     async def info(self) -> Dict[str, str]:
-        response = await self.client.get(self.base_url)
+        async def send() -> httpx.Response:
+            return await self.client.get(self.base_url)
+
+        response = await self._send_with_retry(send)
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
         return response.json()
+
+    async def wait_until_ready(self, timeout_secs: float = 60.0) -> None:
+        """Poll ledger info until the node responds successfully.
+
+        Used by integration tests to wait out localnet startup races instead of
+        failing on the first connection error.
+        """
+        deadline = time.monotonic() + timeout_secs
+        last_error: Optional[Exception] = None
+        while time.monotonic() < deadline:
+            try:
+                await self.info()
+                return
+            except (ApiError, httpx.RequestError) as exc:
+                last_error = exc
+            await asyncio.sleep(0.5)
+        raise TimeoutError(f"node not ready after {timeout_secs}s: {last_error}")
 
     #
     # Transactions
@@ -932,6 +979,32 @@ class RestClient:
             raise ApiError(response.text, response.status_code)
         return response.json()
 
+    async def _send_with_retry(
+        self, send: Callable[[], Awaitable[httpx.Response]]
+    ) -> httpx.Response:
+        """Retry GETs and idempotent POSTs on transport errors, 429, and 5xx.
+
+        Transaction submission must not use this helper: a lost 5xx response
+        after the node accepted the transaction would double-submit.
+        """
+        retries = self.client_config.http_retries
+        last_response: Optional[httpx.Response] = None
+        for attempt in range(retries + 1):
+            try:
+                response = await send()
+            except httpx.RequestError:
+                if attempt < retries:
+                    await asyncio.sleep(0.25 * (2**attempt))
+                    continue
+                raise
+            if _retryable_http_status(response.status_code) and attempt < retries:
+                last_response = response
+                await asyncio.sleep(0.25 * (2**attempt))
+                continue
+            return response
+        assert last_response is not None
+        return last_response
+
     async def _post(
         self,
         endpoint: str,
@@ -942,21 +1015,29 @@ class RestClient:
         # format params:
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
-        return await self.client.post(
-            url=f"{self.base_url}/{endpoint}",
-            params=params,
-            headers=headers,
-            json=data,
-        )
+
+        async def send() -> httpx.Response:
+            return await self.client.post(
+                url=f"{self.base_url}/{endpoint}",
+                params=params,
+                headers=headers,
+                json=data,
+            )
+
+        return await self._send_with_retry(send)
 
     async def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> httpx.Response:
         # format params:
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
-        return await self.client.get(
-            url=f"{self.base_url}/{endpoint}",
-            params=params,
-        )
+
+        async def send() -> httpx.Response:
+            return await self.client.get(
+                url=f"{self.base_url}/{endpoint}",
+                params=params,
+            )
+
+        return await self._send_with_retry(send)
 
 
 class FaucetClient:
@@ -969,6 +1050,7 @@ class FaucetClient:
     base_url: str
     rest_client: RestClient
     headers: Dict[str, str]
+    _fund_lock: asyncio.Lock
 
     def __init__(self, base_url: str, rest_client: RestClient, auth_token: Optional[str] = None):
         self.base_url = base_url
@@ -976,6 +1058,7 @@ class FaucetClient:
         self.headers = {"Content-Type": "application/json"}
         if auth_token:
             self.headers["Authorization"] = f"Bearer {auth_token}"
+        self._fund_lock = asyncio.Lock()
 
     async def close(self) -> None:
         """Close the underlying REST client connection."""
@@ -987,20 +1070,52 @@ class FaucetClient:
         """This creates an account if it does not exist and mints the specified amount of
         coins into that account.
 
+        Concurrent calls on the same client are serialized so a single faucet
+        minter does not race sequence numbers. Transient errors (429, 5xx,
+        SEQUENCE_NUMBER_TOO_OLD/NEW) are retried.
+
         Note: only devnet has a publicly accessible faucet. For testnet, you must
         initialize this client with an auth_token.
         """
-        response = await self.rest_client.client.post(
-            f"{self.base_url}/fund",
-            headers=self.headers,
-            json={"address": str(address), "amount": amount},
-        )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        txn_hash = response.json()["txn_hashes"][0]
-        if wait_for_transaction:
-            await self.rest_client.wait_for_transaction(txn_hash)
-        return txn_hash
+        async with self._fund_lock:
+            return await self._fund_account_once(address, amount, wait_for_transaction)
+
+    async def _fund_account_once(
+        self, address: AccountAddress, amount: int, wait_for_transaction: bool
+    ) -> str:
+        retries = self.rest_client.client_config.http_retries
+        last_error: Optional[ApiError] = None
+        for attempt in range(retries + 1):
+            try:
+                response = await self.rest_client.client.post(
+                    f"{self.base_url}/fund",
+                    headers=self.headers,
+                    json={"address": str(address), "amount": amount},
+                )
+            except httpx.RequestError as exc:
+                last_error = ApiError(str(exc), 0)
+                if attempt < retries:
+                    await asyncio.sleep(0.25 * (2**attempt))
+                    continue
+                raise last_error from exc
+
+            if response.status_code >= 400:
+                last_error = ApiError(response.text, response.status_code)
+                if (
+                    _retryable_faucet_error(response.status_code, response.text)
+                    and attempt < retries
+                ):
+                    await asyncio.sleep(0.25 * (2**attempt))
+                    continue
+                raise last_error
+
+            txn_hash = response.json()["txn_hashes"][0]
+            if wait_for_transaction:
+                await self.rest_client.wait_for_transaction(txn_hash)
+            return txn_hash
+
+        assert last_error is not None
+        raise last_error
 
     async def healthy(self) -> bool:
         """Return ``True`` iff the faucet's root endpoint reports ``tap:ok``."""
