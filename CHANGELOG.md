@@ -4,6 +4,12 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+## 0.12.2 (2026-09-18)
+
+### Changed
+
+- Update dependencies: `cryptography` 50.0.1 and `bip-utils` 2.12.2 (both the root SDK and the standalone `v2` package), plus a full lockfile refresh.
+
 ## 0.12.1 (2026-08-13)
 
 ### Changed
