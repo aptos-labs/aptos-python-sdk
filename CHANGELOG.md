@@ -4,6 +4,12 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+## 0.12.3 (2026-10-13)
+
+### Changed
+
+- Update dependencies: `urllib3` 2.8.0 (root SDK and standalone `v2` package) and `multidict` 6.9.1 (`v2`), plus lockfile refreshes.
+
 ## 0.12.2 (2026-09-18)
 
 ### Changed
