@@ -9,9 +9,11 @@ from ..crypto.mnemonic import (
     DEFAULT_DERIVATION_PATH,
     derive_ed25519_private_key,
     derive_secp256k1_private_key,
+    derive_slh_dsa_sha2_128s_private_key,
 )
 from ..crypto.secp256k1 import Secp256k1PrivateKey
 from ..crypto.single_key import AnyPublicKey
+from ..crypto.slh_dsa_sha2_128s import SlhDsaSha2128sPrivateKey
 from ..transactions.authenticator import AccountAuthenticator
 from ..transactions.raw_transaction import RawTransaction
 from ..types.account_address import AccountAddress
@@ -43,6 +45,14 @@ class Account:
         return cls(key, auth_key.account_address())
 
     @classmethod
+    def generate_slh_dsa_sha2_128s(cls) -> Account:
+        """Generate a new SLH-DSA-SHA2-128s (post-quantum) account."""
+        key = SlhDsaSha2128sPrivateKey.generate()
+        pub = AnyPublicKey(key.public_key())
+        auth_key = AuthenticationKey.from_public_key(pub)
+        return cls(key, auth_key.account_address())
+
+    @classmethod
     def from_private_key(cls, key: PrivateKey) -> Account:
         """Create an account from an existing private key."""
         pub = key.public_key()
@@ -59,10 +69,15 @@ class Account:
         path: str = DEFAULT_DERIVATION_PATH,
         *,
         secp256k1: bool = False,
+        slh_dsa_sha2_128s: bool = False,
     ) -> Account:
         """Derive an account from a BIP-39 mnemonic phrase."""
+        if secp256k1 and slh_dsa_sha2_128s:
+            raise ValueError("Only one of secp256k1 / slh_dsa_sha2_128s may be selected")
         key: PrivateKey
-        if secp256k1:
+        if slh_dsa_sha2_128s:
+            key = derive_slh_dsa_sha2_128s_private_key(phrase, path)
+        elif secp256k1:
             key = derive_secp256k1_private_key(phrase, path)
         else:
             key = derive_ed25519_private_key(phrase, path)

@@ -39,7 +39,7 @@ asyncio.run(main())
 ## Key Features
 
 - **Async-first** — built on `aiohttp` with connection pooling and automatic retries
-- **Ed25519 & Secp256k1** — both key types work identically for signing and submitting
+- **Ed25519, Secp256k1 & SLH-DSA-SHA2-128s** — all key types work identically for signing and submitting; the post-quantum scheme (AIP-137) needs the optional `pqcrypto` backend (`pip install "aptos-sdk-v2[slh-dsa-sha2-128s]"`)
 - **BIP-39 mnemonic** — generate, validate, and derive accounts from mnemonic phrases
 - **Coin & Fungible Asset APIs** — transfer and query balances using either the Coin or FA module
 - **Multi-agent transactions** — multiple signers on a single transaction

@@ -15,6 +15,7 @@ from bip_utils import (
 from ..errors import InvalidMnemonicError
 from .ed25519 import Ed25519PrivateKey
 from .secp256k1 import Secp256k1PrivateKey
+from .slh_dsa_sha2_128s import SlhDsaSha2128sPrivateKey
 
 # Aptos BIP-44 path: m/44'/637'/0'/0'/0'
 DEFAULT_DERIVATION_PATH = "m/44'/637'/0'/0'/0'"
@@ -121,3 +122,43 @@ def derive_secp256k1_private_key(
 
     raw_key = bip44_ctx.PrivateKey().Raw().ToBytes()
     return Secp256k1PrivateKey.from_hex(raw_key)
+
+
+def derive_slh_dsa_sha2_128s_private_key(
+    phrase: str,
+    path: str = DEFAULT_DERIVATION_PATH,
+) -> SlhDsaSha2128sPrivateKey:
+    """Derive an SLH-DSA-SHA2-128s private key from a mnemonic phrase.
+
+    Uses the custom, non-standard SLIP-0010 derivation from the TS SDK
+    (``"SLH-DSA-SHA2-128s seed"`` as the HMAC key): hardened derivation
+    only, so every path segment must carry a trailing apostrophe.
+    """
+    if not validate_mnemonic(phrase):
+        raise InvalidMnemonicError("Invalid mnemonic phrase")
+
+    parts = path.split("/")
+    if (
+        len(parts) != 6
+        or parts[0] != "m"
+        or parts[1] != "44'"
+        or parts[2] != "637'"
+        or not all(part.endswith("'") for part in parts[3:])
+    ):
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. "
+            "Expected hardened BIP-44 format: m/44'/637'/account'/change'/address'"
+        )
+    try:
+        for part in parts[3:]:
+            int(part[:-1])
+    except ValueError as exc:
+        raise InvalidMnemonicError(
+            f"Invalid derivation path: {path}. Non-numeric segment: {exc}"
+        ) from exc
+
+    seed = Bip39SeedGenerator(phrase).Generate()
+    try:
+        return SlhDsaSha2128sPrivateKey.from_derivation_path_inner(path, seed)
+    except Exception as exc:
+        raise InvalidMnemonicError(f"Invalid derivation path: {path}. {exc}") from exc

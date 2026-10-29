@@ -35,7 +35,11 @@ Issues = "https://github.com/aptos-labs/aptos-python-sdk/issues"
 Changelog = "https://github.com/aptos-labs/aptos-python-sdk/releases"
 
 [project.optional-dependencies]
+slh-dsa-sha2-128s = [
+    "pqcrypto>=1.0.0,<2",
+]
 dev = [
+    "pqcrypto>=1.0.0,<2",
     "pytest>=8",
     "pytest-asyncio>=0.24",
     "pytest-cov>=5",
@@ -77,4 +81,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "cryptography.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pqcrypto.*"
 ignore_missing_imports = true
