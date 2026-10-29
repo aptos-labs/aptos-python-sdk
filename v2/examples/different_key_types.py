@@ -1,6 +1,9 @@
-"""Example: Create accounts with different key types (Ed25519 vs Secp256k1).
+"""Example: Create accounts with different key types.
 
-Demonstrates that both key types can sign and submit transactions identically.
+Demonstrates Ed25519, Secp256k1, and SLH-DSA-SHA2-128s (post-quantum,
+AIP-137) accounts signing and submitting transactions identically.
+SLH-DSA signing requires ``pip install "aptos-sdk-v2[slh-dsa-sha2-128s]"``
+and a network whose on-chain crypto supports the scheme.
 """
 
 import asyncio
@@ -21,6 +24,11 @@ async def main():
         print(f"\nAlice (Secp256k1): {alice_secp256k1.address}")
         print(f"  Public key type: {type(alice_secp256k1.public_key).__name__}")
 
+        # Generate an SLH-DSA-SHA2-128s (post-quantum) account
+        alice_slh = Account.generate_slh_dsa_sha2_128s()
+        print(f"\nAlice (SLH-DSA-SHA2-128s): {alice_slh.address}")
+        print(f"  Public key type: {type(alice_slh.public_key).__name__}")
+
         # Create a recipient
         bob = Account.generate()
         print(f"\nBob:               {bob.address}")
@@ -30,6 +38,7 @@ async def main():
         await asyncio.gather(
             aptos.faucet.fund_account(alice_ed25519.address, 100_000_000),
             aptos.faucet.fund_account(alice_secp256k1.address, 100_000_000),
+            aptos.faucet.fund_account(alice_slh.address, 100_000_000),
             aptos.faucet.fund_account(bob.address, 10_000_000),
         )
 
@@ -43,6 +52,13 @@ async def main():
         # Transfer from Secp256k1 account
         print("\nTransferring 1000 octas from Secp256k1 account to Bob...")
         txn_hash = await aptos.coin.transfer(alice_secp256k1, bob.address, 1_000)
+        result = await aptos.transaction.wait_for_transaction(txn_hash)
+        print(f"  Transaction: {txn_hash}")
+        print(f"  Success: {result['success']}")
+
+        # Transfer from SLH-DSA-SHA2-128s account
+        print("\nTransferring 1000 octas from SLH-DSA-SHA2-128s account to Bob...")
+        txn_hash = await aptos.coin.transfer(alice_slh, bob.address, 1_000)
         result = await aptos.transaction.wait_for_transaction(txn_hash)
         print(f"  Transaction: {txn_hash}")
         print(f"  Success: {result['success']}")

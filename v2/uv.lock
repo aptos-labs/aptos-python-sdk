@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -199,10 +199,14 @@ dependencies = [
 dev = [
     { name = "aioresponses" },
     { name = "mypy" },
+    { name = "pqcrypto" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
+]
+slh-dsa-sha2-128s = [
+    { name = "pqcrypto" },
 ]
 
 [package.metadata]
@@ -212,13 +216,15 @@ requires-dist = [
     { name = "bip-utils", specifier = ">=2.9,<3" },
     { name = "cryptography", specifier = ">=50.0.0,<51" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
+    { name = "pqcrypto", marker = "extra == 'dev'", specifier = ">=1.0.0,<2" },
+    { name = "pqcrypto", marker = "extra == 'slh-dsa-sha2-128s'", specifier = ">=1.0.0,<2" },
     { name = "pynacl", specifier = ">=1.5,<2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["slh-dsa-sha2-128s", "dev"]
 
 [[package]]
 name = "ast-serialize"
@@ -1315,6 +1321,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
+name = "pqcrypto"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/10/e835821a6c5df73b196b27812bd5f1562df8f675acab6ad5232b8c28916d/pqcrypto-1.0.0.tar.gz", hash = "sha256:b41e6cba972e010d5f3674d8a52bc75d8742e1e5d063b57ba172127cf3ef9c40", size = 19810, upload-time = "2026-08-15T09:20:56.725Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/61/bdddb98d0d19c8177c4bcb4e9a75762ee81b7518eef9f69f0b5018873101/pqcrypto-1.0.0-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:3c0aa8346222631418e7caac040a53cc1f5245553d3275ce1d8403cfe8dd9fb4", size = 797628, upload-time = "2026-08-15T09:20:46.427Z" },
+    { url = "https://files.pythonhosted.org/packages/50/f2/790da887e9167e4bc3d41e470c7ad1cd90df90c66e2da8b3d11f284c37f0/pqcrypto-1.0.0-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:ccc13a4443a499d70aa9d29ce899e8782d4a5e57b79baa92fa13ea33512533c7", size = 831126, upload-time = "2026-08-15T09:20:48.119Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/92/0876f27be9289cdf87bcef5dbcbc42d89eacfd6ecb99f23928ef3a21a700/pqcrypto-1.0.0-cp39-abi3-manylinux_2_34_aarch64.whl", hash = "sha256:71b199d6460a646071cdb505e6acca8c9a050c3252bba023b8065b9518dce9c9", size = 871279, upload-time = "2026-08-15T09:20:49.676Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/c2/965a137eef8d95f9cf25c3dbe935540cff303c272ee045dc9f110bd206d8/pqcrypto-1.0.0-cp39-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:7068532dbc1225a9d668d59940bd96dc13f40175a757b2e31c69aa697781f4d0", size = 857916, upload-time = "2026-08-15T09:20:51.128Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/c8/fd11c1e4ebbc019274843f170e23907553fd8b9a30c9c33b2cc02fcf3a60/pqcrypto-1.0.0-cp39-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:f8c29900937b84ce18943694acb7276af36e2c52e1673debe02ecf9494472a35", size = 1048213, upload-time = "2026-08-15T09:20:52.518Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/22/48c29acd771fa55b26e20b66df194a6a63166cf4b5cffba7c4d59ffc66b0/pqcrypto-1.0.0-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:9160e59a8b9a860ea960a0b2fb8b479ee2d56f3c062c4be3f86ce346807443dd", size = 1055485, upload-time = "2026-08-15T09:20:53.964Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/fe/f6fb3cdf26345882c408d0d9302e0a2be8084ba1cb67710318b3be0ebf76/pqcrypto-1.0.0-cp39-abi3-win_amd64.whl", hash = "sha256:d65d0fdbd2bfcfd80193d1d499142e63dd8ea6a072e1dc68b1b36fd49f9fdc8f", size = 756867, upload-time = "2026-08-15T09:20:55.476Z" },
 ]
 
 [[package]]

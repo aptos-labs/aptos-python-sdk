@@ -4,6 +4,10 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+### Added
+
+- Add SLH-DSA-SHA2-128s (post-quantum, AIP-137) signature support to `aptos_sdk.v2`, mirroring aptos-ts-sdk PR #802: key generation, signing/verification, BCS (de)serialization (`AnyPublicKey` variant 5, `AnySignature` variant 4), AIP-80 private-key strings (`slh-dsa-sha2-128s-priv-...`), SingleKey authentication/address derivation, hardened SLIP-0010-style mnemonic derivation, and `Account.generate_slh_dsa_sha2_128s()` / `Account.from_mnemonic(..., slh_dsa_sha2_128s=True)`. Signing/verification use the optional `pqcrypto` dependency (`pip install "aptos-sdk[slh-dsa-sha2-128s]"`); key handling and public-key derivation are standard-library only. The legacy v1 API is unchanged.
+
 ## 0.12.3 (2026-10-13)
 
 ### Changed

@@ -11,11 +11,13 @@ from ..bcs import Deserializer, Serializer
 class PrivateKeyVariant(Enum):
     ED25519 = "ed25519"
     SECP256K1 = "secp256k1"
+    SLH_DSA_SHA2_128S = "slh-dsa-sha2-128s"
 
 
 AIP80_PREFIXES: dict[PrivateKeyVariant, str] = {
     PrivateKeyVariant.ED25519: "ed25519-priv-",
     PrivateKeyVariant.SECP256K1: "secp256k1-priv-",
+    PrivateKeyVariant.SLH_DSA_SHA2_128S: "slh-dsa-sha2-128s-priv-",
 }
 
 
@@ -102,7 +104,7 @@ def parse_hex_input(
 
     if isinstance(value, str):
         if value.startswith(prefix):
-            hex_part = value.split("-")[2]
+            hex_part = value[len(prefix) :]
             if hex_part.startswith("0x"):
                 hex_part = hex_part[2:]
             return bytes.fromhex(hex_part)
