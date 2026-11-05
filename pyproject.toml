@@ -33,6 +33,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+slh-dsa-sha2-128s = [
+    "pqcrypto>=1.0.0,<2",
+]
 dev = [
     "behave>=1.2.6,<2",
     "coverage>=7.6.12,<8",

@@ -9,6 +9,7 @@ from .ed25519 import Ed25519PublicKey
 from .keys import PublicKey
 from .secp256k1 import Secp256k1PublicKey
 from .single_key import AnyPublicKey
+from .slh_dsa_sha2_128s import SlhDsaSha2128sPublicKey
 
 
 class AuthenticationKey:
@@ -22,7 +23,7 @@ class AuthenticationKey:
     @classmethod
     def from_public_key(cls, key: PublicKey) -> AuthenticationKey:
         # Auto-wrap non-Ed25519 keys into AnyPublicKey for single-key auth
-        if isinstance(key, Secp256k1PublicKey):
+        if isinstance(key, Secp256k1PublicKey | SlhDsaSha2128sPublicKey):
             key = AnyPublicKey(key)
 
         hasher = hashlib.sha3_256()

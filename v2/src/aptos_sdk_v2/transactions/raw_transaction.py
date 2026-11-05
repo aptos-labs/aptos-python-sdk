@@ -8,6 +8,7 @@ from ..bcs import Deserializer, Serializer
 from ..crypto.ed25519 import Ed25519PublicKey, Ed25519Signature
 from ..crypto.keys import PrivateKey, PublicKey, Signature
 from ..crypto.secp256k1 import Secp256k1PublicKey, Secp256k1Signature
+from ..crypto.slh_dsa_sha2_128s import SlhDsaSha2128sPublicKey, SlhDsaSha2128sSignature
 from ..errors import BcsDeserializationError
 from ..types.account_address import AccountAddress
 from .authenticator import (
@@ -39,6 +40,10 @@ def _sign_simulated(keyed_data: bytes, key: PublicKey) -> AccountAuthenticator:
         return AccountAuthenticator(Ed25519Authenticator(key, Ed25519Signature(b"\x00" * 64)))
     elif isinstance(key, Secp256k1PublicKey):
         return AccountAuthenticator(SingleKeyAuthenticator(key, Secp256k1Signature(b"\x00" * 64)))
+    elif isinstance(key, SlhDsaSha2128sPublicKey):
+        return AccountAuthenticator(
+            SingleKeyAuthenticator(key, SlhDsaSha2128sSignature(b"\x00" * 7856))
+        )
     raise NotImplementedError(f"Unsupported key type for simulation: {type(key).__name__}")
 
 
