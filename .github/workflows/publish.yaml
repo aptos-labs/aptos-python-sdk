@@ -10,13 +10,18 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   test:
     name: Test before publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
@@ -36,24 +41,38 @@ jobs:
     name: Build distribution
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: ./.github/actions/python-setup
 
-      - name: Verify release tag matches package version
+      - name: Verify release tag, main ancestry, and package version
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (inputs.dry_run == false || inputs.dry_run == 'false'))
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            TAG="${{ github.event.release.tag_name }}"
-          elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "release" ]]; then
+            TAG="$RELEASE_TAG"
+          elif [[ "${GITHUB_REF}" =~ ^refs/tags/v ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            echo "::error::Manual publish must be dispatched from a version tag (refs/tags/v*), got ${{ github.ref }}"
+            echo "::error::Manual publish must be dispatched from a version tag (refs/tags/v*), got ${GITHUB_REF}"
             exit 1
           fi
+
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
+            echo "::error::Release tag ${TAG} ($(git rev-parse HEAD)) is not an ancestor of origin/main."
+            exit 1
+          fi
+
           VERSION=$(python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
           if [[ "v${VERSION}" != "${TAG}" ]]; then
             echo "::error::Release tag ${TAG} does not match pyproject.toml version ${VERSION} (expected v${VERSION})"
