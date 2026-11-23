@@ -23,6 +23,13 @@ dependencies = [
     # v2 dependencies
     # NOTE: bip-utils still pulls in coincurve transitively; it remains part of
     # the install surface until bip-utils is replaced with an alternative.
+    # Known advisory with no fix: bip-utils transitively pulls in ecdsa
+    # (PYSEC-2026-1325 / CVE-2024-23342, Minerva timing attack on P-256).
+    # Upstream python-ecdsa considers side channels out of scope and has no
+    # planned fix. This SDK does not use python-ecdsa directly (secp256k1
+    # signing uses `cryptography`); ecdsa is only present via bip-utils'
+    # BIP-39/BIP-44 derivation surface. Clearing it requires replacing
+    # bip-utils, which is tracked separately.
     "bip-utils>=2.9,<3",
     # Security overrides for transitive dependencies
     "h11>=0.16.0,<0.17",       # via httpx -> httpcore
