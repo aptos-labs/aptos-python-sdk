@@ -23,7 +23,7 @@ dependencies = [
     # v2 dependencies
     # NOTE: bip-utils still pulls in coincurve transitively; it remains part of
     # the install surface until bip-utils is replaced with an alternative.
-    "bip-utils>=2.13.0,<3",
+    "bip-utils>=2.12.3,<3",
     # Security overrides for transitive dependencies
     "h11>=0.16.0,<0.17",       # via httpx -> httpcore
     "h2>=4.4.1,<5",            # via httpx[http2]
@@ -35,7 +35,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "behave>=1.3.3,<2",
-    "coverage>=7.17.5,<8",
+    "coverage>=7.17.4,<8",
     "mypy>=2.4.1,<3",
     "mypy-extensions>=1.2.0,<2",
     "ruff==0.17.6",
@@ -45,6 +45,22 @@ dev = [
 [project.urls]
 Homepage = "https://aptos.dev/en/build/sdks/python-sdk"
 Repository = "https://github.com/aptos-labs/aptos-python-sdk"
+
+# Held back from latest: these releases were published on 2026-11-22/23 and are
+# blocked in CI by the Aikido Safe Chain minimum-package-age gate (403 on
+# download). Each cap is the newest release old enough to pass the gate; lift
+# a cap once its blocked release has aged past the gate (or in the next
+# routine dependency bump). Knock-on effect: bip-utils 2.12.x caps
+# pycryptodome <4, so the pycryptodome 4 major is held with bip-utils and
+# lands automatically once the bip-utils cap is lifted (2.13 allows <5);
+# the explicit pycryptodome cap also keeps the day-old 4.6.0 out until then.
+[tool.uv]
+constraint-dependencies = [
+    "bip-utils<2.13",          # 2.13.0 (2026-11-22) blocked; resolves 2.12.3
+    "charset-normalizer<3.5.3", # 3.5.3 (2026-11-23) blocked; resolves 3.5.2
+    "coverage<7.17.5",         # 7.17.5 (2026-11-23) blocked; resolves 7.17.4
+    "pycryptodome<4.6",        # 4.6.0 (2026-11-22) blocked; resolves 3.24.1 via bip-utils 2.12.x <4 cap
+]
 
 [tool.coverage.run]
 source = ["aptos_sdk"]

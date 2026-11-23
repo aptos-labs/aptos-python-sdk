@@ -24,7 +24,7 @@ dependencies = [
     "aiohttp>=3.14.5,<4",
     "PyNaCl>=1.6.2,<2",
     "cryptography>=50.0.2,<51",
-    "bip-utils>=2.13.0,<3",
+    "bip-utils>=2.12.3,<3",
 ]
 
 [project.urls]
@@ -42,6 +42,19 @@ dev = [
     "aioresponses>=0.7.9",
     "mypy>=2.4.1",
     "ruff>=0.17.6",
+]
+
+# Held back from latest: see the note in ../pyproject.toml — these releases
+# were published on 2026-11-22/23 and are blocked in CI by the Aikido Safe
+# Chain minimum-package-age gate. Lift a cap once its blocked release has
+# aged past the gate. Knock-on: bip-utils 2.12.x caps pycryptodome <4, so
+# the pycryptodome 4 major is held with it (2.13 allows <5).
+[tool.uv]
+constraint-dependencies = [
+    "bip-utils<2.13",          # 2.13.0 (2026-11-22) blocked; resolves 2.12.3
+    "charset-normalizer<3.5.3", # 3.5.3 (2026-11-23) blocked; resolves 3.5.2
+    "coverage<7.17.5",         # 7.17.5 (2026-11-23) blocked; resolves 7.17.4
+    "pycryptodome<4.6",        # 4.6.0 (2026-11-22) blocked; resolves 3.24.1 via bip-utils 2.12.x <4 cap
 ]
 
 [build-system]
