@@ -91,6 +91,19 @@ class TestBipUtilsCompatibilityVectors:
 
         assert derive_secp256k1_private_key(phrase, path).hex() == expected
 
+    def test_unknown_word_rejected(self):
+        # Correct word count, but one word is not in the BIP-39 wordlist.
+        assert not validate_mnemonic(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon notaword"
+        )
+
+    def test_out_of_range_path_index_rejected(self):
+        phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+        with pytest.raises(InvalidMnemonicError, match=r"\[0, 2\^31\)"):
+            derive_ed25519_private_key(phrase, "m/44'/637'/2147483648'/0'/0'")
+        with pytest.raises(InvalidMnemonicError, match=r"\[0, 2\^31\)"):
+            derive_ed25519_private_key(phrase, "m/44'/637'/-1'/0'/0'")
+
     def test_invalid_checksum_rejected(self):
         # Same words as a valid phrase but with a broken checksum word.
         assert not validate_mnemonic(
