@@ -28,6 +28,76 @@ class TestMnemonicGeneration:
             generate_mnemonic(15)
 
 
+class TestBipUtilsCompatibilityVectors:
+    """Fixed vectors generated with bip-utils 2.12.2 before its removal.
+
+    Pins byte-for-byte compatibility of the stdlib BIP-39/SLIP-0010
+    implementation (see crypto/mnemonic.py) for both key types, which
+    bip-utils derived identically for Aptos (coin type 637).
+    """
+
+    VECTORS = [
+        (
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            "m/44'/637'/0'/0'/0'",
+            "0xcc92c0eaf80206d817f150e21917f797e49cf644a33ac514de3c316baa2f1bf5",
+        ),
+        (
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            "m/44'/637'/0'/0'/1'",
+            "0x3dc7bcd2c8186e6728c76e26a003ab18e8797332c964297bc7a8a4704a897646",
+        ),
+        (
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            "m/44'/637'/1'/0'/0'",
+            "0x4c6f5a6b687631dd52f32c97457e895fb57947b9b827c6697c11cd7b2a075c5b",
+        ),
+        (
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            "m/44'/637'/2'/0'/5'",
+            "0x1e0adae14a6f6a2a9e9e7688d528f9c241b68f65d3c20c2730f98b327568d5ea",
+        ),
+        (
+            "legal winner thank year wave sausage worth useful legal winner thank yellow",
+            "m/44'/637'/0'/0'/0'",
+            "0xec1587e9e79fa10bd0d2560233f571cd467a8b3d7de48691aa5e675c656f0e68",
+        ),
+        (
+            "letter advice cage absurd amount doctor acoustic avoid letter advice cage above",
+            "m/44'/637'/0'/0'/10'",
+            "0x304e34eae1dc4d7e44050cd0346de75ac766c9ab2a548499e946797fae68f17d",
+        ),
+        (
+            "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong",
+            "m/44'/637'/0'/0'/0'",
+            "0x4351297d2c3a216b55bf5922eb04b496194f6be825ef04ab20b61fa523044e63",
+        ),
+        (
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+            "m/44'/637'/0'/0'/0'",
+            "0xf9575dc1f8c70253c68a15ef784f8c1cf5907644c5d22d2617f0153ed892e6af",
+        ),
+    ]
+
+    @pytest.mark.parametrize("phrase,path,expected", VECTORS)
+    def test_ed25519_vectors(self, phrase, path, expected):
+        from aptos_sdk_v2.crypto.mnemonic import derive_ed25519_private_key
+
+        assert derive_ed25519_private_key(phrase, path).hex() == expected
+
+    @pytest.mark.parametrize("phrase,path,expected", VECTORS)
+    def test_secp256k1_vectors(self, phrase, path, expected):
+        from aptos_sdk_v2.crypto.mnemonic import derive_secp256k1_private_key
+
+        assert derive_secp256k1_private_key(phrase, path).hex() == expected
+
+    def test_invalid_checksum_rejected(self):
+        # Same words as a valid phrase but with a broken checksum word.
+        assert not validate_mnemonic(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon"
+        )
+
+
 class TestMnemonicValidation:
     def test_valid_phrase(self):
         phrase = generate_mnemonic()

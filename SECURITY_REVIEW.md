@@ -64,13 +64,17 @@ who already has the user's private key. Out of scope.
 (`h11>=0.16.0`, `urllib3>=2.6.3`, `requests>=2.32.5`, `aiohttp>=3.13.3`).
 That's good practice; keep these floors moving forward.
 
-`bip-utils` (used by v2 mnemonic derivation) transitively pulls in
-`coincurve`, which is a `setup.py`-style C-extension package. The v2 README
-already flags `bip-utils` as the next dep to evict; coincurve in particular
-has had a history of releasing wheels late on each Python minor bump and is
-a useful target for supply-chain attackers because it's tiny and unaudited.
-We replaced direct secp256k1 with `cryptography` in v2 — finishing the
-`bip-utils` removal would close that surface entirely.
+`bip-utils` (previously used by v2 mnemonic derivation) transitively pulled
+in `coincurve` and `ecdsa` 0.19.2. The latter is subject to
+CVE-2024-23342 / GHSA-wj6h-64fc-37mp (PYSEC-2026-1325, Minerva timing
+attack on P-256), for which there is no patched release — upstream
+considers side-channel attacks out of scope. `bip-utils` has since been
+removed: BIP-39/BIP-44 (SLIP-0010) derivation is implemented with the
+standard library in `crypto/mnemonic.py`, byte-for-byte compatible with
+the previous derivation (pinned by fixed test vectors), so `ecdsa`,
+`coincurve`, and their transitive packages are no longer in the install
+surface. `uv audit` / `pip-audit` report no known vulnerabilities for
+either the root or standalone v2 package.
 
 `python-graphql-client` (used by `IndexerClient`) is a thin wrapper over
 `aiohttp` that hasn't seen a release in a long time. Consider replacing with
@@ -130,8 +134,7 @@ follow-up PR / issue. In rough priority order:
    `--private-key-path`.
 4. **O-08**: range checks on `RawTransaction` integer fields so user
    typos surface at the source.
-5. Replace `python-graphql-client` and finish removing `bip-utils` from the
-   v2 install surface (already flagged in `pyproject.toml`).
+5. Replace `python-graphql-client`. (`bip-utils` removal is done — see §2.3.)
 6. Reproducible build / wheel signing — currently `hatchling` builds wheels
    but they are not signed (Sigstore / `attestations`). Worth adding to
    `.github/workflows/publish.yaml` once a maintainer sets up a Sigstore

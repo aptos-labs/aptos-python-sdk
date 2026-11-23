@@ -7,7 +7,7 @@ Both APIs are available in the same package — you can migrate incrementally. T
 ## Requirements
 
 - **Python 3.12+** (was 3.10+ in v1)
-- New v2 dependencies: `coincurve`, `bip-utils`, `aiohttp`
+- New v2 dependencies: `aiohttp` (BIP-39 mnemonic derivation uses only the standard library)
 - v1 retains its own dependencies (`cryptography`, `httpx`) — no changes needed
 
 ## Quick comparison

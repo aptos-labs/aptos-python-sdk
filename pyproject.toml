@@ -20,10 +20,9 @@ dependencies = [
     "PyNaCl>=1.6.2,<2",
     "tomli>=2.4.0,<3",
     "typing-extensions>=4.15.0,<5",
-    # v2 dependencies
-    # NOTE: bip-utils still pulls in coincurve transitively; it remains part of
-    # the install surface until bip-utils is replaced with an alternative.
-    "bip-utils>=2.9,<3",
+    # v2 dependencies (BIP-39/BIP-44 mnemonic derivation is implemented with
+    # the standard library in aptos_sdk.v2.crypto.mnemonic; bip-utils was
+    # removed because it transitively pulled in ecdsa, see SECURITY_REVIEW.md)
     # Security overrides for transitive dependencies
     "h11>=0.16.0,<0.17",       # via httpx -> httpcore
     "h2>=4.4.1,<5",            # via httpx[http2]

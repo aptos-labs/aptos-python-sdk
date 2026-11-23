@@ -4,6 +4,10 @@ All notable changes to the Aptos Python SDK will be captured in this file. This 
 
 ## Unreleased
 
+### Changed
+
+- Remove `bip-utils` from both the root SDK and the standalone `v2` package. BIP-39/BIP-44 (SLIP-0010) mnemonic derivation is now implemented with the Python standard library (`aptos_sdk.v2.crypto.mnemonic` / `aptos_sdk_v2.crypto.mnemonic`), byte-for-byte compatible with the previous derivation (pinned by fixed test vectors). This clears CVE-2024-23342 / GHSA-wj6h-64fc-37mp (PYSEC-2026-1325, Minerva timing attack) in the transitive `ecdsa` 0.19.2 dependency, which has no patched release, and drops `coincurve`, `cbor2`, `crcmod`, `py-sr25519-bindings`, `pycryptodome`, `pytoniq-core-fork`, and other transitive packages from the install surface. `uv audit` and `pip-audit` now report no known vulnerabilities for either package.
+
 ## 0.12.3 (2026-10-13)
 
 ### Changed
