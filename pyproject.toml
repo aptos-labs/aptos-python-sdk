@@ -36,9 +36,9 @@ dependencies = [
 dev = [
     "behave>=1.2.6,<2",
     "coverage>=7.6.12,<8",
-    "mypy>=1.16.0,<2",
+    "mypy>=1.16.0,<3",
     "mypy-extensions>=1.1.0,<2",
-    "ruff==0.14.14",
+    "ruff==0.17.6",
     "types-six>=1.17.0.20250515",
 ]
 
