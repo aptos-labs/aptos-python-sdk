@@ -14,37 +14,53 @@ classifiers = [
 ]
 
 dependencies = [
-    "cryptography>=50.0.0,<51",
+    "cryptography>=50.0.2,<51",
     "python-graphql-client>=0.4.3,<0.5",
-    "httpx[http2]>=0.28.0,<0.29",
+    "httpx[http2]>=0.28.1,<0.29",
     "PyNaCl>=1.6.2,<2",
-    "tomli>=2.4.0,<3",
-    "typing-extensions>=4.15.0,<5",
+    "tomli>=2.5.0,<3",
+    "typing-extensions>=4.16.0,<5",
     # v2 dependencies
     # NOTE: bip-utils still pulls in coincurve transitively; it remains part of
     # the install surface until bip-utils is replaced with an alternative.
-    "bip-utils>=2.9,<3",
+    "bip-utils>=2.12.3,<3",
     # Security overrides for transitive dependencies
     "h11>=0.16.0,<0.17",       # via httpx -> httpcore
     "h2>=4.4.1,<5",            # via httpx[http2]
-    "urllib3>=2.6.3,<3",
-    "requests>=2.32.5,<3",
-    "aiohttp>=3.14.3,<4",
+    "urllib3>=2.8.0,<3",
+    "requests>=2.34.2,<3",
+    "aiohttp>=3.14.5,<4",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "behave>=1.2.6,<2",
-    "coverage>=7.6.12,<8",
-    "mypy>=1.16.0,<2",
-    "mypy-extensions>=1.1.0,<2",
-    "ruff==0.14.14",
-    "types-six>=1.17.0.20250515",
+    "behave>=1.3.3,<2",
+    "coverage>=7.17.4,<8",
+    "mypy>=2.4.1,<3",
+    "mypy-extensions>=1.2.0,<2",
+    "ruff==0.17.6",
+    "types-six>=1.17.0.20261008",
 ]
 
 [project.urls]
 Homepage = "https://aptos.dev/en/build/sdks/python-sdk"
 Repository = "https://github.com/aptos-labs/aptos-python-sdk"
+
+# Held back from latest: these releases were published on 2026-11-22/23 and are
+# blocked in CI by the Aikido Safe Chain minimum-package-age gate (403 on
+# download). Each cap is the newest release old enough to pass the gate; lift
+# a cap once its blocked release has aged past the gate (or in the next
+# routine dependency bump). Knock-on effect: bip-utils 2.12.x caps
+# pycryptodome <4, so the pycryptodome 4 major is held with bip-utils and
+# lands automatically once the bip-utils cap is lifted (2.13 allows <5);
+# the explicit pycryptodome cap also keeps the day-old 4.6.0 out until then.
+[tool.uv]
+constraint-dependencies = [
+    "bip-utils<2.13",          # 2.13.0 (2026-11-22) blocked; resolves 2.12.3
+    "charset-normalizer<3.5.3", # 3.5.3 (2026-11-23) blocked; resolves 3.5.2
+    "coverage<7.17.5",         # 7.17.5 (2026-11-23) blocked; resolves 7.17.4
+    "pycryptodome<4.6",        # 4.6.0 (2026-11-22) blocked; resolves 3.24.1 via bip-utils 2.12.x <4 cap
+]
 
 [tool.coverage.run]
 source = ["aptos_sdk"]
